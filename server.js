@@ -4,6 +4,7 @@ const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,8 +13,30 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// In-memory conversation store
+// Persistent conversation store
+const DATA_FILE = path.join(__dirname, 'data', 'conversations.json');
 const conversations = new Map();
+
+function loadFromDisk() {
+  try {
+    const raw = fs.readFileSync(DATA_FILE, 'utf8');
+    const arr = JSON.parse(raw);
+    for (const conv of arr) {
+      conversations.set(conv.id, conv);
+    }
+    console.log(`Loaded ${arr.length} conversations from disk`);
+  } catch {
+    // No file yet or corrupted — start fresh
+  }
+}
+
+function saveToDisk() {
+  const arr = Array.from(conversations.values());
+  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+  fs.writeFileSync(DATA_FILE, JSON.stringify(arr, null, 2));
+}
+
+loadFromDisk();
 
 // Active Claude processes per conversation
 const activeProcesses = new Map();
@@ -34,6 +57,7 @@ app.post('/api/conversations', (req, res) => {
     createdAt: Date.now(),
   };
   conversations.set(id, conversation);
+  saveToDisk();
   res.json(conversation);
 });
 
@@ -73,6 +97,7 @@ app.delete('/api/conversations/:id', (req, res) => {
     activeProcesses.delete(id);
   }
   conversations.delete(id);
+  saveToDisk();
   res.json({ ok: true });
 });
 
@@ -129,6 +154,7 @@ function handleMessage(ws, msg) {
     timestamp: Date.now(),
   });
   conv.status = 'thinking';
+  saveToDisk();
   broadcastStatus(conversationId, 'thinking');
 
   // Build claude CLI args
@@ -204,6 +230,7 @@ function handleMessage(ws, msg) {
         timestamp: Date.now(),
       });
       conv.status = 'idle';
+      saveToDisk();
       ws.send(JSON.stringify({
         type: 'result',
         conversationId,
@@ -289,6 +316,7 @@ function processStreamEvent(ws, conversationId, conv, event, state, updateState)
       sessionId: event.session_id,
     });
     conv.status = 'idle';
+    saveToDisk();
 
     ws.send(JSON.stringify({
       type: 'result',
