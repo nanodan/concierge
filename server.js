@@ -132,6 +132,34 @@ const activeProcesses = new Map();
 
 // --- REST API ---
 
+// Browse directories
+app.get('/api/browse', (req, res) => {
+  const target = req.query.path || process.env.HOME;
+  const resolved = path.resolve(target);
+  try {
+    const entries = fs.readdirSync(resolved, { withFileTypes: true });
+    const dirs = entries
+      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+      .map(e => e.name)
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    res.json({ path: resolved, dirs, parent: path.dirname(resolved) });
+  } catch (err) {
+    res.status(400).json({ error: err.message, path: resolved });
+  }
+});
+
+// Create directory
+app.post('/api/mkdir', (req, res) => {
+  const target = req.body.path;
+  if (!target) return res.status(400).json({ error: 'path required' });
+  try {
+    fs.mkdirSync(target, { recursive: true });
+    res.json({ ok: true, path: target });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Create conversation
 app.post('/api/conversations', (req, res) => {
   const { name, cwd } = req.body;

@@ -34,6 +34,14 @@ const searchInput = document.getElementById('search-input');
 const actionPopup = document.getElementById('action-popup');
 const actionPopupOverlay = document.getElementById('action-popup-overlay');
 const popupArchiveBtn = document.getElementById('popup-archive-btn');
+const browseBtn = document.getElementById('browse-btn');
+const dirBrowser = document.getElementById('dir-browser');
+const dirUpBtn = document.getElementById('dir-up-btn');
+const dirCurrentPath = document.getElementById('dir-current-path');
+const dirList = document.getElementById('dir-list');
+const dirNewBtn = document.getElementById('dir-new-btn');
+const dirSelectBtn = document.getElementById('dir-select-btn');
+let currentBrowsePath = '';
 
 // --- WebSocket ---
 function connectWS() {
@@ -658,6 +666,7 @@ deleteBtn.addEventListener('click', () => {
 newChatBtn.addEventListener('click', () => {
   convNameInput.value = '';
   convCwdInput.value = '';
+  dirBrowser.classList.add('hidden');
   modalOverlay.classList.remove('hidden');
   convNameInput.focus();
 });
@@ -679,6 +688,83 @@ newConvForm.addEventListener('submit', (e) => {
   if (name) {
     createConversation(name, cwd);
     modalOverlay.classList.add('hidden');
+  }
+});
+
+// --- Directory browser ---
+async function browseTo(dirPath) {
+  try {
+    const qs = dirPath ? `?path=${encodeURIComponent(dirPath)}` : '';
+    const res = await fetch(`/api/browse${qs}`);
+    const data = await res.json();
+    if (data.error) {
+      dirList.innerHTML = `<div class="dir-empty">${escapeHtml(data.error)}</div>`;
+      return;
+    }
+    currentBrowsePath = data.path;
+    dirCurrentPath.textContent = data.path;
+    convCwdInput.value = data.path;
+
+    if (data.dirs.length === 0) {
+      dirList.innerHTML = '<div class="dir-empty">No subdirectories</div>';
+    } else {
+      dirList.innerHTML = data.dirs.map(d =>
+        `<div class="dir-item" data-name="${escapeHtml(d)}">` +
+        `<span class="dir-item-icon">&#x1F4C1;</span>` +
+        `<span class="dir-item-name">${escapeHtml(d)}</span>` +
+        `</div>`
+      ).join('');
+      dirList.querySelectorAll('.dir-item').forEach(item => {
+        item.addEventListener('click', () => {
+          browseTo(currentBrowsePath + '/' + item.dataset.name);
+        });
+      });
+    }
+  } catch (err) {
+    dirList.innerHTML = `<div class="dir-empty">Failed to browse</div>`;
+  }
+}
+
+browseBtn.addEventListener('click', () => {
+  const isHidden = dirBrowser.classList.contains('hidden');
+  if (isHidden) {
+    dirBrowser.classList.remove('hidden');
+    browseTo(convCwdInput.value.trim() || '');
+  } else {
+    dirBrowser.classList.add('hidden');
+  }
+});
+
+dirUpBtn.addEventListener('click', () => {
+  if (currentBrowsePath && currentBrowsePath !== '/') {
+    const parent = currentBrowsePath.replace(/\/[^/]+$/, '') || '/';
+    browseTo(parent);
+  }
+});
+
+dirSelectBtn.addEventListener('click', () => {
+  convCwdInput.value = currentBrowsePath;
+  dirBrowser.classList.add('hidden');
+});
+
+dirNewBtn.addEventListener('click', async () => {
+  const name = prompt('New folder name:');
+  if (!name || !name.trim()) return;
+  const newPath = currentBrowsePath + '/' + name.trim();
+  try {
+    const res = await fetch('/api/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: newPath }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      browseTo(newPath);
+    } else {
+      alert(data.error || 'Failed to create folder');
+    }
+  } catch {
+    alert('Failed to create folder');
   }
 });
 
