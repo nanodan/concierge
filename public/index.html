@@ -14,12 +14,26 @@
 <body>
   <!-- Conversation List View -->
   <div id="list-view" class="view active">
-    <header class="top-bar">
+    <header class="top-bar list-header">
       <h1>Claude Chat</h1>
+      <button id="archive-toggle" class="archive-toggle" aria-label="Show archived">
+        <span id="archive-toggle-label">Archived</span>
+      </button>
     </header>
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search conversations..." autocomplete="off">
+    </div>
     <div id="conversation-list" class="conversation-list"></div>
     <button id="new-chat-btn" class="fab" aria-label="New conversation">+</button>
   </div>
+
+  <!-- Long-press action popup -->
+  <div id="action-popup" class="action-popup hidden">
+    <button class="action-popup-btn" data-action="archive" id="popup-archive-btn">Archive</button>
+    <button class="action-popup-btn" data-action="rename">Rename</button>
+    <button class="action-popup-btn danger" data-action="delete">Delete</button>
+  </div>
+  <div id="action-popup-overlay" class="action-popup-overlay hidden"></div>
 
   <!-- Chat View -->
   <div id="chat-view" class="view">

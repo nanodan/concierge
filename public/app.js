@@ -5,6 +5,9 @@ let ws = null;
 let reconnectTimer = null;
 let streamingMessageEl = null;
 let streamingText = '';
+let showingArchived = false;
+let searchDebounceTimer = null;
+let activeSwipeCard = null; // track currently swiped-open card
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -25,6 +28,12 @@ const newConvForm = document.getElementById('new-conv-form');
 const modalCancel = document.getElementById('modal-cancel');
 const convNameInput = document.getElementById('conv-name');
 const convCwdInput = document.getElementById('conv-cwd');
+const archiveToggle = document.getElementById('archive-toggle');
+const archiveToggleLabel = document.getElementById('archive-toggle-label');
+const searchInput = document.getElementById('search-input');
+const actionPopup = document.getElementById('action-popup');
+const actionPopupOverlay = document.getElementById('action-popup-overlay');
+const popupArchiveBtn = document.getElementById('popup-archive-btn');
 
 // --- WebSocket ---
 function connectWS() {
@@ -82,7 +91,6 @@ function handleWSMessage(data) {
       break;
 
     case 'stderr':
-      // Could display debug info, but skip for clean UI
       break;
   }
 }
@@ -90,7 +98,8 @@ function handleWSMessage(data) {
 // --- API ---
 async function loadConversations() {
   try {
-    const res = await fetch('/api/conversations');
+    const qs = showingArchived ? '?archived=true' : '';
+    const res = await fetch(`/api/conversations${qs}`);
     conversations = await res.json();
     if (!chatView.classList.contains('active')) {
       renderConversationList();
@@ -119,6 +128,29 @@ async function deleteConversation(id) {
   await loadConversations();
 }
 
+async function archiveConversation(id, archived) {
+  await fetch(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived }),
+  });
+  await loadConversations();
+}
+
+async function renameConversation(id, name) {
+  await fetch(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  await loadConversations();
+}
+
+async function searchConversations(query) {
+  const res = await fetch(`/api/conversations/search?q=${encodeURIComponent(query)}`);
+  return res.json();
+}
+
 async function getConversation(id) {
   const res = await fetch(`/api/conversations/${id}`);
   if (!res.ok) return null;
@@ -126,49 +158,270 @@ async function getConversation(id) {
 }
 
 // --- Rendering ---
-function renderConversationList() {
-  if (conversations.length === 0) {
+function renderConversationList(items) {
+  const list = items || conversations;
+  const isSearch = !!items;
+
+  if (list.length === 0) {
+    const msg = isSearch
+      ? 'No matching conversations'
+      : showingArchived
+        ? 'No archived conversations'
+        : 'No conversations yet';
+    const sub = isSearch
+      ? ''
+      : showingArchived
+        ? ''
+        : '<p style="font-size: 13px; margin-top: 8px;">Tap + to start chatting with Claude</p>';
     conversationList.innerHTML = `
       <div class="empty-state">
         <div class="icon">&#x1F4AC;</div>
-        <p>No conversations yet</p>
-        <p style="font-size: 13px; margin-top: 8px;">Tap + to start chatting with Claude</p>
+        <p>${msg}</p>
+        ${sub}
       </div>
     `;
     return;
   }
 
-  conversationList.innerHTML = conversations.map(c => {
+  conversationList.innerHTML = list.map(c => {
     const preview = c.lastMessage
       ? truncate(c.lastMessage.text, 60)
       : 'No messages yet';
     const time = c.lastMessage
       ? formatTime(c.lastMessage.timestamp)
       : formatTime(c.createdAt);
+
+    // Search match snippet
+    let matchHtml = '';
+    if (c.matchingMessages && c.matchingMessages.length > 0) {
+      const snippet = truncate(c.matchingMessages[0].text, 80);
+      matchHtml = `<div class="conv-card-match">${escapeHtml(snippet)}</div>`;
+    }
+
+    const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
+    const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
+
     return `
-      <div class="conv-card" data-id="${c.id}">
-        <div class="conv-card-top">
-          <span class="conv-card-name">${escapeHtml(c.name)}</span>
-          <span class="conv-card-time">${time}</span>
+      <div class="conv-card-wrapper">
+        <div class="swipe-actions">
+          <button class="swipe-action-btn ${archiveBtnClass}" data-id="${c.id}" data-action="archive">${archiveLabel}</button>
+          <button class="swipe-action-btn delete-action-btn" data-id="${c.id}" data-action="delete">Delete</button>
         </div>
-        <div class="conv-card-preview">${escapeHtml(preview)}</div>
-        <div class="conv-card-cwd">${escapeHtml(c.cwd)}</div>
+        <div class="conv-card" data-id="${c.id}">
+          <div class="conv-card-top">
+            <span class="conv-card-name">${escapeHtml(c.name)}</span>
+            <span class="conv-card-time">${time}</span>
+          </div>
+          <div class="conv-card-preview">${escapeHtml(preview)}</div>
+          ${matchHtml}
+          <div class="conv-card-cwd">${escapeHtml(c.cwd)}</div>
+        </div>
       </div>
     `;
   }).join('');
 
-  // Attach click handlers
-  conversationList.querySelectorAll('.conv-card').forEach(card => {
-    card.addEventListener('click', () => openConversation(card.dataset.id));
+  // Attach swipe + click + long-press handlers
+  conversationList.querySelectorAll('.conv-card-wrapper').forEach(wrapper => {
+    const card = wrapper.querySelector('.conv-card');
+    const id = card.dataset.id;
+    setupSwipe(wrapper, card);
+    setupLongPress(card, id);
+    // Right-click context menu (desktop equivalent of long-press)
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showActionPopup(e.clientX, e.clientY, id);
+    });
+    card.addEventListener('click', (e) => {
+      // Don't navigate if card is swiped open
+      if (Math.abs(parseFloat(card.style.transform?.replace(/[^0-9.-]/g, '') || 0)) > 10) return;
+      openConversation(id);
+    });
+  });
+
+  // Swipe action button handlers
+  conversationList.querySelectorAll('.swipe-action-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      if (action === 'delete') {
+        if (confirm('Delete this conversation?')) {
+          deleteConversation(id);
+        }
+      } else if (action === 'archive') {
+        const conv = conversations.find(c => c.id === id);
+        archiveConversation(id, !conv?.archived);
+      }
+    });
   });
 }
+
+// --- Swipe gesture handling ---
+function setupSwipe(wrapper, card) {
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let swiping = false;
+  let directionLocked = false;
+  let isHorizontal = false;
+  const THRESHOLD = 60;
+  const ACTION_WIDTH = 144; // 2 buttons * 72px
+
+  card.addEventListener('touchstart', (e) => {
+    // Close any other open swipe first
+    if (activeSwipeCard && activeSwipeCard !== card) {
+      resetSwipe(activeSwipeCard);
+      activeSwipeCard = null;
+    }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = 0;
+    swiping = true;
+    directionLocked = false;
+    isHorizontal = false;
+    card.classList.add('swiping');
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!swiping) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+
+    if (!directionLocked) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        directionLocked = true;
+        isHorizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      return;
+    }
+
+    if (!isHorizontal) {
+      swiping = false;
+      card.classList.remove('swiping');
+      return;
+    }
+
+    e.preventDefault();
+    // Only allow swipe left (negative)
+    currentX = Math.min(0, Math.max(-ACTION_WIDTH, dx));
+    card.style.transform = `translateX(${currentX}px)`;
+  }, { passive: false });
+
+  card.addEventListener('touchend', () => {
+    if (!swiping) return;
+    swiping = false;
+    card.classList.remove('swiping');
+
+    if (currentX < -THRESHOLD) {
+      // Snap open
+      card.style.transform = `translateX(-${ACTION_WIDTH}px)`;
+      activeSwipeCard = card;
+    } else {
+      // Snap closed
+      card.style.transform = 'translateX(0)';
+      if (activeSwipeCard === card) activeSwipeCard = null;
+    }
+  }, { passive: true });
+}
+
+function resetSwipe(card) {
+  card.style.transform = 'translateX(0)';
+}
+
+// --- Long-press handling ---
+let longPressTimer = null;
+let longPressTarget = null;
+
+function setupLongPress(card, id) {
+  card.addEventListener('touchstart', (e) => {
+    longPressTarget = id;
+    longPressTimer = setTimeout(() => {
+      showActionPopup(e.touches[0].clientX, e.touches[0].clientY, id);
+    }, 500);
+  }, { passive: true });
+
+  card.addEventListener('touchmove', () => {
+    clearTimeout(longPressTimer);
+  }, { passive: true });
+
+  card.addEventListener('touchend', () => {
+    clearTimeout(longPressTimer);
+  }, { passive: true });
+}
+
+function showActionPopup(x, y, id) {
+  longPressTarget = id;
+  const conv = conversations.find(c => c.id === id);
+  popupArchiveBtn.textContent = conv?.archived ? 'Unarchive' : 'Archive';
+
+  // Position popup near touch point
+  actionPopup.style.left = Math.min(x, window.innerWidth - 180) + 'px';
+  actionPopup.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+  actionPopup.classList.remove('hidden');
+  actionPopupOverlay.classList.remove('hidden');
+}
+
+function hideActionPopup() {
+  actionPopup.classList.add('hidden');
+  actionPopupOverlay.classList.add('hidden');
+  longPressTarget = null;
+}
+
+// --- Action popup event handlers ---
+actionPopupOverlay.addEventListener('click', hideActionPopup);
+
+actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    const id = longPressTarget;
+    hideActionPopup();
+    if (!id) return;
+
+    if (action === 'archive') {
+      const conv = conversations.find(c => c.id === id);
+      archiveConversation(id, !conv?.archived);
+    } else if (action === 'delete') {
+      if (confirm('Delete this conversation?')) {
+        deleteConversation(id);
+      }
+    } else if (action === 'rename') {
+      const conv = conversations.find(c => c.id === id);
+      const newName = prompt('Rename conversation:', conv?.name || '');
+      if (newName && newName.trim()) {
+        renameConversation(id, newName.trim());
+      }
+    }
+  });
+});
+
+// --- Search ---
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounceTimer);
+  const q = searchInput.value.trim();
+  if (!q) {
+    renderConversationList();
+    return;
+  }
+  searchDebounceTimer = setTimeout(async () => {
+    const results = await searchConversations(q);
+    renderConversationList(results);
+  }, 250);
+});
+
+// --- Archive toggle ---
+archiveToggle.addEventListener('click', () => {
+  showingArchived = !showingArchived;
+  archiveToggle.classList.toggle('active', showingArchived);
+  archiveToggleLabel.textContent = showingArchived ? 'Active' : 'Archived';
+  searchInput.value = '';
+  loadConversations();
+});
 
 async function openConversation(id) {
   currentConversationId = id;
   const conv = await getConversation(id);
 
   if (!conv) {
-    // Conversation gone (server restarted) — remove from list and go back
     await loadConversations();
     return;
   }
@@ -179,7 +432,6 @@ async function openConversation(id) {
   renderMessages(conv.messages);
   showChatView();
 
-  // If currently thinking, show indicator
   setThinking(conv.status === 'thinking');
 }
 
@@ -288,14 +540,12 @@ function sendMessage(text) {
   if (!text.trim() || !currentConversationId) return;
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-  // Add user message to UI
   const el = document.createElement('div');
   el.className = 'message user';
   el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   scrollToBottom();
 
-  // Send over WebSocket
   ws.send(JSON.stringify({
     type: 'message',
     conversationId: currentConversationId,
@@ -311,49 +561,34 @@ function sendMessage(text) {
 function renderMarkdown(text) {
   if (!text) return '';
 
-  // Escape HTML first
   let html = escapeHtml(text);
 
-  // Code blocks (``` ... ```)
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     return `<pre><code>${code.trim()}</code></pre>`;
   });
 
-  // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic
   html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
 
-  // Headings
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
 
-  // Horizontal rules
   html = html.replace(/^---$/gm, '<hr>');
 
-  // Unordered lists
   html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
 
-  // Ordered lists
   html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
 
-  // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 
-  // Paragraphs - convert double newlines
   html = html.replace(/\n\n/g, '</p><p>');
   html = '<p>' + html + '</p>';
 
-  // Single newlines to <br> (but not inside pre/code)
   html = html.replace(/(?<!<\/?\w+[^>]*)\n(?!<\/?(?:pre|code|ul|ol|li|h[1-3]|p|hr))/g, '<br>');
 
-  // Clean up empty paragraphs
   html = html.replace(/<p>\s*<\/p>/g, '');
   html = html.replace(/<p>\s*(<(?:pre|h[1-3]|ul|ol|hr))/g, '$1');
   html = html.replace(/(<\/(?:pre|h[1-3]|ul|ol|hr)>)\s*<\/p>/g, '$1');
@@ -392,7 +627,6 @@ function formatTime(ts) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-// Auto-resize textarea
 function autoResizeInput() {
   messageInput.style.height = 'auto';
   messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
@@ -448,11 +682,18 @@ newConvForm.addEventListener('submit', (e) => {
   }
 });
 
+// Close open swipe when tapping elsewhere on the list
+conversationList.addEventListener('click', (e) => {
+  if (activeSwipeCard && !e.target.closest('.conv-card-wrapper')) {
+    resetSwipe(activeSwipeCard);
+    activeSwipeCard = null;
+  }
+});
+
 // --- Init ---
 connectWS();
 loadConversations();
 
-// Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }

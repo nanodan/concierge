@@ -133,6 +133,61 @@ html, body {
   color: var(--danger);
 }
 
+/* List Header */
+.list-header {
+  justify-content: space-between;
+}
+
+.archive-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.archive-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.archive-toggle:active {
+  opacity: 0.85;
+}
+
+/* Search Bar */
+.search-bar {
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.search-bar input:focus {
+  border-color: var(--accent);
+}
+
+.search-bar input::placeholder {
+  color: var(--text-secondary);
+}
+
 /* Conversation List */
 .conversation-list {
   flex: 1;
@@ -550,6 +605,125 @@ html, body {
   border-radius: 10px;
   font-size: 13px;
   max-width: 90%;
+}
+
+/* Swipe-to-reveal actions */
+.conv-card-wrapper {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 4px;
+  border-radius: 12px;
+}
+
+.conv-card-wrapper .conv-card {
+  margin-bottom: 0;
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  transition: transform 0.2s ease;
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+.conv-card-wrapper .conv-card.swiping {
+  transition: none;
+}
+
+.swipe-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  z-index: 1;
+}
+
+.swipe-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.swipe-action-btn.archive-btn {
+  background: #f39c12;
+}
+
+.swipe-action-btn.unarchive-btn {
+  background: #2ecc71;
+}
+
+.swipe-action-btn.delete-action-btn {
+  background: var(--danger);
+}
+
+/* Long-press action popup */
+.action-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
+
+.action-popup-overlay.hidden {
+  display: none;
+}
+
+.action-popup {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.action-popup.hidden {
+  display: none;
+}
+
+.action-popup-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.action-popup-btn:active {
+  background: var(--surface);
+}
+
+.action-popup-btn.danger {
+  color: var(--danger);
+}
+
+/* Search result highlights */
+.search-match {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.conv-card-match {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Scrollbar */

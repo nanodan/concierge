@@ -13,27 +13,116 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Persistent conversation store
-const DATA_FILE = path.join(__dirname, 'data', 'conversations.json');
-const conversations = new Map();
+// Persistent conversation store — split into index + per-conversation files
+const DATA_DIR = path.join(__dirname, 'data');
+const INDEX_FILE = path.join(DATA_DIR, 'index.json');
+const CONV_DIR = path.join(DATA_DIR, 'conv');
+const LEGACY_FILE = path.join(DATA_DIR, 'conversations.json');
+const conversations = new Map(); // id -> { metadata + messages (lazy) }
 
-function loadFromDisk() {
+function ensureDirs() {
+  fs.mkdirSync(CONV_DIR, { recursive: true });
+}
+
+function convMeta(conv) {
+  return {
+    id: conv.id,
+    name: conv.name,
+    cwd: conv.cwd,
+    status: conv.status,
+    archived: !!conv.archived,
+    claudeSessionId: conv.claudeSessionId,
+    createdAt: conv.createdAt,
+    messageCount: conv.messages ? conv.messages.length : (conv.messageCount || 0),
+    lastMessage: conv.messages && conv.messages.length > 0
+      ? conv.messages[conv.messages.length - 1]
+      : (conv.lastMessage || null),
+  };
+}
+
+function saveIndex() {
+  ensureDirs();
+  const arr = Array.from(conversations.values()).map(convMeta);
+  fs.writeFileSync(INDEX_FILE, JSON.stringify(arr, null, 2));
+}
+
+function saveConversation(id) {
+  ensureDirs();
+  const conv = conversations.get(id);
+  if (!conv) return;
+  fs.writeFileSync(
+    path.join(CONV_DIR, `${id}.json`),
+    JSON.stringify(conv.messages || [], null, 2)
+  );
+  // Also update index (lastMessage/messageCount may have changed)
+  saveIndex();
+}
+
+function loadMessages(id) {
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    const arr = JSON.parse(raw);
-    for (const conv of arr) {
-      conversations.set(conv.id, conv);
-    }
-    console.log(`Loaded ${arr.length} conversations from disk`);
+    const raw = fs.readFileSync(path.join(CONV_DIR, `${id}.json`), 'utf8');
+    return JSON.parse(raw);
   } catch {
-    // No file yet or corrupted — start fresh
+    return [];
   }
 }
 
-function saveToDisk() {
-  const arr = Array.from(conversations.values());
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(arr, null, 2));
+function deleteConversationFiles(id) {
+  try { fs.unlinkSync(path.join(CONV_DIR, `${id}.json`)); } catch {}
+}
+
+function loadFromDisk() {
+  ensureDirs();
+
+  // Migrate legacy single-file format
+  if (fs.existsSync(LEGACY_FILE)) {
+    try {
+      const raw = fs.readFileSync(LEGACY_FILE, 'utf8');
+      const arr = JSON.parse(raw);
+      console.log(`Migrating ${arr.length} conversations from legacy format...`);
+      for (const conv of arr) {
+        conversations.set(conv.id, conv);
+        // Write individual message file
+        fs.writeFileSync(
+          path.join(CONV_DIR, `${conv.id}.json`),
+          JSON.stringify(conv.messages || [], null, 2)
+        );
+      }
+      saveIndex();
+      // Rename legacy file so we don't re-migrate
+      fs.renameSync(LEGACY_FILE, LEGACY_FILE + '.bak');
+      console.log('Migration complete. Old file renamed to conversations.json.bak');
+      return;
+    } catch (err) {
+      console.error('Legacy migration failed:', err.message);
+    }
+  }
+
+  // Normal load: read index, messages loaded lazily
+  try {
+    const raw = fs.readFileSync(INDEX_FILE, 'utf8');
+    const arr = JSON.parse(raw);
+    for (const meta of arr) {
+      // Store metadata with a messages placeholder
+      conversations.set(meta.id, {
+        ...meta,
+        messages: null, // lazy — loaded on demand
+      });
+    }
+    console.log(`Loaded index with ${arr.length} conversations`);
+  } catch {
+    // No index yet — start fresh
+  }
+}
+
+// Ensure messages are loaded for a conversation
+function ensureMessages(id) {
+  const conv = conversations.get(id);
+  if (!conv) return null;
+  if (conv.messages === null) {
+    conv.messages = loadMessages(id);
+  }
+  return conv;
 }
 
 loadFromDisk();
@@ -54,24 +143,32 @@ app.post('/api/conversations', (req, res) => {
     claudeSessionId: null,
     messages: [],
     status: 'idle',
+    archived: false,
     createdAt: Date.now(),
   };
   conversations.set(id, conversation);
-  saveToDisk();
+  saveConversation(id);
   res.json(conversation);
 });
 
-// List conversations
+// List conversations (metadata only — no messages loaded)
 app.get('/api/conversations', (req, res) => {
-  const list = Array.from(conversations.values()).map(c => ({
-    id: c.id,
-    name: c.name,
-    cwd: c.cwd,
-    status: c.status,
-    lastMessage: c.messages.length > 0 ? c.messages[c.messages.length - 1] : null,
-    messageCount: c.messages.length,
-    createdAt: c.createdAt,
-  }));
+  const archived = req.query.archived === 'true';
+  const list = Array.from(conversations.values())
+    .filter(c => !!(c.archived) === archived)
+    .map(c => {
+      const meta = convMeta(c);
+      return {
+        id: meta.id,
+        name: meta.name,
+        cwd: meta.cwd,
+        status: meta.status,
+        archived: meta.archived,
+        lastMessage: meta.lastMessage,
+        messageCount: meta.messageCount,
+        createdAt: meta.createdAt,
+      };
+    });
   list.sort((a, b) => {
     const aTime = a.lastMessage ? a.lastMessage.timestamp : a.createdAt;
     const bTime = b.lastMessage ? b.lastMessage.timestamp : b.createdAt;
@@ -80,9 +177,63 @@ app.get('/api/conversations', (req, res) => {
   res.json(list);
 });
 
-// Get conversation detail
-app.get('/api/conversations/:id', (req, res) => {
+// Search conversations (loads messages lazily per conversation)
+app.get('/api/conversations/search', (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (!q) return res.json([]);
+
+  const results = [];
+  for (const c of conversations.values()) {
+    const nameMatch = c.name.toLowerCase().includes(q);
+    // Load messages from disk if not in memory
+    const messages = c.messages !== null ? c.messages : loadMessages(c.id);
+    const matchingMessages = [];
+    for (const m of messages) {
+      if (m.text && m.text.toLowerCase().includes(q)) {
+        matchingMessages.push({
+          role: m.role,
+          text: m.text,
+          timestamp: m.timestamp,
+        });
+      }
+    }
+    if (nameMatch || matchingMessages.length > 0) {
+      const meta = convMeta(c);
+      results.push({
+        id: meta.id,
+        name: meta.name,
+        cwd: meta.cwd,
+        status: meta.status,
+        archived: meta.archived,
+        lastMessage: meta.lastMessage,
+        messageCount: meta.messageCount,
+        createdAt: meta.createdAt,
+        nameMatch,
+        matchingMessages: matchingMessages.slice(0, 3),
+      });
+    }
+  }
+  results.sort((a, b) => {
+    const aTime = a.lastMessage ? a.lastMessage.timestamp : a.createdAt;
+    const bTime = b.lastMessage ? b.lastMessage.timestamp : b.createdAt;
+    return bTime - aTime;
+  });
+  res.json(results);
+});
+
+// Update conversation (archive, rename)
+app.patch('/api/conversations/:id', (req, res) => {
   const conv = conversations.get(req.params.id);
+  if (!conv) return res.status(404).json({ error: 'Not found' });
+  if (req.body.archived !== undefined) conv.archived = !!req.body.archived;
+  if (req.body.name !== undefined) conv.name = String(req.body.name).trim() || conv.name;
+  saveIndex();
+  res.json({ ok: true, id: conv.id, name: conv.name, archived: conv.archived });
+});
+
+// Get conversation detail (loads messages into memory)
+app.get('/api/conversations/:id', (req, res) => {
+  const conv = ensureMessages(req.params.id);
   if (!conv) return res.status(404).json({ error: 'Not found' });
   res.json(conv);
 });
@@ -97,7 +248,8 @@ app.delete('/api/conversations/:id', (req, res) => {
     activeProcesses.delete(id);
   }
   conversations.delete(id);
-  saveToDisk();
+  deleteConversationFiles(id);
+  saveIndex();
   res.json({ ok: true });
 });
 
@@ -135,7 +287,7 @@ wss.on('close', () => clearInterval(heartbeat));
 
 function handleMessage(ws, msg) {
   const { conversationId, text } = msg;
-  const conv = conversations.get(conversationId);
+  const conv = ensureMessages(conversationId);
   if (!conv) {
     ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
     return;
@@ -154,7 +306,7 @@ function handleMessage(ws, msg) {
     timestamp: Date.now(),
   });
   conv.status = 'thinking';
-  saveToDisk();
+  saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
   // Build claude CLI args
@@ -230,7 +382,7 @@ function handleMessage(ws, msg) {
         timestamp: Date.now(),
       });
       conv.status = 'idle';
-      saveToDisk();
+      saveConversation(conversationId);
       ws.send(JSON.stringify({
         type: 'result',
         conversationId,
@@ -316,7 +468,7 @@ function processStreamEvent(ws, conversationId, conv, event, state, updateState)
       sessionId: event.session_id,
     });
     conv.status = 'idle';
-    saveToDisk();
+    saveConversation(conversationId);
 
     ws.send(JSON.stringify({
       type: 'result',
