@@ -1,0 +1,14 @@
+{
+  "name": "claude-remote-chat",
+  "version": "1.0.0",
+  "description": "Mobile-friendly chat PWA wrapping Claude CLI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  }
+}
