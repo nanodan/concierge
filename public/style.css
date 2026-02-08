@@ -627,13 +627,16 @@ html, body {
   background: linear-gradient(135deg, #7c6cf0, #6a5ae0);
   color: white;
   border: none;
-  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+#send-btn svg {
+  transform: rotate(-90deg);
 }
 
 #send-btn:disabled {
@@ -656,7 +659,6 @@ html, body {
   background: var(--danger);
   color: white;
   border: none;
-  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
