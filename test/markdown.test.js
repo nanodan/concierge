@@ -55,7 +55,7 @@ describe('renderMarkdown', () => {
 
   it('renders code blocks', () => {
     const result = renderMarkdown('```js\nconst x = 1;\n```');
-    assert.ok(result.includes('<pre><code>'));
+    assert.ok(result.includes('<pre><code class="language-js">'));
     assert.ok(result.includes('const x = 1;'));
   });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claude-chat-v2';
+const CACHE_NAME = 'claude-chat-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   '/markdown.js',
   '/app.js',
   '/manifest.json',
+  '/lib/highlight.min.js',
 ];
 
 // Install: cache static assets

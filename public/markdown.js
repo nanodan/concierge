@@ -12,8 +12,12 @@
 
     let html = escapeHtml(text);
 
+    // Extract code blocks into placeholders to protect from subsequent regexes
+    const codeBlocks = [];
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-      return `<pre><code>${code.trim()}</code></pre>`;
+      const cls = lang ? ` class="language-${lang}"` : '';
+      codeBlocks.push(`<pre><code${cls}>${code.trim()}</code></pre>`);
+      return `\x00CB${codeBlocks.length - 1}\x00`;
     });
 
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -50,6 +54,9 @@
     html = html.replace(/<p>\s*<\/p>/g, '');
     html = html.replace(/<p>\s*(<(?:pre|h[1-3]|ul|ol|hr))/g, '$1');
     html = html.replace(/(<\/(?:pre|h[1-3]|ul|ol|hr)>)\s*<\/p>/g, '$1');
+
+    // Restore code blocks
+    html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[i]);
 
     return html;
   }

@@ -1237,3 +1237,21 @@ html, body {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
+
+/* Syntax highlighting */
+.hljs { background: transparent; }
+.hljs-keyword, .hljs-selector-tag { color: #c792ea; }
+.hljs-string, .hljs-addition { color: #c3e88d; }
+.hljs-number, .hljs-literal { color: #f78c6c; }
+.hljs-comment, .hljs-deletion { color: #676e7b; }
+.hljs-function, .hljs-title { color: #82aaff; }
+.hljs-built_in { color: #ffcb6b; }
+.hljs-type, .hljs-class .hljs-title { color: #ffcb6b; }
+.hljs-attr, .hljs-variable { color: #f07178; }
+.hljs-params { color: var(--text); }
+.hljs-meta, .hljs-meta .hljs-keyword { color: #89ddff; }
+.hljs-regexp { color: #89ddff; }
+.hljs-symbol, .hljs-bullet { color: #c792ea; }
+.hljs-property { color: #82aaff; }
+.hljs-operator { color: #89ddff; }
+.hljs-punctuation { color: var(--text-secondary); }

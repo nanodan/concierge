@@ -1,6 +1,13 @@
 // --- Imported modules ---
 const { escapeHtml, renderMarkdown } = window.markdown;
 
+function highlightCode(container) {
+  if (!window.hljs) return;
+  container.querySelectorAll('pre code').forEach(el => {
+    if (!el.dataset.highlighted) hljs.highlightElement(el);
+  });
+}
+
 // --- State ---
 let conversations = [];
 let currentConversationId = null;
@@ -481,6 +488,7 @@ function renderMessages(messages) {
     return `<div class="message ${cls}">${content}<div class="meta">${meta}${ttsBtn}</div></div>`;
   }).join('');
 
+  highlightCode(messagesContainer);
   attachTTSHandlers();
   scrollToBottom();
 }
@@ -494,6 +502,7 @@ function appendDelta(text) {
   }
   streamingText += text;
   streamingMessageEl.innerHTML = renderMarkdown(streamingText);
+  highlightCode(streamingMessageEl);
   scrollToBottom();
 }
 
@@ -513,6 +522,7 @@ function finalizeMessage(data) {
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}</div>`;
+    highlightCode(streamingMessageEl);
     attachTTSHandlers();
     streamingMessageEl = null;
     streamingText = '';
