@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 
 const app = express();
 
@@ -37,10 +38,10 @@ function ensureDirs() {
   fs.mkdirSync(CONV_DIR, { recursive: true });
 }
 
-function atomicWriteSync(filePath, data) {
+async function atomicWrite(filePath, data) {
   const tmp = filePath + '.tmp';
-  fs.writeFileSync(tmp, data);
-  fs.renameSync(tmp, filePath);
+  await fsp.writeFile(tmp, data);
+  await fsp.rename(tmp, filePath);
 }
 
 function convMeta(conv) {
@@ -60,35 +61,34 @@ function convMeta(conv) {
   };
 }
 
-function saveIndex() {
+async function saveIndex() {
   ensureDirs();
   const arr = Array.from(conversations.values()).map(convMeta);
-  atomicWriteSync(INDEX_FILE, JSON.stringify(arr, null, 2));
+  await atomicWrite(INDEX_FILE, JSON.stringify(arr, null, 2));
 }
 
-function saveConversation(id) {
+async function saveConversation(id) {
   ensureDirs();
   const conv = conversations.get(id);
   if (!conv) return;
-  atomicWriteSync(
+  await atomicWrite(
     path.join(CONV_DIR, `${id}.json`),
     JSON.stringify(conv.messages || [], null, 2)
   );
-  // Also update index (lastMessage/messageCount may have changed)
-  saveIndex();
+  await saveIndex();
 }
 
-function loadMessages(id) {
+async function loadMessages(id) {
   try {
-    const raw = fs.readFileSync(path.join(CONV_DIR, `${id}.json`), 'utf8');
+    const raw = await fsp.readFile(path.join(CONV_DIR, `${id}.json`), 'utf8');
     return JSON.parse(raw);
   } catch {
     return [];
   }
 }
 
-function deleteConversationFiles(id) {
-  try { fs.unlinkSync(path.join(CONV_DIR, `${id}.json`)); } catch {}
+async function deleteConversationFiles(id) {
+  try { await fsp.unlink(path.join(CONV_DIR, `${id}.json`)); } catch {}
 }
 
 function loadFromDisk() {
@@ -102,14 +102,14 @@ function loadFromDisk() {
       console.log(`Migrating ${arr.length} conversations from legacy format...`);
       for (const conv of arr) {
         conversations.set(conv.id, conv);
-        // Write individual message file
         fs.writeFileSync(
           path.join(CONV_DIR, `${conv.id}.json`),
           JSON.stringify(conv.messages || [], null, 2)
         );
       }
-      saveIndex();
-      // Rename legacy file so we don't re-migrate
+      // Sync write for migration (one-time startup)
+      const indexArr = Array.from(conversations.values()).map(convMeta);
+      fs.writeFileSync(INDEX_FILE, JSON.stringify(indexArr, null, 2));
       fs.renameSync(LEGACY_FILE, LEGACY_FILE + '.bak');
       console.log('Migration complete. Old file renamed to conversations.json.bak');
       return;
@@ -123,7 +123,6 @@ function loadFromDisk() {
     const raw = fs.readFileSync(INDEX_FILE, 'utf8');
     const arr = JSON.parse(raw);
     for (const meta of arr) {
-      // Store metadata with a messages placeholder
       conversations.set(meta.id, {
         ...meta,
         messages: null, // lazy — loaded on demand
@@ -136,16 +135,14 @@ function loadFromDisk() {
 }
 
 // Ensure messages are loaded for a conversation
-function ensureMessages(id) {
+async function ensureMessages(id) {
   const conv = conversations.get(id);
   if (!conv) return null;
   if (conv.messages === null) {
-    conv.messages = loadMessages(id);
+    conv.messages = await loadMessages(id);
   }
   return conv;
 }
-
-loadFromDisk();
 
 // Active Claude processes per conversation
 const activeProcesses = new Map();
@@ -154,11 +151,11 @@ const PROCESS_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 // --- REST API ---
 
 // Browse directories
-app.get('/api/browse', (req, res) => {
+app.get('/api/browse', async (req, res) => {
   const target = req.query.path || process.env.HOME;
   const resolved = path.resolve(target);
   try {
-    const entries = fs.readdirSync(resolved, { withFileTypes: true });
+    const entries = await fsp.readdir(resolved, { withFileTypes: true });
     const dirs = entries
       .filter(e => e.isDirectory() && !e.name.startsWith('.'))
       .map(e => e.name)
@@ -170,11 +167,11 @@ app.get('/api/browse', (req, res) => {
 });
 
 // Create directory
-app.post('/api/mkdir', (req, res) => {
+app.post('/api/mkdir', async (req, res) => {
   const target = req.body.path;
   if (!target) return res.status(400).json({ error: 'path required' });
   try {
-    fs.mkdirSync(target, { recursive: true });
+    await fsp.mkdir(target, { recursive: true });
     res.json({ ok: true, path: target });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -182,7 +179,7 @@ app.post('/api/mkdir', (req, res) => {
 });
 
 // Create conversation
-app.post('/api/conversations', (req, res) => {
+app.post('/api/conversations', async (req, res) => {
   const { name, cwd, autopilot } = req.body;
   const id = uuidv4();
   const conversation = {
@@ -197,7 +194,7 @@ app.post('/api/conversations', (req, res) => {
     createdAt: Date.now(),
   };
   conversations.set(id, conversation);
-  saveConversation(id);
+  await saveConversation(id);
   res.json(conversation);
 });
 
@@ -228,15 +225,14 @@ app.get('/api/conversations', (req, res) => {
 });
 
 // Search conversations (loads messages lazily per conversation)
-app.get('/api/conversations/search', (req, res) => {
+app.get('/api/conversations/search', async (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
   if (!q) return res.json([]);
 
   const results = [];
   for (const c of conversations.values()) {
     const nameMatch = c.name.toLowerCase().includes(q);
-    // Load messages from disk if not in memory
-    const messages = c.messages !== null ? c.messages : loadMessages(c.id);
+    const messages = c.messages !== null ? c.messages : await loadMessages(c.id);
     const matchingMessages = [];
     for (const m of messages) {
       if (m.text && m.text.toLowerCase().includes(q)) {
@@ -272,34 +268,33 @@ app.get('/api/conversations/search', (req, res) => {
 });
 
 // Update conversation (archive, rename)
-app.patch('/api/conversations/:id', (req, res) => {
+app.patch('/api/conversations/:id', async (req, res) => {
   const conv = conversations.get(req.params.id);
   if (!conv) return res.status(404).json({ error: 'Not found' });
   if (req.body.archived !== undefined) conv.archived = !!req.body.archived;
   if (req.body.name !== undefined) conv.name = String(req.body.name).trim() || conv.name;
-  saveIndex();
+  await saveIndex();
   res.json({ ok: true, id: conv.id, name: conv.name, archived: conv.archived });
 });
 
 // Get conversation detail (loads messages into memory)
-app.get('/api/conversations/:id', (req, res) => {
-  const conv = ensureMessages(req.params.id);
+app.get('/api/conversations/:id', async (req, res) => {
+  const conv = await ensureMessages(req.params.id);
   if (!conv) return res.status(404).json({ error: 'Not found' });
   res.json(conv);
 });
 
 // Delete conversation
-app.delete('/api/conversations/:id', (req, res) => {
+app.delete('/api/conversations/:id', async (req, res) => {
   const id = req.params.id;
-  // Kill any active process
   const proc = activeProcesses.get(id);
   if (proc) {
     proc.kill('SIGTERM');
     activeProcesses.delete(id);
   }
   conversations.delete(id);
-  deleteConversationFiles(id);
-  saveIndex();
+  await deleteConversationFiles(id);
+  await saveIndex();
   res.json({ ok: true });
 });
 
@@ -347,31 +342,28 @@ function handleCancel(ws, msg) {
   proc.kill('SIGTERM');
 }
 
-function handleMessage(ws, msg) {
+async function handleMessage(ws, msg) {
   const { conversationId, text } = msg;
-  const conv = ensureMessages(conversationId);
+  const conv = await ensureMessages(conversationId);
   if (!conv) {
     ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
     return;
   }
 
-  // Don't allow concurrent messages to same conversation
   if (activeProcesses.has(conversationId)) {
     ws.send(JSON.stringify({ type: 'error', error: 'Conversation is busy' }));
     return;
   }
 
-  // Add user message
   conv.messages.push({
     role: 'user',
     text,
     timestamp: Date.now(),
   });
   conv.status = 'thinking';
-  saveConversation(conversationId);
+  await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
-  // Build claude CLI args
   const args = [
     '-p', text,
     '--output-format', 'stream-json',
@@ -420,9 +412,8 @@ function handleMessage(ws, msg) {
       } catch {
         continue;
       }
-      processStreamEvent(ws, conversationId, conv, event, { assistantText }, (state) => {
-        assistantText = state.assistantText;
-      });
+      const result = processStreamEvent(ws, conversationId, conv, event, assistantText);
+      assistantText = result.assistantText;
     }
   });
 
@@ -430,23 +421,20 @@ function handleMessage(ws, msg) {
     ws.send(JSON.stringify({ type: 'stderr', conversationId, text: chunk.toString() }));
   });
 
-  proc.on('close', (code) => {
+  proc.on('close', async (code) => {
     clearTimeout(processTimeout);
     activeProcesses.delete(conversationId);
 
-    // Process any remaining buffer
     if (buffer.trim()) {
       try {
         const event = JSON.parse(buffer);
-        processStreamEvent(ws, conversationId, conv, event, { assistantText }, (state) => {
-          assistantText = state.assistantText;
-        });
+        const result = processStreamEvent(ws, conversationId, conv, event, assistantText);
+        assistantText = result.assistantText;
       } catch {
         // ignore
       }
     }
 
-    // If we got assistant text but no result event, finalize anyway
     if (assistantText && conv.status === 'thinking') {
       conv.messages.push({
         role: 'assistant',
@@ -454,7 +442,7 @@ function handleMessage(ws, msg) {
         timestamp: Date.now(),
       });
       conv.status = 'idle';
-      saveConversation(conversationId);
+      await saveConversation(conversationId);
       ws.send(JSON.stringify({
         type: 'result',
         conversationId,
@@ -486,12 +474,11 @@ function handleMessage(ws, msg) {
   });
 }
 
-function processStreamEvent(ws, conversationId, conv, event, state, updateState) {
+function processStreamEvent(ws, conversationId, conv, event, assistantText) {
   if (event.type === 'stream_event' && event.event) {
     const inner = event.event;
     if (inner.type === 'content_block_delta' && inner.delta && inner.delta.type === 'text_delta') {
-      state.assistantText += inner.delta.text;
-      updateState(state);
+      assistantText += inner.delta.text;
       ws.send(JSON.stringify({
         type: 'delta',
         conversationId,
@@ -512,10 +499,9 @@ function processStreamEvent(ws, conversationId, conv, event, state, updateState)
           fullText += block.text;
         }
       }
-      if (fullText.length > state.assistantText.length) {
-        const newText = fullText.slice(state.assistantText.length);
-        state.assistantText = fullText;
-        updateState(state);
+      if (fullText.length > assistantText.length) {
+        const newText = fullText.slice(assistantText.length);
+        assistantText = fullText;
         ws.send(JSON.stringify({
           type: 'delta',
           conversationId,
@@ -524,12 +510,11 @@ function processStreamEvent(ws, conversationId, conv, event, state, updateState)
       }
     }
   } else if (event.type === 'result') {
-    const resultText = event.result || state.assistantText;
+    const resultText = event.result || assistantText;
     if (event.session_id) {
       conv.claudeSessionId = event.session_id;
     }
-    state.assistantText = resultText;
-    updateState(state);
+    assistantText = resultText;
 
     conv.messages.push({
       role: 'assistant',
@@ -552,6 +537,8 @@ function processStreamEvent(ws, conversationId, conv, event, state, updateState)
     }));
     broadcastStatus(conversationId, 'idle');
   }
+
+  return { assistantText };
 }
 
 function broadcastStatus(conversationId, status) {
@@ -563,9 +550,14 @@ function broadcastStatus(conversationId, status) {
   });
 }
 
-// Start server
-const PORT = process.env.PORT || 3577;
-const proto = server instanceof https.Server ? 'https' : 'http';
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Claude Remote Chat running on ${proto}://0.0.0.0:${PORT}`);
-});
+// Start server (guarded for testability)
+if (require.main === module) {
+  loadFromDisk();
+  const PORT = process.env.PORT || 3577;
+  const proto = server instanceof https.Server ? 'https' : 'http';
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Claude Remote Chat running on ${proto}://0.0.0.0:${PORT}`);
+  });
+}
+
+module.exports = { convMeta, atomicWrite, processStreamEvent, loadFromDisk, conversations };

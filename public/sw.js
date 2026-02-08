@@ -3,6 +3,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
+  '/markdown.js',
   '/app.js',
   '/manifest.json',
 ];

@@ -4,7 +4,12 @@
   "description": "Mobile-friendly chat PWA wrapping Claude CLI",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test 'test/*.test.js'",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
   },
   "dependencies": {
     "express": "^4.21.0",
