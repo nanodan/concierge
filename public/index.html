@@ -107,6 +107,19 @@
     </div>
   </div>
 
+  <!-- Dialog (replaces confirm/prompt/alert) -->
+  <div id="dialog-overlay" class="dialog-overlay hidden">
+    <div class="dialog">
+      <div class="dialog-title" id="dialog-title"></div>
+      <div class="dialog-body" id="dialog-body"></div>
+      <input type="text" id="dialog-input" class="dialog-input hidden" autocomplete="off">
+      <div class="dialog-actions">
+        <button id="dialog-cancel" class="btn-secondary">Cancel</button>
+        <button id="dialog-ok" class="btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

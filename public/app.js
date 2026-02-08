@@ -47,6 +47,12 @@ const dirSelectBtn = document.getElementById('dir-select-btn');
 const micBtn = document.getElementById('mic-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const convAutopilot = document.getElementById('conv-autopilot');
+const dialogOverlay = document.getElementById('dialog-overlay');
+const dialogTitle = document.getElementById('dialog-title');
+const dialogBody = document.getElementById('dialog-body');
+const dialogInput = document.getElementById('dialog-input');
+const dialogCancel = document.getElementById('dialog-cancel');
+const dialogOk = document.getElementById('dialog-ok');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
@@ -111,6 +117,7 @@ function handleWSMessage(data) {
 
 // --- API ---
 async function loadConversations() {
+  setLoading(listView, true);
   try {
     const qs = showingArchived ? '?archived=true' : '';
     const res = await fetch(`/api/conversations${qs}`);
@@ -120,6 +127,8 @@ async function loadConversations() {
     }
   } catch (err) {
     console.error('Failed to load conversations:', err);
+  } finally {
+    setLoading(listView, false);
   }
 }
 
@@ -254,14 +263,13 @@ function renderConversationList(items) {
 
   // Swipe action button handlers
   conversationList.querySelectorAll('.swipe-action-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
       const id = btn.dataset.id;
       if (action === 'delete') {
-        if (confirm('Delete this conversation?')) {
-          deleteConversation(id);
-        }
+        const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
+        if (ok) deleteConversation(id);
       } else if (action === 'archive') {
         const conv = conversations.find(c => c.id === id);
         archiveConversation(id, !conv?.archived);
@@ -385,7 +393,7 @@ function hideActionPopup() {
 actionPopupOverlay.addEventListener('click', hideActionPopup);
 
 actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const action = btn.dataset.action;
     const id = longPressTarget;
     hideActionPopup();
@@ -395,12 +403,11 @@ actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
       const conv = conversations.find(c => c.id === id);
       archiveConversation(id, !conv?.archived);
     } else if (action === 'delete') {
-      if (confirm('Delete this conversation?')) {
-        deleteConversation(id);
-      }
+      const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
+      if (ok) deleteConversation(id);
     } else if (action === 'rename') {
       const conv = conversations.find(c => c.id === id);
-      const newName = prompt('Rename conversation:', conv?.name || '');
+      const newName = await showDialog({ title: 'Rename conversation', input: true, defaultValue: conv?.name || '', placeholder: 'Conversation name', confirmLabel: 'Rename' });
       if (newName && newName.trim()) {
         renameConversation(id, newName.trim());
       }
@@ -433,7 +440,9 @@ archiveToggle.addEventListener('click', () => {
 
 async function openConversation(id) {
   currentConversationId = id;
+  setLoading(chatView, true);
   const conv = await getConversation(id);
+  setLoading(chatView, false);
 
   if (!conv) {
     await loadConversations();
@@ -601,10 +610,13 @@ function renderMarkdown(text) {
 
   html = html.replace(/^---$/gm, '<hr>');
 
-  html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  html = html.replace(/^[*-] (.+)$/gm, '<ul-li>$1</ul-li>');
+  html = html.replace(/(<ul-li>.*<\/ul-li>\n?)+/g, (m) => '<ul>' + m + '</ul>');
+  html = html.replace(/<\/?ul-li>/g, (t) => t === '<ul-li>' ? '<li>' : '</li>');
 
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/^\d+\. (.+)$/gm, '<ol-li>$1</ol-li>');
+  html = html.replace(/(<ol-li>.*<\/ol-li>\n?)+/g, (m) => '<ol>' + m + '</ol>');
+  html = html.replace(/<\/?ol-li>/g, (t) => t === '<ol-li>' ? '<li>' : '</li>');
 
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
     const decoded = url.replace(/&amp;/g, '&');
@@ -624,6 +636,68 @@ function renderMarkdown(text) {
   html = html.replace(/(<\/(?:pre|h[1-3]|ul|ol|hr)>)\s*<\/p>/g, '$1');
 
   return html;
+}
+
+// --- Dialog system ---
+function showDialog({ title, message, input, defaultValue, placeholder, confirmLabel, cancelLabel, danger }) {
+  return new Promise((resolve) => {
+    dialogTitle.textContent = title || '';
+    dialogBody.textContent = message || '';
+    dialogOk.textContent = confirmLabel || 'OK';
+    dialogCancel.textContent = cancelLabel || 'Cancel';
+    dialogOk.className = danger ? 'btn-primary danger' : 'btn-primary';
+
+    if (input) {
+      dialogInput.classList.remove('hidden');
+      dialogInput.value = defaultValue || '';
+      dialogInput.placeholder = placeholder || '';
+    } else {
+      dialogInput.classList.add('hidden');
+    }
+
+    // Hide cancel for alert-style (message only, no input, no danger action)
+    const isAlert = !input && !danger;
+    dialogCancel.classList.toggle('hidden', isAlert);
+
+    dialogOverlay.classList.remove('hidden');
+    if (input) dialogInput.focus();
+
+    function cleanup() {
+      dialogOverlay.classList.add('hidden');
+      dialogOk.removeEventListener('click', onOk);
+      dialogCancel.removeEventListener('click', onCancel);
+      dialogOverlay.removeEventListener('click', onOverlay);
+      dialogInput.removeEventListener('keydown', onKeydown);
+    }
+
+    function onOk() {
+      cleanup();
+      resolve(input ? dialogInput.value : true);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    function onOverlay(e) {
+      if (e.target === dialogOverlay) onCancel();
+    }
+
+    function onKeydown(e) {
+      if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+    }
+
+    dialogOk.addEventListener('click', onOk);
+    dialogCancel.addEventListener('click', onCancel);
+    dialogOverlay.addEventListener('click', onOverlay);
+    if (input) dialogInput.addEventListener('keydown', onKeydown);
+  });
+}
+
+// --- Loading state ---
+function setLoading(view, loading) {
+  view.classList.toggle('loading', loading);
 }
 
 // --- Utilities ---
@@ -684,10 +758,10 @@ cancelBtn.addEventListener('click', () => {
 
 backBtn.addEventListener('click', showListView);
 
-deleteBtn.addEventListener('click', () => {
-  if (currentConversationId && confirm('Delete this conversation?')) {
-    deleteConversation(currentConversationId);
-  }
+deleteBtn.addEventListener('click', async () => {
+  if (!currentConversationId) return;
+  const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
+  if (ok) deleteConversation(currentConversationId);
 });
 
 newChatBtn.addEventListener('click', () => {
@@ -776,7 +850,7 @@ dirSelectBtn.addEventListener('click', () => {
 });
 
 dirNewBtn.addEventListener('click', async () => {
-  const name = prompt('New folder name:');
+  const name = await showDialog({ title: 'New folder', input: true, placeholder: 'Folder name', confirmLabel: 'Create' });
   if (!name || !name.trim()) return;
   const newPath = currentBrowsePath + '/' + name.trim();
   try {
@@ -789,10 +863,10 @@ dirNewBtn.addEventListener('click', async () => {
     if (data.ok) {
       browseTo(newPath);
     } else {
-      alert(data.error || 'Failed to create folder');
+      showDialog({ title: 'Error', message: data.error || 'Failed to create folder' });
     }
   } catch {
-    alert('Failed to create folder');
+    showDialog({ title: 'Error', message: 'Failed to create folder' });
   }
 });
 

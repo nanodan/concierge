@@ -38,10 +38,36 @@ html, body {
   flex-direction: column;
   height: 100%;
   height: 100dvh;
+  position: relative;
 }
 
 .view.active {
   display: flex;
+}
+
+.view::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.view.loading::before {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0% { transform: scaleX(0); transform-origin: left; }
+  50% { transform: scaleX(1); transform-origin: left; }
+  51% { transform-origin: right; }
+  100% { transform: scaleX(0); transform-origin: right; }
 }
 
 /* Top Bar */
@@ -1018,6 +1044,84 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Dialog (replaces confirm/prompt/alert) */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+}
+
+.dialog-overlay.hidden {
+  display: none;
+}
+
+.dialog {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 20px 24px;
+  width: 100%;
+  max-width: 320px;
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.dialog-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.dialog-body {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.dialog-body:empty {
+  display: none;
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  margin-top: 12px;
+}
+
+.dialog-input:focus {
+  border-color: var(--accent);
+}
+
+.dialog-input.hidden {
+  display: none;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.dialog-actions .btn-primary.danger {
+  background: var(--danger);
+}
+
+.dialog-actions .btn-primary.danger:active {
+  opacity: 0.85;
 }
 
 /* Scrollbar */

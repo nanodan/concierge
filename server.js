@@ -37,6 +37,12 @@ function ensureDirs() {
   fs.mkdirSync(CONV_DIR, { recursive: true });
 }
 
+function atomicWriteSync(filePath, data) {
+  const tmp = filePath + '.tmp';
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, filePath);
+}
+
 function convMeta(conv) {
   return {
     id: conv.id,
@@ -57,14 +63,14 @@ function convMeta(conv) {
 function saveIndex() {
   ensureDirs();
   const arr = Array.from(conversations.values()).map(convMeta);
-  fs.writeFileSync(INDEX_FILE, JSON.stringify(arr, null, 2));
+  atomicWriteSync(INDEX_FILE, JSON.stringify(arr, null, 2));
 }
 
 function saveConversation(id) {
   ensureDirs();
   const conv = conversations.get(id);
   if (!conv) return;
-  fs.writeFileSync(
+  atomicWriteSync(
     path.join(CONV_DIR, `${id}.json`),
     JSON.stringify(conv.messages || [], null, 2)
   );
@@ -143,6 +149,7 @@ loadFromDisk();
 
 // Active Claude processes per conversation
 const activeProcesses = new Map();
+const PROCESS_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // --- REST API ---
 
@@ -391,6 +398,12 @@ function handleMessage(ws, msg) {
 
   activeProcesses.set(conversationId, proc);
 
+  const processTimeout = setTimeout(() => {
+    if (activeProcesses.has(conversationId)) {
+      proc.kill('SIGTERM');
+    }
+  }, PROCESS_TIMEOUT);
+
   let buffer = '';
   let assistantText = '';
 
@@ -418,6 +431,7 @@ function handleMessage(ws, msg) {
   });
 
   proc.on('close', (code) => {
+    clearTimeout(processTimeout);
     activeProcesses.delete(conversationId);
 
     // Process any remaining buffer
