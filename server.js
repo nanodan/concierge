@@ -8,6 +8,14 @@ const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 
+const MODELS = [
+  { id: 'opus', name: 'Opus 4.6', context: 200000 },
+  { id: 'claude-opus-4-20250514', name: 'Opus 4', context: 200000 },
+  { id: 'sonnet', name: 'Sonnet 4.5', context: 200000 },
+  { id: 'claude-sonnet-4-20250514', name: 'Sonnet 4', context: 200000 },
+  { id: 'haiku', name: 'Haiku 4.5', context: 200000 },
+];
+
 const app = express();
 
 // Use HTTPS if certs exist (required for mic access on non-localhost)
@@ -52,6 +60,7 @@ function convMeta(conv) {
     status: conv.status,
     archived: !!conv.archived,
     autopilot: conv.autopilot !== false,
+    model: conv.model || 'sonnet',
     claudeSessionId: conv.claudeSessionId,
     createdAt: conv.createdAt,
     messageCount: conv.messages ? conv.messages.length : (conv.messageCount || 0),
@@ -150,6 +159,11 @@ const PROCESS_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // --- REST API ---
 
+// Available models
+app.get('/api/models', (req, res) => {
+  res.json(MODELS);
+});
+
 // Browse directories
 app.get('/api/browse', async (req, res) => {
   const target = req.query.path || process.env.HOME;
@@ -180,7 +194,7 @@ app.post('/api/mkdir', async (req, res) => {
 
 // Create conversation
 app.post('/api/conversations', async (req, res) => {
-  const { name, cwd, autopilot } = req.body;
+  const { name, cwd, autopilot, model } = req.body;
   const id = uuidv4();
   const conversation = {
     id,
@@ -191,6 +205,7 @@ app.post('/api/conversations', async (req, res) => {
     status: 'idle',
     archived: false,
     autopilot: autopilot !== false,
+    model: model || 'sonnet',
     createdAt: Date.now(),
   };
   conversations.set(id, conversation);
@@ -267,14 +282,16 @@ app.get('/api/conversations/search', async (req, res) => {
   res.json(results);
 });
 
-// Update conversation (archive, rename)
+// Update conversation (archive, rename, model, autopilot)
 app.patch('/api/conversations/:id', async (req, res) => {
   const conv = conversations.get(req.params.id);
   if (!conv) return res.status(404).json({ error: 'Not found' });
   if (req.body.archived !== undefined) conv.archived = !!req.body.archived;
   if (req.body.name !== undefined) conv.name = String(req.body.name).trim() || conv.name;
+  if (req.body.model !== undefined) conv.model = String(req.body.model);
+  if (req.body.autopilot !== undefined) conv.autopilot = !!req.body.autopilot;
   await saveIndex();
-  res.json({ ok: true, id: conv.id, name: conv.name, archived: conv.archived });
+  res.json({ ok: true, id: conv.id, name: conv.name, archived: conv.archived, model: conv.model || 'sonnet', autopilot: conv.autopilot !== false });
 });
 
 // Get conversation detail (loads messages into memory)
@@ -437,7 +454,7 @@ async function handleMessage(ws, msg) {
     '-p', text,
     '--output-format', 'stream-json',
     '--verbose',
-    '--model', 'sonnet',
+    '--model', conv.model || 'sonnet',
     '--include-partial-messages',
   ];
 
@@ -592,6 +609,8 @@ function processStreamEvent(ws, conversationId, conv, event, assistantText) {
       cost: event.total_cost_usd,
       duration: event.duration_ms,
       sessionId: event.session_id,
+      inputTokens: event.total_input_tokens,
+      outputTokens: event.total_output_tokens,
     });
     conv.status = 'idle';
     saveConversation(conversationId);
@@ -603,6 +622,8 @@ function processStreamEvent(ws, conversationId, conv, event, assistantText) {
       cost: event.total_cost_usd,
       duration: event.duration_ms,
       sessionId: event.session_id,
+      inputTokens: event.total_input_tokens,
+      outputTokens: event.total_output_tokens,
     }));
     broadcastStatus(conversationId, 'idle');
   }

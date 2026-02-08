@@ -1537,3 +1537,176 @@ html, body {
   background: var(--bg);
   border-radius: 8px;
 }
+
+/* Mode badge */
+.mode-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.mode-badge.autopilot {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.mode-badge.manual {
+  background: rgba(241, 196, 15, 0.2);
+  color: #f1c40f;
+}
+
+.mode-badge:active {
+  opacity: 0.7;
+}
+
+/* Model selector */
+.model-selector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.model-badge-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--accent-light);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.model-badge-btn:active {
+  background: var(--surface);
+}
+
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  min-width: 140px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+
+.model-dropdown.hidden {
+  display: none;
+}
+
+.model-option {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.model-option:active,
+.model-option:hover {
+  background: var(--surface);
+}
+
+.model-option.active {
+  color: var(--accent-light);
+  font-weight: 700;
+}
+
+/* Context bar */
+.context-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px 4px;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.context-bar.hidden {
+  display: none;
+}
+
+.context-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.context-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.4s ease, background 0.3s;
+  min-width: 0;
+}
+
+.context-bar-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.context-bar.warning .context-bar-fill {
+  background: #f39c12;
+}
+
+.context-bar.warning .context-bar-label {
+  color: #f39c12;
+}
+
+.context-bar.danger .context-bar-fill {
+  background: var(--danger);
+  animation: context-pulse 1.5s ease-in-out infinite;
+}
+
+.context-bar.danger .context-bar-label {
+  color: var(--danger);
+}
+
+@keyframes context-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Model select in modal */
+.model-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a8a3a0' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.model-select:focus {
+  border-color: var(--accent);
+}

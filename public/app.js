@@ -36,6 +36,9 @@ let activeSwipeCard = null; // track currently swiped-open card
 let recognition = null;
 let isRecording = false;
 let currentTTSBtn = null; // track which TTS button is currently speaking
+let models = [];
+let currentModel = 'sonnet';
+let currentAutopilot = true;
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -78,6 +81,13 @@ const dialogBody = document.getElementById('dialog-body');
 const dialogInput = document.getElementById('dialog-input');
 const dialogCancel = document.getElementById('dialog-cancel');
 const dialogOk = document.getElementById('dialog-ok');
+const modeBadge = document.getElementById('mode-badge');
+const modelBtn = document.getElementById('model-btn');
+const modelDropdown = document.getElementById('model-dropdown');
+const contextBar = document.getElementById('context-bar');
+const contextBarFill = document.getElementById('context-bar-fill');
+const contextBarLabel = document.getElementById('context-bar-label');
+const convModelSelect = document.getElementById('conv-model');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
@@ -157,11 +167,24 @@ async function loadConversations() {
   }
 }
 
-async function createConversation(name, cwd, autopilot) {
+async function loadModels() {
+  try {
+    const res = await fetch('/api/models');
+    models = await res.json();
+    // Populate modal select
+    convModelSelect.innerHTML = models.map(m =>
+      `<option value="${m.id}"${m.id === 'sonnet' ? ' selected' : ''}>${m.name}</option>`
+    ).join('');
+  } catch {
+    models = [{ id: 'sonnet', name: 'Sonnet 4.5', context: 200000 }];
+  }
+}
+
+async function createConversation(name, cwd, autopilot, model) {
   const res = await fetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, cwd, autopilot }),
+    body: JSON.stringify({ name, cwd, autopilot, model }),
   });
   const conv = await res.json();
   await loadConversations();
@@ -477,8 +500,21 @@ async function openConversation(id) {
   chatName.textContent = conv.name;
   updateStatusDot(conv.status);
 
+  currentModel = conv.model || 'sonnet';
+  currentAutopilot = conv.autopilot !== false;
+  updateModelBadge(currentModel);
+  updateModeBadge(currentAutopilot);
+
   renderMessages(conv.messages);
   showChatView();
+
+  // Update context bar from last assistant message with tokens
+  const lastAssistant = [...conv.messages].reverse().find(m => m.role === 'assistant' && m.inputTokens);
+  if (lastAssistant) {
+    updateContextBar(lastAssistant.inputTokens, lastAssistant.outputTokens, currentModel);
+  } else {
+    contextBar.classList.add('hidden');
+  }
 
   setThinking(conv.status === 'thinking');
 }
@@ -496,6 +532,9 @@ function renderMessages(messages) {
     }
     if (m.duration != null) {
       meta += ` &middot; ${(m.duration / 1000).toFixed(1)}s`;
+    }
+    if (m.inputTokens != null) {
+      meta += ` &middot; ${formatTokens(m.inputTokens)} in / ${formatTokens(m.outputTokens)} out`;
     }
     const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
@@ -533,6 +572,9 @@ function finalizeMessage(data) {
     if (data.duration != null) {
       meta += ` &middot; ${(data.duration / 1000).toFixed(1)}s`;
     }
+    if (data.inputTokens != null) {
+      meta += ` &middot; ${formatTokens(data.inputTokens)} in / ${formatTokens(data.outputTokens)} out`;
+    }
     const ttsBtn = window.speechSynthesis
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
@@ -542,6 +584,10 @@ function finalizeMessage(data) {
     streamingMessageEl = null;
     streamingText = '';
     scrollToBottom();
+  }
+
+  if (data.inputTokens != null) {
+    updateContextBar(data.inputTokens, data.outputTokens, currentModel);
   }
 }
 
@@ -763,8 +809,9 @@ newConvForm.addEventListener('submit', (e) => {
   const name = convNameInput.value.trim();
   const cwd = convCwdInput.value.trim() || undefined;
   const autopilot = convAutopilot.checked;
+  const model = convModelSelect.value;
   if (name) {
-    createConversation(name, cwd, autopilot);
+    createConversation(name, cwd, autopilot, model);
     modalOverlay.classList.add('hidden');
   }
 });
@@ -983,6 +1030,92 @@ function resetTTSBtn(btn) {
   if (currentTTSBtn === btn) currentTTSBtn = null;
 }
 
+// --- Model & Mode & Context Bar ---
+function formatTokens(count) {
+  if (count == null) return '0';
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
+  return String(count);
+}
+
+function updateModeBadge(isAutopilot) {
+  modeBadge.textContent = isAutopilot ? 'AP' : 'ASK';
+  modeBadge.classList.toggle('autopilot', isAutopilot);
+  modeBadge.classList.toggle('manual', !isAutopilot);
+}
+
+function updateModelBadge(modelId) {
+  const model = models.find(m => m.id === modelId);
+  modelBtn.textContent = model ? model.name : modelId;
+}
+
+function updateContextBar(inputTokens, outputTokens, modelId) {
+  const model = models.find(m => m.id === modelId);
+  const contextLimit = model ? model.context : 200000;
+  const totalTokens = (inputTokens || 0) + (outputTokens || 0);
+  const pct = Math.min((totalTokens / contextLimit) * 100, 100);
+
+  contextBar.classList.remove('hidden', 'warning', 'danger');
+  contextBarFill.style.width = pct + '%';
+  contextBarLabel.textContent = `${formatTokens(totalTokens)} / ${formatTokens(contextLimit)}`;
+
+  if (pct >= 90) {
+    contextBar.classList.add('danger');
+  } else if (pct >= 75) {
+    contextBar.classList.add('warning');
+  }
+}
+
+async function switchModel(convId, modelId) {
+  await fetch(`/api/conversations/${convId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: modelId }),
+  });
+  currentModel = modelId;
+  updateModelBadge(modelId);
+}
+
+// Model dropdown handlers
+modelBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const isOpen = !modelDropdown.classList.contains('hidden');
+  if (isOpen) {
+    modelDropdown.classList.add('hidden');
+    return;
+  }
+  modelDropdown.innerHTML = models.map(m =>
+    `<div class="model-option${m.id === currentModel ? ' active' : ''}" data-id="${m.id}">${m.name}</div>`
+  ).join('');
+  modelDropdown.classList.remove('hidden');
+
+  modelDropdown.querySelectorAll('.model-option').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = opt.dataset.id;
+      modelDropdown.classList.add('hidden');
+      if (id !== currentModel && currentConversationId) {
+        switchModel(currentConversationId, id);
+      }
+    });
+  });
+});
+
+document.addEventListener('click', () => {
+  modelDropdown.classList.add('hidden');
+});
+
+// Mode badge click handler
+modeBadge.addEventListener('click', async () => {
+  if (!currentConversationId) return;
+  currentAutopilot = !currentAutopilot;
+  updateModeBadge(currentAutopilot);
+  await fetch(`/api/conversations/${currentConversationId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ autopilot: currentAutopilot }),
+  });
+});
+
 // --- Stats ---
 const statsBtn = document.getElementById('stats-btn');
 const statsView = document.getElementById('stats-view');
@@ -1112,6 +1245,7 @@ function renderStats(s) {
 
 // --- Init ---
 connectWS();
+loadModels();
 loadConversations();
 
 if ('serviceWorker' in navigator) {

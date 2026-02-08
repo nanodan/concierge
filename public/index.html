@@ -48,9 +48,18 @@
       <div class="chat-title">
         <span id="chat-name"></span>
         <span id="chat-status" class="status-dot"></span>
+        <span id="mode-badge" class="mode-badge">AP</span>
+        <div id="model-selector" class="model-selector">
+          <button id="model-btn" class="model-badge-btn">Sonnet 4.5</button>
+          <div id="model-dropdown" class="model-dropdown hidden"></div>
+        </div>
       </div>
       <button id="delete-btn" class="delete-btn" aria-label="Delete conversation">&#x1D5EB;</button>
     </header>
+    <div id="context-bar" class="context-bar hidden">
+      <div class="context-bar-track"><div id="context-bar-fill" class="context-bar-fill"></div></div>
+      <span id="context-bar-label" class="context-bar-label">0k / 200k</span>
+    </div>
     <div id="messages" class="messages"></div>
     <div id="typing-indicator" class="typing-indicator hidden">
       <div class="typing-dots">
@@ -116,6 +125,10 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+        <label for="conv-model">Model</label>
+        <select id="conv-model" class="model-select">
+          <option value="sonnet">Sonnet 4.5</option>
+        </select>
         <div class="modal-actions">
           <button type="button" id="modal-cancel" class="btn-secondary">Cancel</button>
           <button type="submit" class="btn-primary">Create</button>
