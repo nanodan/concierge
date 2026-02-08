@@ -5,7 +5,11 @@ function enhanceCodeBlocks(container) {
   container.querySelectorAll('pre code').forEach(el => {
     if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
     const pre = el.parentElement;
-    if (pre.querySelector('.copy-btn')) return;
+    if (pre.parentElement?.classList.contains('code-block')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(pre);
     const btn = document.createElement('button');
     btn.className = 'copy-btn';
     btn.textContent = 'Copy';
@@ -15,7 +19,7 @@ function enhanceCodeBlocks(container) {
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
       });
     });
-    pre.appendChild(btn);
+    wrapper.appendChild(btn);
   });
 }
 
