@@ -1255,13 +1255,24 @@ html, body {
   pointer-events: none;
 }
 
-#chat-view, #stats-view {
+#chat-view {
   transform: translateX(100%);
   z-index: 2;
 }
 
-#chat-view.slide-in, #stats-view.slide-in {
+#chat-view.slide-in {
   transform: translateX(0);
+}
+
+#stats-view {
+  transform: translateX(100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+#stats-view.slide-in {
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* Micro-animations: button active states */

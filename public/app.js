@@ -584,12 +584,13 @@ function scrollToBottom() {
 function showChatView() {
   listView.classList.add('slide-out');
   chatView.classList.add('slide-in');
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
 }
 
 function showListView() {
   chatView.classList.remove('slide-in');
   listView.classList.remove('slide-out');
+  document.querySelector('.views-container').scrollLeft = 0;
   currentConversationId = null;
   streamingMessageEl = null;
   streamingText = '';
