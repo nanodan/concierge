@@ -284,6 +284,75 @@ app.get('/api/conversations/:id', async (req, res) => {
   res.json(conv);
 });
 
+// Stats
+app.get('/api/stats', async (req, res) => {
+  let totalMessages = 0, userMessages = 0, assistantMessages = 0;
+  let totalCost = 0, totalDuration = 0, totalUserChars = 0, totalAssistantChars = 0;
+  let activeCount = 0, archivedCount = 0;
+  const dailyCounts = {};
+  const hourlyCounts = new Array(24).fill(0);
+  const topConversations = [];
+
+  for (const c of conversations.values()) {
+    if (c.archived) archivedCount++; else activeCount++;
+    const messages = c.messages !== null ? c.messages : await loadMessages(c.id);
+    let convMsgCount = 0, convCost = 0;
+    for (const m of messages) {
+      totalMessages++;
+      convMsgCount++;
+      if (m.role === 'user') {
+        userMessages++;
+        totalUserChars += (m.text || '').length;
+      } else {
+        assistantMessages++;
+        totalAssistantChars += (m.text || '').length;
+      }
+      if (m.cost) { totalCost += m.cost; convCost += m.cost; }
+      if (m.duration) totalDuration += m.duration;
+      if (m.timestamp) {
+        const d = new Date(m.timestamp);
+        const day = d.toISOString().slice(0, 10);
+        dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+        hourlyCounts[d.getHours()]++;
+      }
+    }
+    topConversations.push({ name: c.name, messages: convMsgCount, cost: convCost });
+  }
+
+  topConversations.sort((a, b) => b.messages - a.messages);
+
+  // Build daily activity for last 30 days
+  const dailyActivity = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    dailyActivity.push({ date: key, count: dailyCounts[key] || 0 });
+  }
+
+  // Streak: consecutive days with messages ending today or yesterday
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (dailyCounts[key]) streak++; else break;
+  }
+
+  res.json({
+    conversations: { total: activeCount + archivedCount, active: activeCount, archived: archivedCount },
+    messages: { total: totalMessages, user: userMessages, assistant: assistantMessages },
+    cost: Math.round(totalCost * 10000) / 10000,
+    duration: Math.round(totalDuration / 1000),
+    characters: { user: totalUserChars, assistant: totalAssistantChars },
+    dailyActivity,
+    hourlyCounts,
+    streak,
+    topConversations: topConversations.slice(0, 5),
+  });
+});
+
 // Delete conversation
 app.delete('/api/conversations/:id', async (req, res) => {
   const id = req.params.id;

@@ -982,6 +982,133 @@ function resetTTSBtn(btn) {
   if (currentTTSBtn === btn) currentTTSBtn = null;
 }
 
+// --- Stats ---
+const statsBtn = document.getElementById('stats-btn');
+const statsView = document.getElementById('stats-view');
+const statsBackBtn = document.getElementById('stats-back-btn');
+const statsContent = document.getElementById('stats-content');
+
+statsBtn.addEventListener('click', () => {
+  listView.classList.add('slide-out');
+  statsView.classList.add('slide-in');
+  loadStats();
+});
+
+statsBackBtn.addEventListener('click', () => {
+  statsView.classList.remove('slide-in');
+  listView.classList.remove('slide-out');
+});
+
+async function loadStats() {
+  statsContent.innerHTML = '<div class="stats-loading">Loading stats...</div>';
+  try {
+    const res = await fetch('/api/stats');
+    const s = await res.json();
+    renderStats(s);
+  } catch {
+    statsContent.innerHTML = '<div class="stats-loading">Failed to load stats</div>';
+  }
+}
+
+function renderStats(s) {
+  const avgPerConv = s.conversations.total ? (s.messages.total / s.conversations.total).toFixed(1) : 0;
+  const avgCostPerConv = s.conversations.total ? (s.cost / s.conversations.total).toFixed(4) : 0;
+  const userWords = Math.round(s.characters.user / 5);
+  const assistantWords = Math.round(s.characters.assistant / 5);
+
+  // Daily activity chart
+  const maxDaily = Math.max(...s.dailyActivity.map(d => d.count), 1);
+  const barsHtml = s.dailyActivity.map(d => {
+    const pct = (d.count / maxDaily) * 100;
+    const label = d.date.slice(5); // MM-DD
+    return `<div class="bar-col" title="${d.date}: ${d.count} messages">` +
+      `<div class="bar" style="height:${pct}%"></div>` +
+      `</div>`;
+  }).join('');
+
+  // Hourly chart
+  const maxHourly = Math.max(...s.hourlyCounts, 1);
+  const hourBarsHtml = s.hourlyCounts.map((count, h) => {
+    const pct = (count / maxHourly) * 100;
+    return `<div class="bar-col" title="${h}:00 — ${count} messages">` +
+      `<div class="bar" style="height:${pct}%"></div>` +
+      `</div>`;
+  }).join('');
+
+  // Top conversations
+  const topHtml = s.topConversations.map(c =>
+    `<div class="top-conv-row">` +
+      `<span class="top-conv-name">${escapeHtml(c.name)}</span>` +
+      `<span class="top-conv-stat">${c.messages} msgs &middot; $${c.cost.toFixed(4)}</span>` +
+    `</div>`
+  ).join('');
+
+  statsContent.innerHTML = `
+    <div class="stat-cards">
+      <div class="stat-card accent">
+        <div class="stat-value">${s.conversations.total}</div>
+        <div class="stat-label">Conversations</div>
+        <div class="stat-sub">${s.conversations.active} active &middot; ${s.conversations.archived} archived</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${s.messages.total.toLocaleString()}</div>
+        <div class="stat-label">Messages</div>
+        <div class="stat-sub">${s.messages.user} you &middot; ${s.messages.assistant} Claude</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">$${s.cost.toFixed(2)}</div>
+        <div class="stat-label">Total Cost</div>
+        <div class="stat-sub">~$${avgCostPerConv} per conversation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${s.streak}</div>
+        <div class="stat-label">Day Streak</div>
+        <div class="stat-sub">${s.duration > 3600 ? (s.duration / 3600).toFixed(1) + 'h' : Math.round(s.duration / 60) + 'min'} total think time</div>
+      </div>
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-title">Last 30 Days</div>
+      <div class="bar-chart">${barsHtml}</div>
+      <div class="bar-chart-labels"><span>${s.dailyActivity[0].date.slice(5)}</span><span>Today</span></div>
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-title">Activity by Hour</div>
+      <div class="bar-chart hours">${hourBarsHtml}</div>
+      <div class="bar-chart-labels"><span>12am</span><span>12pm</span><span>11pm</span></div>
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-title">Words Exchanged</div>
+      <div class="words-row">
+        <div class="words-bar-label">You</div>
+        <div class="words-bar-track"><div class="words-bar you" style="width:${Math.round(userWords / (userWords + assistantWords) * 100)}%"></div></div>
+        <div class="words-bar-count">${userWords.toLocaleString()}</div>
+      </div>
+      <div class="words-row">
+        <div class="words-bar-label">Claude</div>
+        <div class="words-bar-track"><div class="words-bar claude" style="width:${Math.round(assistantWords / (userWords + assistantWords) * 100)}%"></div></div>
+        <div class="words-bar-count">${assistantWords.toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-title">Top Conversations</div>
+      ${topHtml}
+    </div>
+
+    <div class="stat-section">
+      <div class="stat-section-title">Fun Facts</div>
+      <div class="fun-facts">
+        <div class="fun-fact">${avgPerConv} avg messages per conversation</div>
+        <div class="fun-fact">${assistantWords > 10000 ? (assistantWords / 1000).toFixed(0) + 'k' : assistantWords} words from Claude (~${Math.round(assistantWords / 250)} pages)</div>
+        <div class="fun-fact">${s.duration > 0 ? '$' + (s.cost / (s.duration / 3600)).toFixed(2) + '/hr of Claude think time' : 'No response time yet'}</div>
+      </div>
+    </div>
+  `;
+}
+
 // --- Init ---
 connectWS();
 loadConversations();
