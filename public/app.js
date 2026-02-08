@@ -1,10 +1,21 @@
 // --- Imported modules ---
 const { escapeHtml, renderMarkdown } = window.markdown;
 
-function highlightCode(container) {
-  if (!window.hljs) return;
+function enhanceCodeBlocks(container) {
   container.querySelectorAll('pre code').forEach(el => {
-    if (!el.dataset.highlighted) hljs.highlightElement(el);
+    if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
+    const pre = el.parentElement;
+    if (pre.querySelector('.copy-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
   });
 }
 
@@ -488,7 +499,7 @@ function renderMessages(messages) {
     return `<div class="message ${cls}">${content}<div class="meta">${meta}${ttsBtn}</div></div>`;
   }).join('');
 
-  highlightCode(messagesContainer);
+  enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
   scrollToBottom();
 }
@@ -502,7 +513,7 @@ function appendDelta(text) {
   }
   streamingText += text;
   streamingMessageEl.innerHTML = renderMarkdown(streamingText);
-  highlightCode(streamingMessageEl);
+  enhanceCodeBlocks(streamingMessageEl);
   scrollToBottom();
 }
 
@@ -522,7 +533,7 @@ function finalizeMessage(data) {
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}</div>`;
-    highlightCode(streamingMessageEl);
+    enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
     streamingMessageEl = null;
     streamingText = '';

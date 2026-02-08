@@ -381,6 +381,7 @@ html, body {
 
 /* Markdown in messages */
 .message.assistant pre {
+  position: relative;
   background: var(--bg);
   border-radius: 8px;
   padding: 10px 12px;
@@ -388,6 +389,26 @@ html, body {
   margin: 8px 0;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.copy-btn:hover, .copy-btn:active {
+  opacity: 1;
 }
 
 .message.assistant code {
