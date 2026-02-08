@@ -1,0 +1,24 @@
+TODO — Claude Remote Chat
+==========================
+
+1. Model selector
+   - Show current model name in chat header (e.g. "Opus 4", "Sonnet 4.5")
+   - Dropdown or picker to switch model mid-conversation
+   - Persist model choice per conversation
+   - Pass selected model to claude CLI via --model flag
+
+2. Mode indicator
+   - Show current mode in chat UI (e.g. autopilot, manual/ask)
+   - Visual badge or label near the status dot
+   - Ability to toggle mode mid-conversation
+
+3. Token usage display
+   - Show token count for each message (input/output)
+   - Running total for the conversation
+   - Display in message meta line or a dedicated panel
+
+4. Context window remaining
+   - Show how much of the context window has been used
+   - Progress bar or fraction (e.g. "42k / 200k tokens")
+   - Update after each message exchange
+   - Visual warning when approaching the limit
