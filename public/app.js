@@ -733,7 +733,10 @@ function scrollToBottom(force = false) {
 function showChatView() {
   listView.classList.add('slide-out');
   chatView.classList.add('slide-in');
-  messageInput.focus({ preventScroll: true });
+  // Don't auto-focus on touch devices — keyboard opening during slide-in is disruptive
+  if (!('ontouchstart' in window)) {
+    messageInput.focus({ preventScroll: true });
+  }
 }
 
 function showListView() {
@@ -1394,6 +1397,17 @@ function renderStats(s) {
       </div>
     </div>
   `;
+}
+
+// --- Mobile virtual keyboard handling ---
+// dvh units lag behind the actual visual viewport when the keyboard opens/closes.
+// Use visualViewport API to immediately set the correct height.
+if (window.visualViewport) {
+  const syncViewportHeight = () => {
+    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+  };
+  window.visualViewport.addEventListener('resize', syncViewportHeight);
+  syncViewportHeight();
 }
 
 // --- Init ---
