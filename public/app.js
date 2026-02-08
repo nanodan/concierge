@@ -45,6 +45,8 @@ const dirList = document.getElementById('dir-list');
 const dirNewBtn = document.getElementById('dir-new-btn');
 const dirSelectBtn = document.getElementById('dir-select-btn');
 const micBtn = document.getElementById('mic-btn');
+const cancelBtn = document.getElementById('cancel-btn');
+const convAutopilot = document.getElementById('conv-autopilot');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
@@ -121,11 +123,11 @@ async function loadConversations() {
   }
 }
 
-async function createConversation(name, cwd) {
+async function createConversation(name, cwd, autopilot) {
   const res = await fetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, cwd }),
+    body: JSON.stringify({ name, cwd, autopilot }),
   });
   const conv = await res.json();
   await loadConversations();
@@ -517,6 +519,8 @@ function showError(error) {
 function setThinking(thinking) {
   typingIndicator.classList.toggle('hidden', !thinking);
   sendBtn.disabled = thinking;
+  sendBtn.classList.toggle('hidden', thinking);
+  cancelBtn.classList.toggle('hidden', !thinking);
   if (thinking) {
     scrollToBottom();
   }
@@ -602,7 +606,13 @@ function renderMarkdown(text) {
 
   html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
 
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+    const decoded = url.replace(/&amp;/g, '&');
+    if (/^(https?:\/\/|mailto:)/i.test(decoded)) {
+      return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
+    }
+    return text;
+  });
 
   html = html.replace(/\n\n/g, '</p><p>');
   html = '<p>' + html + '</p>';
@@ -667,6 +677,11 @@ messageInput.addEventListener('keydown', (e) => {
   }
 });
 
+cancelBtn.addEventListener('click', () => {
+  if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'cancel', conversationId: currentConversationId }));
+});
+
 backBtn.addEventListener('click', showListView);
 
 deleteBtn.addEventListener('click', () => {
@@ -697,8 +712,9 @@ newConvForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const name = convNameInput.value.trim();
   const cwd = convCwdInput.value.trim() || undefined;
+  const autopilot = convAutopilot.checked;
   if (name) {
-    createConversation(name, cwd);
+    createConversation(name, cwd, autopilot);
     modalOverlay.classList.add('hidden');
   }
 });

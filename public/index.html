@@ -62,6 +62,7 @@
       </button>
       <textarea id="message-input" placeholder="Message Claude..." rows="1" autocomplete="off"></textarea>
       <button type="submit" id="send-btn" aria-label="Send">&#9652;</button>
+      <button type="button" id="cancel-btn" class="cancel-btn hidden" aria-label="Cancel">&#x25A0;</button>
     </form>
   </div>
 
@@ -87,6 +88,16 @@
             <button type="button" id="dir-new-btn" class="btn-secondary btn-sm">New Folder</button>
             <button type="button" id="dir-select-btn" class="btn-primary btn-sm">Select</button>
           </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">
+            <label for="conv-autopilot">Autopilot</label>
+            <span class="toggle-hint">Run tools without asking</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="conv-autopilot" checked>
+            <span class="toggle-slider"></span>
+          </label>
         </div>
         <div class="modal-actions">
           <button type="button" id="modal-cancel" class="btn-secondary">Cancel</button>

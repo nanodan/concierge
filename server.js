@@ -44,6 +44,7 @@ function convMeta(conv) {
     cwd: conv.cwd,
     status: conv.status,
     archived: !!conv.archived,
+    autopilot: conv.autopilot !== false,
     claudeSessionId: conv.claudeSessionId,
     createdAt: conv.createdAt,
     messageCount: conv.messages ? conv.messages.length : (conv.messageCount || 0),
@@ -175,7 +176,7 @@ app.post('/api/mkdir', (req, res) => {
 
 // Create conversation
 app.post('/api/conversations', (req, res) => {
-  const { name, cwd } = req.body;
+  const { name, cwd, autopilot } = req.body;
   const id = uuidv4();
   const conversation = {
     id,
@@ -185,6 +186,7 @@ app.post('/api/conversations', (req, res) => {
     messages: [],
     status: 'idle',
     archived: false,
+    autopilot: autopilot !== false,
     createdAt: Date.now(),
   };
   conversations.set(id, conversation);
@@ -311,6 +313,8 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'message') {
       handleMessage(ws, msg);
+    } else if (msg.type === 'cancel') {
+      handleCancel(ws, msg);
     }
   });
 });
@@ -325,6 +329,16 @@ const heartbeat = setInterval(() => {
 }, 30000);
 
 wss.on('close', () => clearInterval(heartbeat));
+
+function handleCancel(ws, msg) {
+  const { conversationId } = msg;
+  const proc = activeProcesses.get(conversationId);
+  if (!proc) {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'No active process to cancel' }));
+    return;
+  }
+  proc.kill('SIGTERM');
+}
 
 function handleMessage(ws, msg) {
   const { conversationId, text } = msg;
@@ -356,9 +370,12 @@ function handleMessage(ws, msg) {
     '--output-format', 'stream-json',
     '--verbose',
     '--model', 'sonnet',
-    '--dangerously-skip-permissions',
     '--include-partial-messages',
   ];
+
+  if (conv.autopilot !== false) {
+    args.push('--dangerously-skip-permissions');
+  }
 
   if (conv.claudeSessionId) {
     args.push('--resume', conv.claudeSessionId);
