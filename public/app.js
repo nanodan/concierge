@@ -125,7 +125,7 @@ async function loadConversations() {
     const qs = showingArchived ? '?archived=true' : '';
     const res = await fetch(`/api/conversations${qs}`);
     conversations = await res.json();
-    if (!chatView.classList.contains('active')) {
+    if (!chatView.classList.contains('slide-in')) {
       renderConversationList();
     }
   } catch (err) {
@@ -488,7 +488,7 @@ function renderMessages(messages) {
 function appendDelta(text) {
   if (!streamingMessageEl) {
     streamingMessageEl = document.createElement('div');
-    streamingMessageEl.className = 'message assistant';
+    streamingMessageEl.className = 'message assistant animate-in';
     messagesContainer.appendChild(streamingMessageEl);
     streamingText = '';
   }
@@ -522,7 +522,7 @@ function finalizeMessage(data) {
 
 function showError(error) {
   const el = document.createElement('div');
-  el.className = 'message error';
+  el.className = 'message error animate-in';
   el.textContent = error;
   messagesContainer.appendChild(el);
   scrollToBottom();
@@ -557,14 +557,14 @@ function scrollToBottom() {
 
 // --- View switching ---
 function showChatView() {
-  listView.classList.remove('active');
-  chatView.classList.add('active');
+  listView.classList.add('slide-out');
+  chatView.classList.add('slide-in');
   messageInput.focus();
 }
 
 function showListView() {
-  chatView.classList.remove('active');
-  listView.classList.add('active');
+  chatView.classList.remove('slide-in');
+  listView.classList.remove('slide-out');
   currentConversationId = null;
   streamingMessageEl = null;
   streamingText = '';
@@ -577,7 +577,7 @@ function sendMessage(text) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
   const el = document.createElement('div');
-  el.className = 'message user';
+  el.className = 'message user animate-in';
   el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   scrollToBottom();
