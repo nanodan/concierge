@@ -17,6 +17,7 @@ function enhanceCodeBlocks(container) {
       navigator.clipboard.writeText(el.textContent).then(() => {
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        showToast('Copied to clipboard');
       });
     });
     wrapper.appendChild(btn);
@@ -39,6 +40,15 @@ let currentTTSBtn = null; // track which TTS button is currently speaking
 let models = [];
 let currentModel = 'sonnet';
 let currentAutopilot = true;
+let userHasScrolledUp = false;
+let isStreaming = false;
+const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConversations') || '[]'));
+
+function saveUnread() {
+  localStorage.setItem('unreadConversations', JSON.stringify([...unreadConversations]));
+}
+
+function haptic(ms = 10) { navigator.vibrate?.(ms); }
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -88,15 +98,20 @@ const contextBar = document.getElementById('context-bar');
 const contextBarFill = document.getElementById('context-bar-fill');
 const contextBarLabel = document.getElementById('context-bar-label');
 const convModelSelect = document.getElementById('conv-model');
+const jumpToBottomBtn = document.getElementById('jump-to-bottom');
+const toastContainer = document.getElementById('toast-container');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
+let wsHasConnected = false;
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}`);
 
   ws.onopen = () => {
     clearTimeout(reconnectTimer);
+    if (wsHasConnected) showToast('Reconnected');
+    wsHasConnected = true;
   };
 
   ws.onmessage = (e) => {
@@ -129,6 +144,9 @@ function handleWSMessage(data) {
     case 'result':
       if (data.conversationId === currentConversationId) {
         finalizeMessage(data);
+      } else if (data.conversationId) {
+        unreadConversations.add(data.conversationId);
+        saveUnread();
       }
       // Update conversation list in background
       loadConversations();
@@ -152,6 +170,21 @@ function handleWSMessage(data) {
 
 // --- API ---
 async function loadConversations() {
+  // Show skeletons on first load when list is empty
+  if (conversations.length === 0 && !conversationList.querySelector('.conv-card-wrapper')) {
+    conversationList.innerHTML = Array(5).fill(`
+      <div class="conv-card-wrapper">
+        <div class="conv-card skeleton-card">
+          <div class="conv-card-top">
+            <span class="skeleton-line" style="width:55%;height:16px"></span>
+            <span class="skeleton-line" style="width:40px;height:12px"></span>
+          </div>
+          <span class="skeleton-line" style="width:80%;height:13px;margin-top:6px"></span>
+          <span class="skeleton-line" style="width:40%;height:11px;margin-top:4px"></span>
+        </div>
+      </div>
+    `).join('');
+  }
   setLoading(listView, true);
   try {
     const qs = showingArchived ? '?archived=true' : '';
@@ -272,6 +305,7 @@ function renderConversationList(items) {
     const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
     const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
 
+    const isUnread = unreadConversations.has(c.id);
     return `
       <div class="conv-card-wrapper">
         <div class="swipe-actions">
@@ -280,7 +314,7 @@ function renderConversationList(items) {
         </div>
         <div class="conv-card" data-id="${c.id}">
           <div class="conv-card-top">
-            <span class="conv-card-name">${escapeHtml(c.name)}</span>
+            ${isUnread ? '<span class="unread-dot"></span>' : ''}<span class="conv-card-name">${escapeHtml(c.name)}</span>
             <span class="conv-card-time">${time}</span>
           </div>
           <div class="conv-card-preview">${escapeHtml(preview)}</div>
@@ -317,10 +351,14 @@ function renderConversationList(items) {
       const id = btn.dataset.id;
       if (action === 'delete') {
         const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
-        if (ok) deleteConversation(id);
+        if (ok) {
+          deleteConversation(id);
+          showToast('Conversation deleted');
+        }
       } else if (action === 'archive') {
         const conv = conversations.find(c => c.id === id);
         archiveConversation(id, !conv?.archived);
+        showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
       }
     });
   });
@@ -386,6 +424,7 @@ function setupSwipe(wrapper, card) {
       // Snap open
       card.style.transform = `translateX(-${ACTION_WIDTH}px)`;
       activeSwipeCard = card;
+      haptic(10);
     } else {
       // Snap closed
       card.style.transform = 'translateX(0)';
@@ -406,6 +445,7 @@ function setupLongPress(card, id) {
   card.addEventListener('touchstart', (e) => {
     longPressTarget = id;
     longPressTimer = setTimeout(() => {
+      haptic(15);
       showActionPopup(e.touches[0].clientX, e.touches[0].clientY, id);
     }, 500);
   }, { passive: true });
@@ -450,9 +490,13 @@ actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
     if (action === 'archive') {
       const conv = conversations.find(c => c.id === id);
       archiveConversation(id, !conv?.archived);
+      showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
     } else if (action === 'delete') {
       const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
-      if (ok) deleteConversation(id);
+      if (ok) {
+        deleteConversation(id);
+        showToast('Conversation deleted');
+      }
     } else if (action === 'rename') {
       const conv = conversations.find(c => c.id === id);
       const newName = await showDialog({ title: 'Rename conversation', input: true, defaultValue: conv?.name || '', placeholder: 'Conversation name', confirmLabel: 'Rename' });
@@ -486,8 +530,54 @@ archiveToggle.addEventListener('click', () => {
   loadConversations();
 });
 
+// --- Pull-to-refresh ---
+const pullIndicator = document.getElementById('pull-indicator');
+let pullStartY = 0;
+let isPulling = false;
+const PULL_THRESHOLD = 80;
+
+conversationList.addEventListener('touchstart', (e) => {
+  if (conversationList.scrollTop <= 0) {
+    pullStartY = e.touches[0].clientY;
+    isPulling = true;
+  }
+}, { passive: true });
+
+conversationList.addEventListener('touchmove', (e) => {
+  if (!isPulling) return;
+  const dy = e.touches[0].clientY - pullStartY;
+  if (dy < 0) { isPulling = false; return; }
+  const dampened = Math.min(dy * 0.4, 120);
+  pullIndicator.style.height = dampened + 'px';
+  pullIndicator.style.opacity = Math.min(dampened / PULL_THRESHOLD, 1);
+  const rotation = dampened >= PULL_THRESHOLD * 0.4 ? 180 : 0;
+  pullIndicator.querySelector('svg').style.transform = `rotate(${rotation}deg)`;
+  if (dampened >= PULL_THRESHOLD * 0.4 && !pullIndicator.dataset.hapticFired) {
+    haptic(10);
+    pullIndicator.dataset.hapticFired = 'true';
+  }
+}, { passive: true });
+
+conversationList.addEventListener('touchend', async () => {
+  if (!isPulling) return;
+  isPulling = false;
+  const height = parseFloat(pullIndicator.style.height) || 0;
+  if (height >= PULL_THRESHOLD * 0.4) {
+    pullIndicator.classList.add('refreshing');
+    await loadConversations();
+    showToast('Refreshed');
+  }
+  pullIndicator.style.height = '0px';
+  pullIndicator.style.opacity = '0';
+  pullIndicator.classList.remove('refreshing');
+  delete pullIndicator.dataset.hapticFired;
+  pullIndicator.querySelector('svg').style.transform = '';
+}, { passive: true });
+
 async function openConversation(id) {
   currentConversationId = id;
+  unreadConversations.delete(id);
+  saveUnread();
   setLoading(chatView, true);
   const conv = await getConversation(id);
   setLoading(chatView, false);
@@ -544,7 +634,7 @@ function renderMessages(messages) {
 
   enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
-  scrollToBottom();
+  scrollToBottom(true);
 }
 
 function appendDelta(text) {
@@ -553,6 +643,8 @@ function appendDelta(text) {
     streamingMessageEl.className = 'message assistant animate-in';
     messagesContainer.appendChild(streamingMessageEl);
     streamingText = '';
+    isStreaming = true;
+    userHasScrolledUp = !isNearBottom(150);
   }
   streamingText += text;
   streamingMessageEl.innerHTML = renderMarkdown(streamingText);
@@ -562,6 +654,7 @@ function appendDelta(text) {
 
 function finalizeMessage(data) {
   setThinking(false);
+  isStreaming = false;
 
   if (streamingMessageEl) {
     const finalText = data.text || streamingText;
@@ -584,6 +677,10 @@ function finalizeMessage(data) {
     streamingMessageEl = null;
     streamingText = '';
     scrollToBottom();
+    if (userHasScrolledUp) {
+      jumpToBottomBtn.classList.add('flash');
+      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), 1500);
+    }
   }
 
   if (data.inputTokens != null) {
@@ -620,7 +717,13 @@ function updateStatusDot(status) {
   chatStatus.className = 'status-dot ' + (status || 'idle');
 }
 
-function scrollToBottom() {
+function isNearBottom(threshold = 150) {
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+  return scrollHeight - scrollTop - clientHeight < threshold;
+}
+
+function scrollToBottom(force = false) {
+  if (!force && userHasScrolledUp) return;
   requestAnimationFrame(() => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   });
@@ -640,6 +743,9 @@ function showListView() {
   currentConversationId = null;
   streamingMessageEl = null;
   streamingText = '';
+  userHasScrolledUp = false;
+  isStreaming = false;
+  jumpToBottomBtn.classList.remove('visible');
   loadConversations();
 }
 
@@ -647,12 +753,14 @@ function showListView() {
 function sendMessage(text) {
   if (!text.trim() || !currentConversationId) return;
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  haptic(5);
 
   const el = document.createElement('div');
   el.className = 'message user animate-in';
   el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
-  scrollToBottom();
+  userHasScrolledUp = false;
+  scrollToBottom(true);
 
   ws.send(JSON.stringify({
     type: 'message',
@@ -665,6 +773,21 @@ function sendMessage(text) {
   autoResizeInput();
 }
 
+
+// --- Toast notifications ---
+function showToast(message, { variant = 'default', duration = 3000 } = {}) {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${variant}`;
+  toast.textContent = message;
+  while (toastContainer.children.length >= 2)
+    toastContainer.removeChild(toastContainer.firstChild);
+  toastContainer.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('toast-enter'));
+  setTimeout(() => {
+    toast.classList.add('toast-exit');
+    toast.addEventListener('animationend', () => toast.remove());
+  }, duration);
+}
 
 // --- Dialog system ---
 function showDialog({ title, message, input, defaultValue, placeholder, confirmLabel, cancelLabel, danger }) {
@@ -776,6 +899,20 @@ messageInput.addEventListener('keydown', (e) => {
 cancelBtn.addEventListener('click', () => {
   if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type: 'cancel', conversationId: currentConversationId }));
+});
+
+// --- Smart scroll ---
+messagesContainer.addEventListener('scroll', () => {
+  if (isStreaming) {
+    userHasScrolledUp = !isNearBottom(150);
+  }
+  jumpToBottomBtn.classList.toggle('visible', !isNearBottom(300));
+});
+
+jumpToBottomBtn.addEventListener('click', () => {
+  messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+  userHasScrolledUp = false;
+  jumpToBottomBtn.classList.remove('visible');
 });
 
 backBtn.addEventListener('click', showListView);
@@ -1073,6 +1210,8 @@ async function switchModel(convId, modelId) {
   });
   currentModel = modelId;
   updateModelBadge(modelId);
+  const model = models.find(m => m.id === modelId);
+  showToast(`Switched to ${model ? model.name : modelId}`);
 }
 
 // Model dropdown handlers
@@ -1134,7 +1273,21 @@ statsBackBtn.addEventListener('click', () => {
 });
 
 async function loadStats() {
-  statsContent.innerHTML = '<div class="stats-loading">Loading stats...</div>';
+  statsContent.innerHTML = `
+    <div class="stat-cards">
+      ${Array(4).fill(`
+        <div class="stat-card">
+          <div class="skeleton-line" style="width:60%;height:24px"></div>
+          <div class="skeleton-line" style="width:45%;height:12px;margin-top:6px"></div>
+          <div class="skeleton-line" style="width:70%;height:11px;margin-top:4px"></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="stat-section">
+      <div class="skeleton-line" style="width:30%;height:13px;margin-bottom:12px"></div>
+      <div class="skeleton-line" style="width:100%;height:80px"></div>
+    </div>
+  `;
   try {
     const res = await fetch('/api/stats');
     const s = await res.json();
