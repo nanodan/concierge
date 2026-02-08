@@ -8,6 +8,9 @@ let streamingText = '';
 let showingArchived = false;
 let searchDebounceTimer = null;
 let activeSwipeCard = null; // track currently swiped-open card
+let recognition = null;
+let isRecording = false;
+let currentTTSBtn = null; // track which TTS button is currently speaking
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -41,6 +44,7 @@ const dirCurrentPath = document.getElementById('dir-current-path');
 const dirList = document.getElementById('dir-list');
 const dirNewBtn = document.getElementById('dir-new-btn');
 const dirSelectBtn = document.getElementById('dir-select-btn');
+const micBtn = document.getElementById('mic-btn');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
@@ -457,9 +461,13 @@ function renderMessages(messages) {
     if (m.duration != null) {
       meta += ` &middot; ${(m.duration / 1000).toFixed(1)}s`;
     }
-    return `<div class="message ${cls}">${content}<div class="meta">${meta}</div></div>`;
+    const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
+      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      : '';
+    return `<div class="message ${cls}">${content}<div class="meta">${meta}${ttsBtn}</div></div>`;
   }).join('');
 
+  attachTTSHandlers();
   scrollToBottom();
 }
 
@@ -487,7 +495,11 @@ function finalizeMessage(data) {
     if (data.duration != null) {
       meta += ` &middot; ${(data.duration / 1000).toFixed(1)}s`;
     }
-    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>`;
+    const ttsBtn = window.speechSynthesis
+      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      : '';
+    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}</div>`;
+    attachTTSHandlers();
     streamingMessageEl = null;
     streamingText = '';
     scrollToBottom();
@@ -775,6 +787,135 @@ conversationList.addEventListener('click', (e) => {
     activeSwipeCard = null;
   }
 });
+
+// --- Voice Input (SpeechRecognition) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    let finalTranscript = '';
+    let interimTranscript = '';
+    // Rebuild full transcript from all results each time (avoids duplication)
+    for (let i = 0; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+    const prefix = messageInput.dataset.preRecordingText || '';
+    messageInput.value = prefix + finalTranscript + interimTranscript;
+    autoResizeInput();
+  };
+
+  recognition.onerror = () => {
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    // If still in recording state (unexpected end), reset
+    if (isRecording) {
+      stopRecording();
+    }
+  };
+
+  micBtn.addEventListener('click', () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  });
+} else {
+  // Hide mic button if SpeechRecognition not available
+  micBtn.classList.add('hidden');
+}
+
+function startRecording() {
+  if (!recognition) return;
+  isRecording = true;
+  micBtn.classList.add('recording');
+  // Save existing textarea content
+  messageInput.dataset.preRecordingText = messageInput.value;
+  try {
+    recognition.start();
+  } catch {
+    // Already started
+  }
+}
+
+function stopRecording() {
+  if (!recognition) return;
+  isRecording = false;
+  micBtn.classList.remove('recording');
+  try {
+    recognition.stop();
+  } catch {
+    // Already stopped
+  }
+  delete messageInput.dataset.preRecordingText;
+}
+
+// --- Voice Output (SpeechSynthesis) ---
+function attachTTSHandlers() {
+  if (!window.speechSynthesis) return;
+  messagesContainer.querySelectorAll('.tts-btn').forEach(btn => {
+    if (btn.dataset.ttsAttached) return;
+    btn.dataset.ttsAttached = 'true';
+    btn.addEventListener('click', () => toggleTTS(btn));
+  });
+}
+
+function toggleTTS(btn) {
+  // If this button is currently speaking, stop
+  if (btn.classList.contains('speaking')) {
+    speechSynthesis.cancel();
+    resetTTSBtn(btn);
+    return;
+  }
+
+  // Cancel any other ongoing speech
+  if (currentTTSBtn) {
+    speechSynthesis.cancel();
+    resetTTSBtn(currentTTSBtn);
+  }
+
+  // Get plain text from the message (strip HTML)
+  const messageEl = btn.closest('.message');
+  if (!messageEl) return;
+
+  // Clone, remove the meta div, then get text content
+  const clone = messageEl.cloneNode(true);
+  const metaEl = clone.querySelector('.meta');
+  if (metaEl) metaEl.remove();
+  const plainText = clone.textContent.trim();
+
+  if (!plainText) return;
+
+  const utterance = new SpeechSynthesisUtterance(plainText);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  utterance.onend = () => resetTTSBtn(btn);
+  utterance.onerror = () => resetTTSBtn(btn);
+
+  btn.classList.add('speaking');
+  btn.innerHTML = '&#x23F9;'; // stop icon
+  currentTTSBtn = btn;
+
+  speechSynthesis.speak(utterance);
+}
+
+function resetTTSBtn(btn) {
+  btn.classList.remove('speaking');
+  btn.innerHTML = '&#x1F50A;'; // speaker icon
+  if (currentTTSBtn === btn) currentTTSBtn = null;
+}
 
 // --- Init ---
 connectWS();

@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
@@ -7,7 +8,19 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const server = http.createServer(app);
+
+// Use HTTPS if certs exist (required for mic access on non-localhost)
+const CERT_DIR = path.join(__dirname, 'certs');
+let server;
+if (fs.existsSync(path.join(CERT_DIR, 'key.pem')) && fs.existsSync(path.join(CERT_DIR, 'cert.pem'))) {
+  server = https.createServer({
+    key: fs.readFileSync(path.join(CERT_DIR, 'key.pem')),
+    cert: fs.readFileSync(path.join(CERT_DIR, 'cert.pem')),
+  }, app);
+  console.log('HTTPS enabled (self-signed cert)');
+} else {
+  server = http.createServer(app);
+}
 const wss = new WebSocketServer({ server });
 
 app.use(express.json());
@@ -521,6 +534,7 @@ function broadcastStatus(conversationId, status) {
 
 // Start server
 const PORT = process.env.PORT || 3577;
+const proto = server instanceof https.Server ? 'https' : 'http';
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Claude Remote Chat running on http://0.0.0.0:${PORT}`);
+  console.log(`Claude Remote Chat running on ${proto}://0.0.0.0:${PORT}`);
 });

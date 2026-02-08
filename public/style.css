@@ -475,6 +475,66 @@ html, body {
   color: var(--text-secondary);
 }
 
+/* Mic Button */
+.mic-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.mic-btn:active {
+  opacity: 0.85;
+}
+
+.mic-btn.recording {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+  animation: mic-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+}
+
+.mic-btn.hidden {
+  display: none;
+}
+
+/* TTS Button */
+.tts-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 6px;
+  font-size: 13px;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+  vertical-align: middle;
+}
+
+.tts-btn:hover {
+  opacity: 1;
+}
+
+.tts-btn.speaking {
+  color: var(--accent-light);
+  opacity: 1;
+}
+
 #send-btn {
   width: 40px;
   height: 40px;
