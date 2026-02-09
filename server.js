@@ -253,39 +253,53 @@ app.get('/api/conversations', (req, res) => {
 });
 
 // Search conversations (loads messages lazily per conversation)
+// Supports optional filters: dateFrom, dateTo (ISO), model
 app.get('/api/conversations/search', async (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
-  if (!q) return res.json([]);
+  const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom).getTime() : null;
+  const dateTo = req.query.dateTo ? new Date(req.query.dateTo).getTime() : null;
+  const modelFilter = req.query.model || null;
+
+  if (!q && !dateFrom && !dateTo && !modelFilter) return res.json([]);
 
   const results = [];
   for (const c of conversations.values()) {
-    const nameMatch = c.name.toLowerCase().includes(q);
-    const messages = c.messages !== null ? c.messages : await loadMessages(c.id);
-    const matchingMessages = [];
-    for (const m of messages) {
-      if (m.text && m.text.toLowerCase().includes(q)) {
-        matchingMessages.push({
-          role: m.role,
-          text: m.text,
-          timestamp: m.timestamp,
-        });
+    // Apply metadata filters first (skip loading messages if they don't match)
+    if (dateFrom && c.createdAt < dateFrom) continue;
+    if (dateTo && c.createdAt > dateTo) continue;
+    if (modelFilter && (c.model || 'sonnet') !== modelFilter) continue;
+
+    const nameMatch = q ? c.name.toLowerCase().includes(q) : false;
+    let matchingMessages = [];
+    if (q) {
+      const messages = c.messages !== null ? c.messages : await loadMessages(c.id);
+      for (const m of messages) {
+        if (m.text && m.text.toLowerCase().includes(q)) {
+          matchingMessages.push({
+            role: m.role,
+            text: m.text,
+            timestamp: m.timestamp,
+          });
+        }
       }
     }
-    if (nameMatch || matchingMessages.length > 0) {
-      const meta = convMeta(c);
-      results.push({
-        id: meta.id,
-        name: meta.name,
-        cwd: meta.cwd,
-        status: meta.status,
-        archived: meta.archived,
-        lastMessage: meta.lastMessage,
-        messageCount: meta.messageCount,
-        createdAt: meta.createdAt,
-        nameMatch,
-        matchingMessages: matchingMessages.slice(0, 3),
-      });
-    }
+    // If text query is provided, require a match; otherwise metadata filters are enough
+    if (q && !nameMatch && matchingMessages.length === 0) continue;
+
+    const meta = convMeta(c);
+    results.push({
+      id: meta.id,
+      name: meta.name,
+      cwd: meta.cwd,
+      model: meta.model,
+      status: meta.status,
+      archived: meta.archived,
+      lastMessage: meta.lastMessage,
+      messageCount: meta.messageCount,
+      createdAt: meta.createdAt,
+      nameMatch,
+      matchingMessages: matchingMessages.slice(0, 3),
+    });
   }
   results.sort((a, b) => {
     const aTime = a.lastMessage ? a.lastMessage.timestamp : a.createdAt;

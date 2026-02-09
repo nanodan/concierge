@@ -104,7 +104,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `GET` | `/api/conversations/:id` | Get conversation with messages |
 | `PATCH` | `/api/conversations/:id` | Update fields (archive, name, model, autopilot) |
 | `DELETE` | `/api/conversations/:id` | Delete conversation and message file |
-| `GET` | `/api/conversations/search` | Search. Query: `?q=term` (searches name + messages) |
+| `GET` | `/api/conversations/search` | Search. Query: `?q=term&dateFrom=ISO&dateTo=ISO&model=id` |
 | `GET` | `/api/models` | List available Claude models |
 | `GET` | `/api/browse` | Directory listing. Query: `?path=/some/dir` |
 | `POST` | `/api/mkdir` | Create directory. Body: `{ path }` |
@@ -170,6 +170,10 @@ currentAutopilot          // Autopilot toggle state
 isRecording               // Voice recording state
 currentTTSBtn             // Active TTS button reference
 pendingAttachments[]      // Files queued for upload with next message
+currentTheme              // 'auto' | 'light' | 'dark'
+pendingMessages[]         // Messages queued while WS disconnected
+allMessages[]             // Full messages array for virtual scroll
+messagesOffset            // How many messages rendered from start
 ```
 
 ### Three Views
@@ -275,7 +279,7 @@ Fetches aggregated data from `/api/stats` and renders:
 **Cached assets:**
 - `/`, `/style.css`, `/markdown.js`, `/app.js`, `/manifest.json`, `/lib/highlight.min.js`
 
-**Cache versioning:** `claude-chat-v11` - increment the version number to bust caches on deploy.
+**Cache versioning:** `claude-chat-v12` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets
@@ -294,8 +298,9 @@ Fetches aggregated data from `/api/stats` and renders:
 ### DOM Structure
 ```
 #list-view
-  .top-bar (title, stats button, archive toggle)
-  #search-bar
+  .top-bar (title, theme toggle, stats button, archive toggle)
+  #search-bar (input + filter toggle)
+  #filter-row (date chips, model dropdown) [collapsible]
   #conversation-list
   #fab (new conversation button)
 
@@ -305,7 +310,8 @@ Fetches aggregated data from `/api/stats` and renders:
 #chat-view
   .top-bar (back, name, status dot, mode badge, model selector, export, delete)
   #context-bar
-  #messages
+  #reconnect-banner (shown when WS disconnected)
+  #messages (with #load-more-btn for virtual scroll)
   #typing-indicator
   #attachment-preview (queued file thumbnails)
   .input-bar (attach, mic, textarea, send/cancel)
@@ -326,7 +332,7 @@ Fetches aggregated data from `/api/stats` and renders:
 
 ### Design System
 
-**Theme:** Dark mode only, defined via CSS custom properties in `:root`.
+**Theme:** Dark and light modes, defined via CSS custom properties. Dark is `:root` default, light is `[data-theme="light"]`. Respects `prefers-color-scheme` in auto mode. Theme cycles: auto → light → dark.
 
 | Variable | Value | Usage |
 |----------|-------|-------|

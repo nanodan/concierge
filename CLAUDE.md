@@ -26,10 +26,10 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server.js` | ~825 | Express + WebSocket backend, Claude CLI process management, file uploads |
-| `public/app.js` | ~1715 | Frontend SPA logic, state, all UI interactions |
-| `public/index.html` | ~177 | HTML structure, three views, modals |
-| `public/style.css` | ~2037 | Dark theme, glass-morphism, animations, safe areas |
+| `server.js` | ~839 | Express + WebSocket backend, Claude CLI process management, file uploads |
+| `public/app.js` | ~1954 | Frontend SPA logic, state, all UI interactions |
+| `public/index.html` | ~191 | HTML structure, three views, modals |
+| `public/style.css` | ~2268 | Dark/light theme, glass-morphism, animations, safe areas |
 | `public/markdown.js` | ~66 | Hand-rolled markdown parser |
 | `public/sw.js` | ~52 | Service worker (cache-first for assets) |
 | `public/manifest.json` | — | PWA manifest |
@@ -67,7 +67,8 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - **Message actions**: Long-press/right-click on messages shows edit (user) and copy options. Regenerate button on last assistant message.
 - **File attachments**: Upload via REST, reference in WS message. Images render inline; files show as chips.
 - **Conversation list**: Cards with swipe-to-reveal actions (archive/delete) and long-press/right-click context menu.
-- **CSS variables**: Dark theme defined in `:root` in `style.css`. Accent color is `#7c6cf0`.
+- **CSS variables**: Dark theme in `:root`, light theme in `[data-theme="light"]`. Accent color is `#7c6cf0`. Theme cycles auto/light/dark via `applyTheme()`.
+- **Virtual scrolling**: Long conversations render last 100 messages initially; "Load earlier messages" button at top loads more pages.
 - **Safe areas**: iOS safe area insets handled via `env(safe-area-inset-*)` CSS variables.
 - **View transitions**: Three views (list, chat, stats) swap via CSS transform + opacity animations with `slide-out`/`slide-in` classes.
 

@@ -6,7 +6,7 @@ Fast-access reference for coding in this repository. Consult this before reading
 
 ## File Map with Key Line Ranges
 
-### `server.js` (~825 lines)
+### `server.js` (~839 lines)
 
 | Lines | Section |
 |-------|---------|
@@ -28,13 +28,13 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 692-780 | `processStreamEvent()` - parses Claude JSON output |
 | 782-825 | Server listen, shutdown handler |
 
-### `public/app.js` (~1715 lines)
+### `public/app.js` (~1954 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-25 | DOM element references (incl. export, attach, file input, attachment preview, msg action popup) |
-| 26-115 | Global state variables (incl. streaming throttle, reconnect, attachments) |
-| 117-185 | `connectWS()`, WebSocket event handlers (incl. `messages_updated`) |
+| 1-25 | DOM element references (incl. export, attach, file input, attachment preview, msg action popup, reconnect banner, theme toggle, filter elements, load-more) |
+| 26-125 | Global state variables (incl. streaming throttle, reconnect, attachments, theme, message queue, virtual scroll) |
+| 127-195 | `connectWS()`, WebSocket event handlers (incl. `messages_updated`, reconnect banner, message queue flush) |
 | 187-260 | `loadConversations()`, `renderConversationList()` |
 | 262-348 | `openConversation()`, `showListView()`, view transitions |
 | 349-420 | Swipe gesture handling (touch events) |
@@ -60,7 +60,11 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 1380-1430 | Model switching, autopilot toggle |
 | 1430-1560 | Stats page rendering |
 | 1560-1610 | Attachment handling: `addAttachment()`, `removeAttachment()`, `clearPendingAttachments()`, `renderAttachmentPreviewUI()` |
-| 1610-1715 | Initialization, SW registration, paste handler for attachments |
+| 1610-1720 | Attachment handling, paste handler |
+| 1720-1810 | Theme system: `applyTheme()`, `cycleTheme()`, OS media query listener |
+| 1810-1860 | Keyboard shortcuts: global `keydown` handler |
+| 1860-1920 | Search filters: `getSearchFilters()`, `triggerSearch()`, filter row handlers |
+| 1920-1954 | Load-more / virtual scroll, IntersectionObserver, init |
 
 ### `public/markdown.js` (~66 lines)
 
@@ -69,7 +73,7 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 1-5 | `escapeHtml()` helper |
 | 7-66 | `renderMarkdown(text)` - full parser |
 
-### `public/style.css` (~2037 lines)
+### `public/style.css` (~2268 lines)
 
 | Lines | Section |
 |-------|---------|
@@ -88,18 +92,20 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 1282-1860 | highlight.js theme, misc utilities, safe area padding |
 | 1861-1920 | Export button, attach button |
 | 1921-2000 | Attachment preview, attachment items, message attachments |
-| 2001-2037 | Regenerate button, message editing (textarea, actions) |
+| 2001-2040 | Regenerate button, message editing (textarea, actions) |
+| 2041-2170 | Light mode: `[data-theme="light"]` overrides, syntax highlighting, media query |
+| 2171-2268 | Theme toggle, reconnect banner, queued messages, filter bar, filter chips, load-more button |
 
 ### `public/sw.js` (~52 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-10 | Cache name (`claude-chat-v11`), static asset list |
+| 1-10 | Cache name (`claude-chat-v12`), static asset list |
 | 13-18 | Install event (pre-cache) |
 | 21-28 | Activate event (clean old caches) |
 | 31-52 | Fetch event (cache-first, skip API/WS) |
 
-### `public/index.html` (~177 lines)
+### `public/index.html` (~191 lines)
 
 | Lines | Section |
 |-------|---------|
@@ -205,7 +211,7 @@ Edit `public/markdown.js`. The order of regex operations matters:
 
 ### Updating the service worker cache
 
-Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v11`). Add new static assets to the `STATIC_ASSETS` array.
+Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v12`). Add new static assets to the `STATIC_ASSETS` array.
 
 ---
 
@@ -248,6 +254,9 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `attachMessageActions()` | Add long-press/right-click to message bubbles |
 | `startEditMessage(el, index)` | Inline edit a user message |
 | `regenerateMessage()` | Re-generate last assistant response |
+| `applyTheme()` | Apply current theme (auto/light/dark) to DOM |
+| `loadMoreMessages()` | Prepend older messages (virtual scroll) |
+| `triggerSearch()` | Run search with current query + filters |
 
 ---
 
@@ -271,6 +280,12 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `.msg-attachments` | Inline attachments in rendered messages |
 | `.export-btn` | Export button in chat header |
 | `.attach-btn` | Attach file button in input bar |
+| `.theme-toggle` | Theme cycle button (auto/light/dark) |
+| `.reconnect-banner` | WS disconnected warning banner |
+| `.filter-row` | Collapsible search filter chips |
+| `.filter-chip` | Date range filter pill |
+| `.load-more-btn` | Load earlier messages button |
+| `.queued` | Message queued while offline |
 
 ---
 

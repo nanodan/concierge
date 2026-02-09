@@ -51,6 +51,17 @@ let renderScheduled = false;
 // Attachments
 let pendingAttachments = []; // Array of { file, previewUrl, name }
 
+// Theme
+let currentTheme = localStorage.getItem('theme') || 'auto';
+
+// Message queue for offline resilience
+let pendingMessages = [];
+
+// Virtual scrolling
+const MESSAGES_PER_PAGE = 100;
+let allMessages = []; // full messages array for current conversation
+let messagesOffset = 0; // how many messages are currently rendered from start
+
 function saveUnread() {
   localStorage.setItem('unreadConversations', JSON.stringify([...unreadConversations]));
 }
@@ -112,6 +123,12 @@ const attachBtn = document.getElementById('attach-btn');
 const fileInput = document.getElementById('file-input');
 const attachmentPreview = document.getElementById('attachment-preview');
 const msgActionPopup = document.getElementById('msg-action-popup');
+const reconnectBanner = document.getElementById('reconnect-banner');
+const themeToggle = document.getElementById('theme-toggle');
+const filterToggle = document.getElementById('filter-toggle');
+const filterRow = document.getElementById('filter-row');
+const filterModelSelect = document.getElementById('filter-model');
+const loadMoreBtn = document.getElementById('load-more-btn');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
@@ -126,8 +143,16 @@ function connectWS() {
   ws.onopen = () => {
     clearTimeout(reconnectTimer);
     reconnectAttempt = 0;
+    if (reconnectBanner) reconnectBanner.classList.add('hidden');
     if (wsHasConnected) showToast('Reconnected');
     wsHasConnected = true;
+    // Flush queued messages
+    if (pendingMessages.length > 0) {
+      const queued = [...pendingMessages];
+      pendingMessages = [];
+      queued.forEach(msg => ws.send(JSON.stringify(msg)));
+      showToast(`Sent ${queued.length} queued message${queued.length > 1 ? 's' : ''}`);
+    }
   };
 
   ws.onmessage = (e) => {
@@ -144,6 +169,8 @@ function connectWS() {
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
     reconnectAttempt++;
     reconnectTimer = setTimeout(connectWS, delay);
+    // Show reconnect banner after first failed attempt
+    if (wsHasConnected && reconnectBanner) reconnectBanner.classList.remove('hidden');
   };
 
   ws.onerror = () => {
@@ -233,6 +260,7 @@ async function loadModels() {
     convModelSelect.innerHTML = models.map(m =>
       `<option value="${m.id}"${m.id === 'sonnet' ? ' selected' : ''}>${m.name}</option>`
     ).join('');
+    populateFilterModels();
   } catch {
     models = [{ id: 'sonnet', name: 'Sonnet 4.5', context: 200000 }];
   }
@@ -275,8 +303,13 @@ async function renameConversation(id, name) {
   await loadConversations();
 }
 
-async function searchConversations(query) {
-  const res = await fetch(`/api/conversations/search?q=${encodeURIComponent(query)}`);
+async function searchConversations(query, filters = {}) {
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+  if (filters.dateTo) params.set('dateTo', filters.dateTo);
+  if (filters.model) params.set('model', filters.model);
+  const res = await fetch(`/api/conversations/search?${params}`);
   return res.json();
 }
 
@@ -536,18 +569,38 @@ actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
 });
 
 // --- Search ---
-searchInput.addEventListener('input', () => {
+function getSearchFilters() {
+  const filters = {};
+  if (!filterRow || filterRow.classList.contains('hidden')) return filters;
+  const activeChip = filterRow.querySelector('.filter-chip.active');
+  if (activeChip && activeChip.dataset.days) {
+    const days = parseInt(activeChip.dataset.days);
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    filters.dateFrom = from.toISOString();
+  }
+  if (filterModelSelect && filterModelSelect.value) {
+    filters.model = filterModelSelect.value;
+  }
+  return filters;
+}
+
+function triggerSearch() {
   clearTimeout(searchDebounceTimer);
   const q = searchInput.value.trim();
-  if (!q) {
+  const filters = getSearchFilters();
+  const hasFilters = filters.dateFrom || filters.model;
+  if (!q && !hasFilters) {
     renderConversationList();
     return;
   }
   searchDebounceTimer = setTimeout(async () => {
-    const results = await searchConversations(q);
+    const results = await searchConversations(q, filters);
     renderConversationList(results);
   }, 250);
-});
+}
+
+searchInput.addEventListener('input', triggerSearch);
 
 // --- Archive toggle ---
 archiveToggle.addEventListener('click', () => {
@@ -643,7 +696,29 @@ function renderMessages(messages) {
   pendingDelta = '';
   renderScheduled = false;
 
-  messagesContainer.innerHTML = messages.map((m, i) => {
+  allMessages = messages;
+  // If more messages than MESSAGES_PER_PAGE, show only the last page
+  if (messages.length > MESSAGES_PER_PAGE) {
+    messagesOffset = messages.length - MESSAGES_PER_PAGE;
+    const visible = messages.slice(messagesOffset);
+    messagesContainer.innerHTML = renderMessageSlice(visible, messagesOffset);
+    if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
+  } else {
+    messagesOffset = 0;
+    messagesContainer.innerHTML = renderMessageSlice(messages, 0);
+    if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+  }
+
+  enhanceCodeBlocks(messagesContainer);
+  attachTTSHandlers();
+  attachRegenHandlers();
+  attachMessageActions();
+  scrollToBottom(true);
+}
+
+function renderMessageSlice(messages, startIndex) {
+  return messages.map((m, i) => {
+    const globalIndex = startIndex + i;
     const cls = m.role === 'user' ? 'user' : 'assistant';
     const content = m.role === 'assistant' ? renderMarkdown(m.text) : escapeHtml(m.text);
     let meta = formatTime(m.timestamp);
@@ -656,7 +731,6 @@ function renderMessages(messages) {
     if (m.inputTokens != null) {
       meta += ` &middot; ${formatTokens(m.inputTokens)} in / ${formatTokens(m.outputTokens)} out`;
     }
-    // Attachment thumbnails for user messages
     let attachHtml = '';
     if (m.attachments && m.attachments.length > 0) {
       attachHtml = '<div class="msg-attachments">' + m.attachments.map(a =>
@@ -665,21 +739,32 @@ function renderMessages(messages) {
           : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
       ).join('') + '</div>';
     }
-    const isLastAssistant = cls === 'assistant' && i === messages.length - 1;
+    const isLastAssistant = cls === 'assistant' && globalIndex === allMessages.length - 1;
     const regenBtn = isLastAssistant
       ? '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>'
       : '';
     const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
-    return `<div class="message ${cls}" data-index="${i}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
+    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
   }).join('');
+}
 
+function loadMoreMessages() {
+  if (messagesOffset <= 0) return;
+  const prevScrollHeight = messagesContainer.scrollHeight;
+  const loadCount = Math.min(MESSAGES_PER_PAGE, messagesOffset);
+  const newOffset = messagesOffset - loadCount;
+  const slice = allMessages.slice(newOffset, messagesOffset);
+  const html = renderMessageSlice(slice, newOffset);
+  messagesContainer.insertAdjacentHTML('afterbegin', html);
   enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
-  attachRegenHandlers();
   attachMessageActions();
-  scrollToBottom(true);
+  messagesOffset = newOffset;
+  // Preserve scroll position
+  messagesContainer.scrollTop += messagesContainer.scrollHeight - prevScrollHeight;
+  if (messagesOffset <= 0 && loadMoreBtn) loadMoreBtn.classList.add('hidden');
 }
 
 function appendDelta(text) {
@@ -816,7 +901,10 @@ function showListView() {
   renderScheduled = false;
   userHasScrolledUp = false;
   isStreaming = false;
+  allMessages = [];
+  messagesOffset = 0;
   jumpToBottomBtn.classList.remove('visible');
+  if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
   clearPendingAttachments();
   loadConversations();
 }
@@ -824,8 +912,27 @@ function showListView() {
 // --- Send message ---
 async function sendMessage(text) {
   if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
   haptic(5);
+
+  // Queue if offline
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    if (pendingAttachments.length > 0) {
+      showToast('Cannot upload files while offline', { variant: 'error' });
+      return;
+    }
+    const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
+    pendingMessages.push(msg);
+    // Show queued message in UI
+    const el = document.createElement('div');
+    el.className = 'message user animate-in queued';
+    el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>`;
+    messagesContainer.appendChild(el);
+    scrollToBottom(true);
+    messageInput.value = '';
+    autoResizeInput();
+    showToast('Message queued — will send when reconnected');
+    return;
+  }
 
   // Upload attachments first
   let attachments = [];
@@ -1692,6 +1799,138 @@ function renderStats(s) {
       </div>
     </div>
   `;
+}
+
+// --- Theme ---
+function applyTheme() {
+  let effective = currentTheme;
+  if (effective === 'auto') {
+    effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', effective);
+  // Update status bar color
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = effective === 'light' ? '#f5f5f7' : '#1c1c1e';
+}
+
+function cycleTheme() {
+  const order = ['auto', 'light', 'dark'];
+  const idx = order.indexOf(currentTheme);
+  currentTheme = order[(idx + 1) % order.length];
+  localStorage.setItem('theme', currentTheme);
+  applyTheme();
+  updateThemeIcon();
+  const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+  showToast(`Theme: ${labels[currentTheme]}`);
+}
+
+function updateThemeIcon() {
+  if (!themeToggle) return;
+  const icons = { auto: '\u25D0', light: '\u2600', dark: '\u263E' };
+  themeToggle.textContent = icons[currentTheme] || '\u25D0';
+}
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', cycleTheme);
+}
+
+// Listen for OS theme changes when in auto mode
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  if (currentTheme === 'auto') applyTheme();
+});
+
+applyTheme();
+updateThemeIcon();
+
+// --- Keyboard Shortcuts ---
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  const mod = e.metaKey || e.ctrlKey;
+
+  // Escape always works
+  if (e.key === 'Escape') {
+    if (!dialogOverlay.classList.contains('hidden')) {
+      // Close dialog
+      dialogCancel.click();
+    } else if (!modalOverlay.classList.contains('hidden')) {
+      // Close modal
+      modalOverlay.classList.add('hidden');
+    } else if (chatView.classList.contains('slide-in')) {
+      showListView();
+    } else if (statsView.classList.contains('slide-in')) {
+      statsBackBtn.click();
+    }
+    return;
+  }
+
+  if (isTyping) return;
+
+  if (mod && e.key === 'k') {
+    e.preventDefault();
+    if (!chatView.classList.contains('slide-in')) {
+      searchInput.focus();
+    }
+  } else if (mod && e.key === 'n') {
+    e.preventDefault();
+    newChatBtn.click();
+  } else if (mod && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+    e.preventDefault();
+    archiveToggle.click();
+  } else if (mod && (e.key === 'e' || e.key === 'E')) {
+    e.preventDefault();
+    if (chatView.classList.contains('slide-in') && exportBtn) {
+      exportBtn.click();
+    }
+  }
+});
+
+// --- Search Filters ---
+if (filterToggle) {
+  filterToggle.addEventListener('click', () => {
+    if (!filterRow) return;
+    filterRow.classList.toggle('hidden');
+    filterToggle.classList.toggle('active', !filterRow.classList.contains('hidden'));
+  });
+}
+
+if (filterRow) {
+  filterRow.addEventListener('click', (e) => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    // Toggle active state — only one date chip active at a time
+    filterRow.querySelectorAll('.filter-chip[data-days]').forEach(c => {
+      c.classList.toggle('active', c === chip && !chip.classList.contains('active'));
+    });
+    triggerSearch();
+  });
+}
+
+if (filterModelSelect) {
+  filterModelSelect.addEventListener('change', triggerSearch);
+}
+
+// Populate filter model dropdown when models load
+function populateFilterModels() {
+  if (!filterModelSelect) return;
+  filterModelSelect.innerHTML = '<option value="">All models</option>' +
+    models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+// --- Load More Messages ---
+if (loadMoreBtn) {
+  loadMoreBtn.addEventListener('click', loadMoreMessages);
+}
+
+// Auto-load on scroll to top (IntersectionObserver)
+const loadMoreSentinel = document.getElementById('load-more-btn');
+if (loadMoreSentinel) {
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && messagesOffset > 0) {
+      loadMoreMessages();
+    }
+  }, { root: messagesContainer, threshold: 0.1 });
+  observer.observe(loadMoreSentinel);
 }
 
 // --- Mobile virtual keyboard handling ---
