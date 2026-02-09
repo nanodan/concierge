@@ -1856,3 +1856,182 @@ html, body {
   box-shadow: 0 0 6px rgba(124, 108, 240, 0.5);
   flex-shrink: 0;
 }
+
+/* Export button */
+.export-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.export-btn:active {
+  background: var(--surface);
+}
+
+/* Attach button */
+.attach-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.attach-btn:active {
+  opacity: 0.85;
+}
+
+/* Attachment preview above input bar */
+.attachment-preview {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+  border-top: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.attachment-preview.hidden {
+  display: none;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+  max-width: 180px;
+}
+
+.attachment-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.attachment-file-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.attachment-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.attachment-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.attachment-remove:active {
+  color: var(--danger);
+}
+
+/* Message attachments (inline in messages) */
+.msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.msg-attachment-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.msg-attachment-file {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+}
+
+/* Regenerate button */
+.regen-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 6px;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+  vertical-align: middle;
+}
+
+.regen-btn:hover {
+  opacity: 1;
+}
+
+.regen-btn:active {
+  color: var(--accent-light);
+  opacity: 1;
+}
+
+/* Message editing */
+.message.editing {
+  padding: 12px;
+  max-width: 92%;
+}
+
+.edit-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  line-height: 1.4;
+  min-height: 44px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}

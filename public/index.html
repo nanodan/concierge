@@ -44,6 +44,9 @@
   </div>
   <div id="action-popup-overlay" class="action-popup-overlay hidden"></div>
 
+  <!-- Message action popup (edit/copy on messages) -->
+  <div id="msg-action-popup" class="action-popup hidden"></div>
+
   <!-- Chat View -->
   <div id="chat-view" class="view">
     <header class="top-bar chat-header">
@@ -57,6 +60,9 @@
           <div id="model-dropdown" class="model-dropdown hidden"></div>
         </div>
       </div>
+      <button id="export-btn" class="export-btn" aria-label="Export conversation">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
       <button id="delete-btn" class="delete-btn" aria-label="Delete conversation">&#x1D5EB;</button>
     </header>
     <div id="context-bar" class="context-bar hidden">
@@ -72,7 +78,14 @@
         <span></span><span></span><span></span>
       </div>
     </div>
+    <div id="attachment-preview" class="attachment-preview hidden"></div>
     <form id="input-form" class="input-bar">
+      <button type="button" id="attach-btn" class="attach-btn" aria-label="Attach file">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <input type="file" id="file-input" multiple accept="image/*,.pdf,.txt,.md,.js,.py,.ts,.json,.csv" hidden>
       <button type="button" id="mic-btn" class="mic-btn" aria-label="Voice input">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>

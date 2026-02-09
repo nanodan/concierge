@@ -37,13 +37,14 @@ Each active conversation spawns one Claude CLI child process:
 activeProcesses: Map<conversationId, ChildProcess>
 ```
 
-**Spawning** (on `message` WebSocket event):
+**Spawning** (via `spawnClaude()`, triggered by `message`, `regenerate`, or `edit` events):
 ```
 claude -p "{text}" --output-format stream-json --verbose \
   --model {model} --include-partial-messages \
   [--dangerously-skip-permissions] \
   [--resume {sessionId}] \
-  [--add-dir {cwd}]
+  [--add-dir {cwd}] \
+  [--add-image {path}]  # for image attachments (repeatable)
 ```
 
 **Lifecycle:**
@@ -69,6 +70,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 **Lazy Loading Pattern:**
 - `data/index.json` holds lightweight metadata for all conversations (loaded at startup)
 - `data/conv/{id}.json` holds full message arrays (loaded on demand via `ensureMessages()`)
+- `data/uploads/{id}/` holds uploaded file attachments per conversation (cleaned up on delete)
 - Messages are set to `null` after saving to allow garbage collection
 
 **Atomic Writes:**
@@ -87,7 +89,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 **Messages** (stored per-conversation, lazy-loaded):
 ```javascript
 // User message
-{ role: 'user', text, timestamp }
+{ role: 'user', text, timestamp, attachments: [{ filename, url }] }
 
 // Assistant message
 { role: 'assistant', text, timestamp, cost, duration, sessionId, inputTokens, outputTokens }
@@ -106,7 +108,9 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `GET` | `/api/models` | List available Claude models |
 | `GET` | `/api/browse` | Directory listing. Query: `?path=/some/dir` |
 | `POST` | `/api/mkdir` | Create directory. Body: `{ path }` |
-| `GET` | `/api/stats` | Aggregate stats across all conversations |
+| `GET` | `/api/stats` | Aggregate stats across all conversations (cached 30s) |
+| `GET` | `/api/conversations/:id/export` | Export conversation. Query: `?format=markdown\|json` |
+| `POST` | `/api/conversations/:id/upload` | Upload file attachment (raw body, `X-Filename` header) |
 
 ### WebSocket Protocol
 
@@ -114,8 +118,10 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 
 | Type | Fields | Description |
 |------|--------|-------------|
-| `message` | `conversationId`, `text` | Send user message, spawns Claude process |
+| `message` | `conversationId`, `text`, `attachments?` | Send user message, spawns Claude process |
 | `cancel` | `conversationId` | Kill active process |
+| `regenerate` | `conversationId` | Re-generate last assistant response (resets session) |
+| `edit` | `conversationId`, `messageIndex`, `text` | Edit user message at index, truncate & re-send |
 
 **Server → Client:**
 
@@ -126,6 +132,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `status` | `conversationId`, `status` | `"thinking"` or `"idle"` |
 | `error` | `conversationId`, `error` | Error message |
 | `stderr` | `conversationId`, `text` | Claude CLI stderr output |
+| `messages_updated` | `conversationId`, `messages` | Full message array after edit (triggers re-render) |
 
 ### Model Configuration
 
@@ -153,12 +160,16 @@ currentConversationId     // Active conversation UUID
 ws                        // WebSocket connection
 streamingMessageEl        // DOM element for in-progress message
 streamingText             // Accumulated streaming text
+pendingDelta              // Buffered streaming text (RAF-throttled)
+renderScheduled           // Whether a RAF flush is pending
+reconnectAttempt          // Exponential backoff counter for WS reconnect
 showingArchived           // Archive filter toggle
 models[]                  // Available models from API
 currentModel              // Selected model ID
 currentAutopilot          // Autopilot toggle state
 isRecording               // Voice recording state
 currentTTSBtn             // Active TTS button reference
+pendingAttachments[]      // Files queued for upload with next message
 ```
 
 ### Three Views
@@ -175,11 +186,13 @@ View transitions use `slide-out` / `slide-in` CSS classes with `transform` + `op
 
 Three phases handle different rendering needs:
 
-1. **`renderMessages()`** - Full re-render when opening a conversation. Maps all messages to HTML, applies markdown, injects TTS buttons.
+1. **`renderMessages()`** - Full re-render when opening a conversation. Maps all messages to HTML, applies markdown, injects TTS/regenerate buttons, renders inline attachment thumbnails, attaches message action handlers (long-press/right-click for edit/copy).
 
-2. **`appendDelta(conversationId, text)`** - Called on each streaming chunk. Creates the streaming message element on first call, appends text, re-renders markdown incrementally, auto-scrolls.
+2. **`appendDelta(text)`** - Called on each streaming chunk. Buffers text in `pendingDelta` and schedules a `requestAnimationFrame` flush via `flushDelta()`. This throttles DOM updates to once per frame, eliminating jank on fast streams.
 
-3. **`finalizeMessage(conversationId, data)`** - Called on `result` event. Replaces streaming element with final rendered message including metadata (cost, duration, tokens) and TTS button.
+3. **`flushDelta()`** - RAF callback that applies buffered `pendingDelta` to `streamingText`, re-renders markdown, and auto-scrolls.
+
+4. **`finalizeMessage(data)`** - Called on `result` event. Flushes any pending delta, replaces streaming element with final rendered message including metadata (cost, duration, tokens), TTS button, and regenerate button.
 
 ### Markdown Renderer (`public/markdown.js`)
 
@@ -208,8 +221,14 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 - Shows Archive/Rename/Delete options
 - Positioned near the touch point
 
+**Long-press / right-click** (message bubbles):
+- 500ms timer triggers message action popup
+- User messages: Edit and Copy options
+- Assistant messages: Copy option
+- Edit replaces bubble with inline textarea + Save/Cancel buttons
+
 **Desktop fallback:**
-- Right-click opens same context menu as long-press
+- Right-click opens same context menu as long-press (both cards and messages)
 
 ### Voice Input
 
@@ -256,7 +275,7 @@ Fetches aggregated data from `/api/stats` and renders:
 **Cached assets:**
 - `/`, `/style.css`, `/markdown.js`, `/app.js`, `/manifest.json`, `/lib/highlight.min.js`
 
-**Cache versioning:** `claude-chat-v10` - increment the version number to bust caches on deploy.
+**Cache versioning:** `claude-chat-v11` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets
@@ -280,14 +299,16 @@ Fetches aggregated data from `/api/stats` and renders:
   #conversation-list
   #fab (new conversation button)
 
-#action-popup (long-press/right-click menu)
+#action-popup (long-press/right-click menu for conversation cards)
+#msg-action-popup (long-press/right-click menu for messages)
 
 #chat-view
-  .top-bar (back, name, status dot, mode badge, model selector, delete)
+  .top-bar (back, name, status dot, mode badge, model selector, export, delete)
   #context-bar
   #messages
   #typing-indicator
-  .input-bar (mic, textarea, send/cancel)
+  #attachment-preview (queued file thumbnails)
+  .input-bar (attach, mic, textarea, send/cancel)
 
 #stats-view
   .top-bar (back, title)

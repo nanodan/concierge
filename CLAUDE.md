@@ -26,12 +26,12 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server.js` | ~654 | Express + WebSocket backend, Claude CLI process management |
-| `public/app.js` | ~1406 | Frontend SPA logic, state, all UI interactions |
-| `public/index.html` | ~164 | HTML structure, three views, modals |
-| `public/style.css` | ~1858 | Dark theme, glass-morphism, animations, safe areas |
+| `server.js` | ~825 | Express + WebSocket backend, Claude CLI process management, file uploads |
+| `public/app.js` | ~1715 | Frontend SPA logic, state, all UI interactions |
+| `public/index.html` | ~177 | HTML structure, three views, modals |
+| `public/style.css` | ~2037 | Dark theme, glass-morphism, animations, safe areas |
 | `public/markdown.js` | ~66 | Hand-rolled markdown parser |
-| `public/sw.js` | ~53 | Service worker (cache-first for assets) |
+| `public/sw.js` | ~52 | Service worker (cache-first for assets) |
 | `public/manifest.json` | — | PWA manifest |
 
 See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each file.
@@ -54,6 +54,7 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each 
 
 - `data/index.json` — conversation metadata (loaded at startup, always in memory)
 - `data/conv/{id}.json` — messages per conversation (lazy-loaded via `ensureMessages()`)
+- `data/uploads/{id}/` — uploaded file attachments per conversation
 - Atomic writes: all saves go through `atomicWrite()` (write to .tmp, rename to target)
 
 ### HTTPS
@@ -62,7 +63,9 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 
 ## Key Patterns
 
-- **Message rendering**: `renderMessages()` for full re-render on conversation open, `appendDelta()` for streaming chunks, `finalizeMessage()` when Claude finishes. TTS buttons are injected in both `renderMessages` and `finalizeMessage`.
+- **Message rendering**: `renderMessages()` for full re-render on conversation open, `appendDelta()` for streaming chunks (throttled via `requestAnimationFrame`), `finalizeMessage()` when Claude finishes. TTS and regenerate buttons are injected in both `renderMessages` and `finalizeMessage`.
+- **Message actions**: Long-press/right-click on messages shows edit (user) and copy options. Regenerate button on last assistant message.
+- **File attachments**: Upload via REST, reference in WS message. Images render inline; files show as chips.
 - **Conversation list**: Cards with swipe-to-reveal actions (archive/delete) and long-press/right-click context menu.
 - **CSS variables**: Dark theme defined in `:root` in `style.css`. Accent color is `#7c6cf0`.
 - **Safe areas**: iOS safe area insets handled via `env(safe-area-inset-*)` CSS variables.
@@ -76,11 +79,13 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - `GET /api/models` — list available Claude models
 - `GET /api/stats` — aggregate usage statistics
 - `GET /api/browse?path=` / `POST /api/mkdir` — directory browser for setting conversation cwd
+- `GET /api/conversations/:id/export?format=markdown|json` — export conversation
+- `POST /api/conversations/:id/upload` — upload file attachment (raw body, X-Filename header)
 
 ## WebSocket Events
 
-**Client → Server:** `message` (send chat), `cancel` (kill process)
-**Server → Client:** `delta` (text chunk), `result` (final response), `status` (thinking/idle), `error`, `stderr`
+**Client → Server:** `message` (send chat), `cancel` (kill process), `regenerate` (re-run last prompt), `edit` (edit & resend message)
+**Server → Client:** `delta` (text chunk), `result` (final response), `status` (thinking/idle), `error`, `stderr`, `messages_updated` (after edit)
 
 ## Common Modification Patterns
 

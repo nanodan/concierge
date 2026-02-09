@@ -44,6 +44,13 @@ let userHasScrolledUp = false;
 let isStreaming = false;
 const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConversations') || '[]'));
 
+// Streaming render throttle
+let pendingDelta = '';
+let renderScheduled = false;
+
+// Attachments
+let pendingAttachments = []; // Array of { file, previewUrl, name }
+
 function saveUnread() {
   localStorage.setItem('unreadConversations', JSON.stringify([...unreadConversations]));
 }
@@ -100,16 +107,25 @@ const contextBarLabel = document.getElementById('context-bar-label');
 const convModelSelect = document.getElementById('conv-model');
 const jumpToBottomBtn = document.getElementById('jump-to-bottom');
 const toastContainer = document.getElementById('toast-container');
+const exportBtn = document.getElementById('export-btn');
+const attachBtn = document.getElementById('attach-btn');
+const fileInput = document.getElementById('file-input');
+const attachmentPreview = document.getElementById('attachment-preview');
+const msgActionPopup = document.getElementById('msg-action-popup');
 let currentBrowsePath = '';
 
 // --- WebSocket ---
 let wsHasConnected = false;
+let reconnectAttempt = 0;
+const MAX_RECONNECT_DELAY = 30000;
+
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}`);
 
   ws.onopen = () => {
     clearTimeout(reconnectTimer);
+    reconnectAttempt = 0;
     if (wsHasConnected) showToast('Reconnected');
     wsHasConnected = true;
   };
@@ -125,7 +141,9 @@ function connectWS() {
   };
 
   ws.onclose = () => {
-    reconnectTimer = setTimeout(connectWS, 2000);
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+    reconnectAttempt++;
+    reconnectTimer = setTimeout(connectWS, delay);
   };
 
   ws.onerror = () => {
@@ -160,6 +178,13 @@ function handleWSMessage(data) {
       if (data.conversationId === currentConversationId || !data.conversationId) {
         showError(data.error);
         setThinking(false);
+      }
+      break;
+
+    case 'messages_updated':
+      if (data.conversationId === currentConversationId) {
+        renderMessages(data.messages);
+        setThinking(true);
       }
       break;
 
@@ -478,7 +503,10 @@ function hideActionPopup() {
 }
 
 // --- Action popup event handlers ---
-actionPopupOverlay.addEventListener('click', hideActionPopup);
+actionPopupOverlay.addEventListener('click', () => {
+  hideActionPopup();
+  hideMsgActionPopup();
+});
 
 actionPopup.querySelectorAll('.action-popup-btn').forEach(btn => {
   btn.addEventListener('click', async () => {
@@ -612,8 +640,10 @@ async function openConversation(id) {
 function renderMessages(messages) {
   streamingMessageEl = null;
   streamingText = '';
+  pendingDelta = '';
+  renderScheduled = false;
 
-  messagesContainer.innerHTML = messages.map(m => {
+  messagesContainer.innerHTML = messages.map((m, i) => {
     const cls = m.role === 'user' ? 'user' : 'assistant';
     const content = m.role === 'assistant' ? renderMarkdown(m.text) : escapeHtml(m.text);
     let meta = formatTime(m.timestamp);
@@ -626,14 +656,29 @@ function renderMessages(messages) {
     if (m.inputTokens != null) {
       meta += ` &middot; ${formatTokens(m.inputTokens)} in / ${formatTokens(m.outputTokens)} out`;
     }
+    // Attachment thumbnails for user messages
+    let attachHtml = '';
+    if (m.attachments && m.attachments.length > 0) {
+      attachHtml = '<div class="msg-attachments">' + m.attachments.map(a =>
+        a.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(a.filename)
+          ? `<img src="${a.url}" class="msg-attachment-img" alt="${escapeHtml(a.filename)}">`
+          : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
+      ).join('') + '</div>';
+    }
+    const isLastAssistant = cls === 'assistant' && i === messages.length - 1;
+    const regenBtn = isLastAssistant
+      ? '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>'
+      : '';
     const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
-    return `<div class="message ${cls}">${content}<div class="meta">${meta}${ttsBtn}</div></div>`;
+    return `<div class="message ${cls}" data-index="${i}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
   }).join('');
 
   enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
+  attachRegenHandlers();
+  attachMessageActions();
   scrollToBottom(true);
 }
 
@@ -643,16 +688,35 @@ function appendDelta(text) {
     streamingMessageEl.className = 'message assistant animate-in';
     messagesContainer.appendChild(streamingMessageEl);
     streamingText = '';
+    pendingDelta = '';
     isStreaming = true;
     userHasScrolledUp = !isNearBottom(150);
   }
-  streamingText += text;
+  pendingDelta += text;
+  if (!renderScheduled) {
+    renderScheduled = true;
+    requestAnimationFrame(flushDelta);
+  }
+}
+
+function flushDelta() {
+  renderScheduled = false;
+  if (!pendingDelta || !streamingMessageEl) return;
+  streamingText += pendingDelta;
+  pendingDelta = '';
   streamingMessageEl.innerHTML = renderMarkdown(streamingText);
   enhanceCodeBlocks(streamingMessageEl);
   scrollToBottom();
 }
 
 function finalizeMessage(data) {
+  // Flush any pending delta
+  if (pendingDelta && streamingMessageEl) {
+    streamingText += pendingDelta;
+    pendingDelta = '';
+    renderScheduled = false;
+  }
+
   setThinking(false);
   isStreaming = false;
 
@@ -671,9 +735,11 @@ function finalizeMessage(data) {
     const ttsBtn = window.speechSynthesis
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
-    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}</div>`;
+    const regenBtn = '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>';
+    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}${regenBtn}</div>`;
     enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
+    attachRegenHandlers();
     streamingMessageEl = null;
     streamingText = '';
     scrollToBottom();
@@ -746,21 +812,53 @@ function showListView() {
   currentConversationId = null;
   streamingMessageEl = null;
   streamingText = '';
+  pendingDelta = '';
+  renderScheduled = false;
   userHasScrolledUp = false;
   isStreaming = false;
   jumpToBottomBtn.classList.remove('visible');
+  clearPendingAttachments();
   loadConversations();
 }
 
 // --- Send message ---
-function sendMessage(text) {
-  if (!text.trim() || !currentConversationId) return;
+async function sendMessage(text) {
+  if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   haptic(5);
 
+  // Upload attachments first
+  let attachments = [];
+  if (pendingAttachments.length > 0) {
+    for (const att of pendingAttachments) {
+      try {
+        const res = await fetch(
+          `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
+          { method: 'POST', body: att.file }
+        );
+        const result = await res.json();
+        attachments.push(result);
+      } catch (err) {
+        showError(`Failed to upload ${att.name}`);
+        return;
+      }
+    }
+    clearPendingAttachments();
+  }
+
+  // Show message in UI
+  let attachHtml = '';
+  if (attachments.length > 0) {
+    attachHtml = '<div class="msg-attachments">' + attachments.map(a =>
+      a.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(a.filename)
+        ? `<img src="${a.url}" class="msg-attachment-img" alt="${escapeHtml(a.filename)}">`
+        : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
+    ).join('') + '</div>';
+  }
+
   const el = document.createElement('div');
   el.className = 'message user animate-in';
-  el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
+  el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   userHasScrolledUp = false;
   scrollToBottom(true);
@@ -768,7 +866,8 @@ function sendMessage(text) {
   ws.send(JSON.stringify({
     type: 'message',
     conversationId: currentConversationId,
-    text,
+    text: text || '(see attached)',
+    attachments: attachments.length > 0 ? attachments : undefined,
   }));
 
   setThinking(true);
@@ -776,6 +875,202 @@ function sendMessage(text) {
   autoResizeInput();
 }
 
+// --- Attachments ---
+function addAttachment(file) {
+  const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+  pendingAttachments.push({ file, previewUrl, name: file.name });
+  renderAttachmentPreviewUI();
+}
+
+function removeAttachment(index) {
+  if (pendingAttachments[index]?.previewUrl) {
+    URL.revokeObjectURL(pendingAttachments[index].previewUrl);
+  }
+  pendingAttachments.splice(index, 1);
+  renderAttachmentPreviewUI();
+}
+
+function clearPendingAttachments() {
+  pendingAttachments.forEach(att => { if (att.previewUrl) URL.revokeObjectURL(att.previewUrl); });
+  pendingAttachments = [];
+  renderAttachmentPreviewUI();
+}
+
+function renderAttachmentPreviewUI() {
+  if (pendingAttachments.length === 0) {
+    attachmentPreview.classList.add('hidden');
+    return;
+  }
+  attachmentPreview.classList.remove('hidden');
+  attachmentPreview.innerHTML = pendingAttachments.map((att, i) => {
+    const thumb = att.previewUrl
+      ? `<img src="${att.previewUrl}" class="attachment-thumb">`
+      : '<span class="attachment-file-icon">&#x1F4CE;</span>';
+    return `<div class="attachment-item">
+      ${thumb}
+      <span class="attachment-name">${escapeHtml(att.name)}</span>
+      <button class="attachment-remove" data-index="${i}">&times;</button>
+    </div>`;
+  }).join('');
+
+  attachmentPreview.querySelectorAll('.attachment-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeAttachment(parseInt(btn.dataset.index)));
+  });
+}
+
+if (attachBtn) {
+  attachBtn.addEventListener('click', () => fileInput.click());
+}
+if (fileInput) {
+  fileInput.addEventListener('change', () => {
+    Array.from(fileInput.files).forEach(f => addAttachment(f));
+    fileInput.value = '';
+  });
+}
+
+// Paste images from clipboard
+messageInput.addEventListener('paste', (e) => {
+  const files = Array.from(e.clipboardData?.files || []);
+  if (files.length > 0) {
+    e.preventDefault();
+    files.forEach(f => addAttachment(f));
+  }
+});
+
+// --- Message Actions (Edit & Regenerate) ---
+function attachMessageActions() {
+  messagesContainer.querySelectorAll('.message[data-index]').forEach(el => {
+    if (el.dataset.actionsAttached) return;
+    el.dataset.actionsAttached = 'true';
+
+    const index = parseInt(el.dataset.index);
+    const isUser = el.classList.contains('user');
+
+    // Right-click context menu
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showMsgActionPopup(e.clientX, e.clientY, el, index, isUser);
+    });
+
+    // Long-press for mobile
+    let timer;
+    el.addEventListener('touchstart', (e) => {
+      timer = setTimeout(() => {
+        haptic(15);
+        showMsgActionPopup(e.touches[0].clientX, e.touches[0].clientY, el, index, isUser);
+      }, 500);
+    }, { passive: true });
+    el.addEventListener('touchmove', () => clearTimeout(timer), { passive: true });
+    el.addEventListener('touchend', () => clearTimeout(timer), { passive: true });
+  });
+}
+
+function showMsgActionPopup(x, y, el, index, isUser) {
+  msgActionPopup.innerHTML = '';
+
+  if (isUser) {
+    const editBtn = document.createElement('button');
+    editBtn.className = 'action-popup-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => { hideMsgActionPopup(); startEditMessage(el, index); });
+    msgActionPopup.appendChild(editBtn);
+  }
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'action-popup-btn';
+  copyBtn.textContent = 'Copy';
+  copyBtn.addEventListener('click', () => {
+    hideMsgActionPopup();
+    const clone = el.cloneNode(true);
+    clone.querySelector('.meta')?.remove();
+    clone.querySelector('.msg-attachments')?.remove();
+    navigator.clipboard.writeText(clone.textContent.trim());
+    showToast('Copied to clipboard');
+  });
+  msgActionPopup.appendChild(copyBtn);
+
+  msgActionPopup.style.left = Math.min(x, window.innerWidth - 180) + 'px';
+  msgActionPopup.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+  msgActionPopup.classList.remove('hidden');
+  actionPopupOverlay.classList.remove('hidden');
+}
+
+function hideMsgActionPopup() {
+  msgActionPopup.classList.add('hidden');
+  actionPopupOverlay.classList.add('hidden');
+}
+
+function startEditMessage(el, index) {
+  const clone = el.cloneNode(true);
+  clone.querySelector('.meta')?.remove();
+  clone.querySelector('.msg-attachments')?.remove();
+  const originalText = clone.textContent.trim();
+
+  el.dataset.originalHtml = el.innerHTML;
+  el.innerHTML = '';
+  el.classList.add('editing');
+
+  const editArea = document.createElement('textarea');
+  editArea.className = 'edit-textarea';
+  editArea.value = originalText;
+  el.appendChild(editArea);
+
+  const editActions = document.createElement('div');
+  editActions.className = 'edit-actions';
+  editActions.innerHTML = '<button class="btn-secondary btn-sm edit-cancel">Cancel</button><button class="btn-primary btn-sm edit-save">Save & Send</button>';
+  el.appendChild(editActions);
+
+  editArea.focus();
+  editArea.style.height = editArea.scrollHeight + 'px';
+
+  editActions.querySelector('.edit-cancel').addEventListener('click', () => {
+    el.innerHTML = el.dataset.originalHtml;
+    el.classList.remove('editing');
+    delete el.dataset.originalHtml;
+  });
+
+  editActions.querySelector('.edit-save').addEventListener('click', () => {
+    const newText = editArea.value.trim();
+    if (!newText || !ws || ws.readyState !== WebSocket.OPEN) return;
+    el.classList.remove('editing');
+    ws.send(JSON.stringify({
+      type: 'edit',
+      conversationId: currentConversationId,
+      messageIndex: index,
+      text: newText,
+    }));
+  });
+}
+
+function attachRegenHandlers() {
+  messagesContainer.querySelectorAll('.regen-btn').forEach(btn => {
+    if (btn.dataset.attached) return;
+    btn.dataset.attached = 'true';
+    btn.addEventListener('click', () => regenerateMessage());
+  });
+}
+
+function regenerateMessage() {
+  if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  // Remove last assistant message from DOM
+  const lastMsg = messagesContainer.querySelector('.message:last-child');
+  if (lastMsg?.classList.contains('assistant')) {
+    lastMsg.remove();
+  }
+
+  setThinking(true);
+  ws.send(JSON.stringify({ type: 'regenerate', conversationId: currentConversationId }));
+}
+
+// --- Export ---
+if (exportBtn) {
+  exportBtn.addEventListener('click', () => {
+    if (!currentConversationId) return;
+    window.open(`/api/conversations/${currentConversationId}/export?format=markdown`);
+    showToast('Exporting conversation');
+  });
+}
 
 // --- Toast notifications ---
 function showToast(message, { variant = 'default', duration = 3000 } = {}) {

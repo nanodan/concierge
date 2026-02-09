@@ -39,8 +39,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 const DATA_DIR = path.join(__dirname, 'data');
 const INDEX_FILE = path.join(DATA_DIR, 'index.json');
 const CONV_DIR = path.join(DATA_DIR, 'conv');
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const LEGACY_FILE = path.join(DATA_DIR, 'conversations.json');
 const conversations = new Map(); // id -> { metadata + messages (lazy) }
+
+// Serve uploaded files
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 function ensureDirs() {
   fs.mkdirSync(CONV_DIR, { recursive: true });
@@ -85,6 +89,7 @@ async function saveConversation(id) {
     JSON.stringify(conv.messages || [], null, 2)
   );
   await saveIndex();
+  statsCache = null; // invalidate stats cache
 }
 
 async function loadMessages(id) {
@@ -98,6 +103,9 @@ async function loadMessages(id) {
 
 async function deleteConversationFiles(id) {
   try { await fsp.unlink(path.join(CONV_DIR, `${id}.json`)); } catch {}
+  // Clean up uploads
+  const uploadDir = path.join(UPLOAD_DIR, id);
+  try { await fsp.rm(uploadDir, { recursive: true, force: true }); } catch {}
 }
 
 function loadFromDisk() {
@@ -156,6 +164,11 @@ async function ensureMessages(id) {
 // Active Claude processes per conversation
 const activeProcesses = new Map();
 const PROCESS_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+// Stats cache
+let statsCache = null;
+let statsCacheTime = 0;
+const STATS_CACHE_TTL = 30000; // 30 seconds
 
 // --- REST API ---
 
@@ -301,8 +314,12 @@ app.get('/api/conversations/:id', async (req, res) => {
   res.json(conv);
 });
 
-// Stats
+// Stats (cached)
 app.get('/api/stats', async (req, res) => {
+  if (statsCache && Date.now() - statsCacheTime < STATS_CACHE_TTL) {
+    return res.json(statsCache);
+  }
+
   let totalMessages = 0, userMessages = 0, assistantMessages = 0;
   let totalCost = 0, totalDuration = 0, totalUserChars = 0, totalAssistantChars = 0;
   let activeCount = 0, archivedCount = 0;
@@ -357,7 +374,7 @@ app.get('/api/stats', async (req, res) => {
     if (dailyCounts[key]) streak++; else break;
   }
 
-  res.json({
+  const result = {
     conversations: { total: activeCount + archivedCount, active: activeCount, archived: archivedCount },
     messages: { total: totalMessages, user: userMessages, assistant: assistantMessages },
     cost: Math.round(totalCost * 10000) / 10000,
@@ -367,6 +384,66 @@ app.get('/api/stats', async (req, res) => {
     hourlyCounts,
     streak,
     topConversations: topConversations.slice(0, 5),
+  };
+
+  statsCache = result;
+  statsCacheTime = Date.now();
+  res.json(result);
+});
+
+// Export conversation
+app.get('/api/conversations/:id/export', async (req, res) => {
+  const conv = await ensureMessages(req.params.id);
+  if (!conv) return res.status(404).json({ error: 'Not found' });
+  const format = req.query.format || 'markdown';
+  const safeName = (conv.name || 'conversation').replace(/[^a-zA-Z0-9 _-]/g, '');
+
+  if (format === 'json') {
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.json"`);
+    return res.json({
+      name: conv.name,
+      model: conv.model,
+      cwd: conv.cwd,
+      createdAt: conv.createdAt,
+      messages: conv.messages,
+    });
+  }
+
+  // Markdown
+  let md = `# ${conv.name}\n\n`;
+  md += `**Model:** ${conv.model || 'sonnet'} | **Created:** ${new Date(conv.createdAt).toLocaleDateString()}\n\n---\n\n`;
+  for (const m of conv.messages) {
+    const role = m.role === 'user' ? 'You' : 'Claude';
+    md += `**${role}:**\n\n${m.text}\n\n---\n\n`;
+  }
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.md"`);
+  res.send(md);
+});
+
+// Upload file for attachments
+app.post('/api/conversations/:id/upload', async (req, res) => {
+  const convId = req.params.id;
+  if (!conversations.has(convId)) return res.status(404).json({ error: 'Not found' });
+
+  const filename = req.query.filename || `upload-${Date.now()}`;
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const uploadDir = path.join(UPLOAD_DIR, convId);
+  await fsp.mkdir(uploadDir, { recursive: true });
+  const filePath = path.join(uploadDir, safeName);
+
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', async () => {
+    try {
+      await fsp.writeFile(filePath, Buffer.concat(chunks));
+      res.json({ path: filePath, filename: safeName, url: `/uploads/${convId}/${safeName}` });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+  req.on('error', (err) => {
+    res.status(500).json({ error: err.message });
   });
 });
 
@@ -403,6 +480,10 @@ wss.on('connection', (ws) => {
       handleMessage(ws, msg);
     } else if (msg.type === 'cancel') {
       handleCancel(ws, msg);
+    } else if (msg.type === 'regenerate') {
+      handleRegenerate(ws, msg);
+    } else if (msg.type === 'edit') {
+      handleEdit(ws, msg);
     }
   });
 });
@@ -429,7 +510,7 @@ function handleCancel(ws, msg) {
 }
 
 async function handleMessage(ws, msg) {
-  const { conversationId, text } = msg;
+  const { conversationId, text, attachments } = msg;
   const conv = await ensureMessages(conversationId);
   if (!conv) {
     ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
@@ -444,12 +525,94 @@ async function handleMessage(ws, msg) {
   conv.messages.push({
     role: 'user',
     text,
+    attachments: attachments || undefined,
     timestamp: Date.now(),
   });
   conv.status = 'thinking';
   await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
+  spawnClaude(ws, conversationId, conv, text, attachments);
+}
+
+async function handleRegenerate(ws, msg) {
+  const { conversationId } = msg;
+  const conv = await ensureMessages(conversationId);
+  if (!conv) {
+    ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+    return;
+  }
+
+  if (activeProcesses.has(conversationId)) {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+    return;
+  }
+
+  // Remove last assistant message
+  if (conv.messages.length > 0 && conv.messages[conv.messages.length - 1].role === 'assistant') {
+    conv.messages.pop();
+  }
+
+  const lastUserMsg = [...conv.messages].reverse().find(m => m.role === 'user');
+  if (!lastUserMsg) {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'No user message to regenerate from' }));
+    return;
+  }
+
+  // Reset session for fresh response
+  conv.claudeSessionId = null;
+  conv.status = 'thinking';
+  await saveConversation(conversationId);
+  broadcastStatus(conversationId, 'thinking');
+
+  spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments);
+}
+
+async function handleEdit(ws, msg) {
+  const { conversationId, messageIndex, text } = msg;
+  const conv = await ensureMessages(conversationId);
+  if (!conv) {
+    ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+    return;
+  }
+
+  if (activeProcesses.has(conversationId)) {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+    return;
+  }
+
+  if (messageIndex < 0 || messageIndex >= conv.messages.length) {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Invalid message index' }));
+    return;
+  }
+
+  if (conv.messages[messageIndex].role !== 'user') {
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Can only edit user messages' }));
+    return;
+  }
+
+  // Update message and truncate everything after
+  conv.messages[messageIndex].text = text;
+  conv.messages[messageIndex].timestamp = Date.now();
+  conv.messages.length = messageIndex + 1;
+
+  // Reset session
+  conv.claudeSessionId = null;
+  conv.status = 'thinking';
+  await saveConversation(conversationId);
+  broadcastStatus(conversationId, 'thinking');
+
+  // Tell client to re-render messages
+  ws.send(JSON.stringify({
+    type: 'messages_updated',
+    conversationId,
+    messages: conv.messages,
+  }));
+
+  spawnClaude(ws, conversationId, conv, text);
+}
+
+function spawnClaude(ws, conversationId, conv, text, attachments) {
   const args = [
     '-p', text,
     '--output-format', 'stream-json',
@@ -467,6 +630,15 @@ async function handleMessage(ws, msg) {
   }
 
   args.push('--add-dir', conv.cwd);
+
+  // Add image attachments
+  if (attachments) {
+    for (const att of attachments) {
+      if (att.path && /\.(png|jpg|jpeg|gif|webp)$/i.test(att.path)) {
+        args.push('--add-image', att.path);
+      }
+    }
+  }
 
   const proc = spawn('claude', args, {
     cwd: conv.cwd,
