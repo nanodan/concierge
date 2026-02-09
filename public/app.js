@@ -48,8 +48,6 @@ const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConve
 let pendingDelta = '';
 let renderScheduled = false;
 
-// Attachments
-let pendingAttachments = []; // Array of { file, previewUrl, name }
 
 // Theme
 let currentTheme = localStorage.getItem('theme') || 'auto';
@@ -126,9 +124,6 @@ const convModelSelect = document.getElementById('conv-model');
 const jumpToBottomBtn = document.getElementById('jump-to-bottom');
 const toastContainer = document.getElementById('toast-container');
 const exportBtn = document.getElementById('export-btn');
-const attachBtn = document.getElementById('attach-btn');
-const fileInput = document.getElementById('file-input');
-const attachmentPreview = document.getElementById('attachment-preview');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
 const themeToggle = document.getElementById('theme-toggle');
@@ -979,21 +974,16 @@ function showListView() {
   messagesOffset = 0;
   jumpToBottomBtn.classList.remove('visible');
   if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
-  clearPendingAttachments();
   loadConversations();
 }
 
 // --- Send message ---
 async function sendMessage(text) {
-  if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
+  if (!text.trim() || !currentConversationId) return;
   haptic(5);
 
   // Queue if offline
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    if (pendingAttachments.length > 0) {
-      showToast('Cannot upload files while offline', { variant: 'error' });
-      return;
-    }
     const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
     pendingMessages.push(msg);
     savePendingMessages();
@@ -1009,38 +999,10 @@ async function sendMessage(text) {
     return;
   }
 
-  // Upload attachments first
-  let attachments = [];
-  if (pendingAttachments.length > 0) {
-    for (const att of pendingAttachments) {
-      try {
-        const res = await fetch(
-          `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
-          { method: 'POST', body: att.file }
-        );
-        const result = await res.json();
-        attachments.push(result);
-      } catch (err) {
-        showError(`Failed to upload ${att.name}`);
-        return;
-      }
-    }
-    clearPendingAttachments();
-  }
-
   // Show message in UI
-  let attachHtml = '';
-  if (attachments.length > 0) {
-    attachHtml = '<div class="msg-attachments">' + attachments.map(a =>
-      a.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(a.filename)
-        ? `<img src="${a.url}" class="msg-attachment-img" alt="${escapeHtml(a.filename)}">`
-        : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
-    ).join('') + '</div>';
-  }
-
   const el = document.createElement('div');
   el.className = 'message user animate-in';
-  el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
+  el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   userHasScrolledUp = false;
   scrollToBottom(true);
@@ -1048,8 +1010,7 @@ async function sendMessage(text) {
   ws.send(JSON.stringify({
     type: 'message',
     conversationId: currentConversationId,
-    text: text || '(see attached)',
-    attachments: attachments.length > 0 ? attachments : undefined,
+    text,
   }));
 
   setThinking(true);
@@ -1057,67 +1018,7 @@ async function sendMessage(text) {
   autoResizeInput();
 }
 
-// --- Attachments ---
-function addAttachment(file) {
-  const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
-  pendingAttachments.push({ file, previewUrl, name: file.name });
-  renderAttachmentPreviewUI();
-}
-
-function removeAttachment(index) {
-  if (pendingAttachments[index]?.previewUrl) {
-    URL.revokeObjectURL(pendingAttachments[index].previewUrl);
-  }
-  pendingAttachments.splice(index, 1);
-  renderAttachmentPreviewUI();
-}
-
-function clearPendingAttachments() {
-  pendingAttachments.forEach(att => { if (att.previewUrl) URL.revokeObjectURL(att.previewUrl); });
-  pendingAttachments = [];
-  renderAttachmentPreviewUI();
-}
-
-function renderAttachmentPreviewUI() {
-  if (pendingAttachments.length === 0) {
-    attachmentPreview.classList.add('hidden');
-    return;
-  }
-  attachmentPreview.classList.remove('hidden');
-  attachmentPreview.innerHTML = pendingAttachments.map((att, i) => {
-    const thumb = att.previewUrl
-      ? `<img src="${att.previewUrl}" class="attachment-thumb">`
-      : '<span class="attachment-file-icon">&#x1F4CE;</span>';
-    return `<div class="attachment-item">
-      ${thumb}
-      <span class="attachment-name">${escapeHtml(att.name)}</span>
-      <button class="attachment-remove" data-index="${i}">&times;</button>
-    </div>`;
-  }).join('');
-
-  attachmentPreview.querySelectorAll('.attachment-remove').forEach(btn => {
-    btn.addEventListener('click', () => removeAttachment(parseInt(btn.dataset.index)));
-  });
-}
-
-if (attachBtn) {
-  attachBtn.addEventListener('click', () => fileInput.click());
-}
-if (fileInput) {
-  fileInput.addEventListener('change', () => {
-    Array.from(fileInput.files).forEach(f => addAttachment(f));
-    fileInput.value = '';
-  });
-}
-
-// Paste images from clipboard
-messageInput.addEventListener('paste', (e) => {
-  const files = Array.from(e.clipboardData?.files || []);
-  if (files.length > 0) {
-    e.preventDefault();
-    files.forEach(f => addAttachment(f));
-  }
-});
+// Attachments are not supported via Claude CLI; UI input is removed.
 
 // --- Message Actions (Edit & Regenerate) ---
 function attachMessageActions() {

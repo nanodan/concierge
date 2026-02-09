@@ -679,14 +679,8 @@ function spawnClaude(ws, conversationId, conv, text, attachments) {
 
   args.push('--add-dir', conv.cwd);
 
-  // Add image attachments
-  if (attachments) {
-    for (const att of attachments) {
-      if (att.path && /\.(png|jpg|jpeg|gif|webp)$/i.test(att.path)) {
-        args.push('--add-image', att.path);
-      }
-    }
-  }
+  // Note: image attachments are uploaded for the UI only.
+  // Claude CLI does not support image inputs via flags.
 
   const proc = spawn('claude', args, {
     cwd: conv.cwd,

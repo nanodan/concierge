@@ -311,7 +311,6 @@ claude \
   [--dangerously-skip-permissions]  # if autopilot=true
   [--resume {sessionId}]            # if continuing conversation
   [--add-dir {cwd}]                 # working directory
-  [--add-image {path}]              # for image attachments (repeatable)
 ```
 
 The `stream-json` format outputs newline-delimited JSON objects. Key event types:
