@@ -473,11 +473,16 @@ app.post('/api/conversations/:id/fork', async (req, res) => {
 
   const newId = uuidv4();
   const messages = source.messages.slice(0, fromMessageIndex + 1);
+  // Find sessionId from the last assistant message at/before fork point
+  let forkSessionId = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].sessionId) { forkSessionId = messages[i].sessionId; break; }
+  }
   const conversation = {
     id: newId,
     name: `${source.name} (fork)`,
     cwd: source.cwd,
-    claudeSessionId: null, // fresh session
+    claudeSessionId: forkSessionId,
     messages,
     status: 'idle',
     archived: false,
