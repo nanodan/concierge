@@ -461,6 +461,35 @@ app.post('/api/conversations/:id/upload', async (req, res) => {
   });
 });
 
+// Fork conversation from a specific message
+app.post('/api/conversations/:id/fork', async (req, res) => {
+  const id = req.params.id;
+  const { fromMessageIndex } = req.body;
+  const source = await ensureMessages(id);
+  if (!source) return res.status(404).json({ error: 'Not found' });
+  if (typeof fromMessageIndex !== 'number' || fromMessageIndex < 0) {
+    return res.status(400).json({ error: 'fromMessageIndex required' });
+  }
+
+  const newId = uuidv4();
+  const messages = source.messages.slice(0, fromMessageIndex + 1);
+  const conversation = {
+    id: newId,
+    name: `${source.name} (fork)`,
+    cwd: source.cwd,
+    claudeSessionId: null, // fresh session
+    messages,
+    status: 'idle',
+    archived: false,
+    autopilot: source.autopilot,
+    model: source.model,
+    createdAt: Date.now(),
+  };
+  conversations.set(newId, conversation);
+  await saveConversation(newId);
+  res.json(conversation);
+});
+
 // Delete conversation
 app.delete('/api/conversations/:id', async (req, res) => {
   const id = req.params.id;

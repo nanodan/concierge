@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claude-chat-v12';
+const CACHE_NAME = 'claude-chat-v13';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,9 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/lib/highlight.min.js',
 ];
+
+// API routes to cache for offline use
+const CACHED_API_ROUTES = ['/api/conversations'];
 
 // Install: cache static assets
 self.addEventListener('install', (event) => {
@@ -31,11 +34,27 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip WebSocket and API requests
-  if (url.pathname.startsWith('/api/') || event.request.headers.get('upgrade') === 'websocket') {
+  // Skip WebSocket requests
+  if (event.request.headers.get('upgrade') === 'websocket') return;
+
+  // Cacheable API routes: network-first, fall back to cache
+  if (CACHED_API_ROUTES.some(route => url.pathname === route || url.pathname.startsWith(route + '?'))) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
     return;
   }
 
+  // Skip other API requests
+  if (url.pathname.startsWith('/api/')) return;
+
+  // Static assets: cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((response) => {

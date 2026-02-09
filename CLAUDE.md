@@ -26,12 +26,12 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server.js` | ~839 | Express + WebSocket backend, Claude CLI process management, file uploads |
-| `public/app.js` | ~1954 | Frontend SPA logic, state, all UI interactions |
+| `server.js` | ~868 | Express + WebSocket backend, Claude CLI process management, file uploads |
+| `public/app.js` | ~2039 | Frontend SPA logic, state, all UI interactions |
 | `public/index.html` | ~191 | HTML structure, three views, modals |
-| `public/style.css` | ~2268 | Dark/light theme, glass-morphism, animations, safe areas |
+| `public/style.css` | ~2327 | Dark/light theme, glass-morphism, animations, safe areas |
 | `public/markdown.js` | ~66 | Hand-rolled markdown parser |
-| `public/sw.js` | ~52 | Service worker (cache-first for assets) |
+| `public/sw.js` | ~71 | Service worker (cache-first for assets, network-first for API) |
 | `public/manifest.json` | — | PWA manifest |
 
 See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each file.
@@ -42,7 +42,7 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each 
 
 **Frontend** (`public/app.js`, `public/index.html`, `public/style.css`): Single-page app with three views — conversation list, chat view, and stats dashboard. No framework, no bundler. Markdown rendering is hand-rolled. Voice input uses SpeechRecognition API, voice output uses SpeechSynthesis API.
 
-**Service Worker** (`public/sw.js`): Cache-first for static assets, network-only for API calls. Cache name `claude-chat-v10`.
+**Service Worker** (`public/sw.js`): Cache-first for static assets, network-first for conversation list API (offline support). Cache name `claude-chat-v13`.
 
 ### Data Flow
 
@@ -64,9 +64,11 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 ## Key Patterns
 
 - **Message rendering**: `renderMessages()` for full re-render on conversation open, `appendDelta()` for streaming chunks (throttled via `requestAnimationFrame`), `finalizeMessage()` when Claude finishes. TTS and regenerate buttons are injected in both `renderMessages` and `finalizeMessage`.
-- **Message actions**: Long-press/right-click on messages shows edit (user) and copy options. Regenerate button on last assistant message.
+- **Message actions**: Long-press/right-click on messages shows edit (user), copy, and fork options. Regenerate button on last assistant message.
 - **File attachments**: Upload via REST, reference in WS message. Images render inline; files show as chips.
-- **Conversation list**: Cards with swipe-to-reveal actions (archive/delete) and long-press/right-click context menu.
+- **Conversation forking**: Fork from any message via long-press menu. Creates a new conversation with messages up to that point and a fresh Claude session.
+- **Conversation list**: Cards grouped by working directory (scope) with collapsible headers. Swipe-to-reveal actions (archive/delete) and long-press/right-click context menu.
+- **Offline queue**: Messages queued while offline are persisted to localStorage and flushed on reconnect. SW caches conversation list for offline app loading.
 - **CSS variables**: Dark theme in `:root`, light theme in `[data-theme="light"]`. Accent color is `#7c6cf0`. Theme cycles auto/light/dark via `applyTheme()`.
 - **Virtual scrolling**: Long conversations render last 100 messages initially; "Load earlier messages" button at top loads more pages.
 - **Safe areas**: iOS safe area insets handled via `env(safe-area-inset-*)` CSS variables.
@@ -82,6 +84,7 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - `GET /api/browse?path=` / `POST /api/mkdir` — directory browser for setting conversation cwd
 - `GET /api/conversations/:id/export?format=markdown|json` — export conversation
 - `POST /api/conversations/:id/upload` — upload file attachment (raw body, X-Filename header)
+- `POST /api/conversations/:id/fork` — fork conversation from message index
 
 ## WebSocket Events
 

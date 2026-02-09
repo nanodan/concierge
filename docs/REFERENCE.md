@@ -6,7 +6,7 @@ Fast-access reference for coding in this repository. Consult this before reading
 
 ## File Map with Key Line Ranges
 
-### `server.js` (~839 lines)
+### `server.js` (~868 lines)
 
 | Lines | Section |
 |-------|---------|
@@ -18,24 +18,26 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 156-158 | `activeProcesses` Map, `PROCESS_TIMEOUT` (5min) |
 | 160-210 | REST: `POST /api/conversations` (create) |
 | 212-260 | REST: `GET /api/conversations` (list), `GET :id` (detail) |
-| 262-300 | REST: `PATCH :id` (update), `DELETE :id` (delete + upload cleanup) |
+| 262-300 | REST: `PATCH :id` (update) |
 | 302-393 | REST: `GET /api/conversations/search`, `GET /api/stats` (cached, 30s TTL) |
 | 395-460 | REST: `GET /api/conversations/:id/export`, `POST /api/conversations/:id/upload` |
-| 462-480 | REST: `GET /api/models`, `GET /api/browse`, `POST /api/mkdir` |
-| 482-536 | WebSocket: `cancel`, `message`, `regenerate`, `edit` handlers (dispatcher) |
-| 538-614 | `handleRegenerate()`, `handleEdit()` - message mutation + re-send |
-| 615-690 | `spawnClaude()` - spawns Claude CLI, streams output |
-| 692-780 | `processStreamEvent()` - parses Claude JSON output |
-| 782-825 | Server listen, shutdown handler |
+| 464-490 | REST: `POST /api/conversations/:id/fork` - fork conversation from message index |
+| 492-504 | REST: `DELETE :id` (delete + upload cleanup) |
+| 506-510 | REST: `GET /api/models`, `GET /api/browse`, `POST /api/mkdir` |
+| 512-566 | WebSocket: `cancel`, `message`, `regenerate`, `edit` handlers (dispatcher) |
+| 568-644 | `handleRegenerate()`, `handleEdit()` - message mutation + re-send |
+| 645-720 | `spawnClaude()` - spawns Claude CLI, streams output |
+| 722-810 | `processStreamEvent()` - parses Claude JSON output |
+| 812-855 | Server listen, shutdown handler |
 
-### `public/app.js` (~1954 lines)
+### `public/app.js` (~2039 lines)
 
 | Lines | Section |
 |-------|---------|
 | 1-25 | DOM element references (incl. export, attach, file input, attachment preview, msg action popup, reconnect banner, theme toggle, filter elements, load-more) |
-| 26-125 | Global state variables (incl. streaming throttle, reconnect, attachments, theme, message queue, virtual scroll) |
-| 127-195 | `connectWS()`, WebSocket event handlers (incl. `messages_updated`, reconnect banner, message queue flush) |
-| 187-260 | `loadConversations()`, `renderConversationList()` |
+| 26-125 | Global state variables (incl. streaming throttle, reconnect, attachments, theme, message queue with localStorage, virtual scroll, scope grouping) |
+| 127-195 | `connectWS()`, WebSocket event handlers (incl. `messages_updated`, reconnect banner, message queue flush + localStorage clear) |
+| 187-260 | `loadConversations()`, `renderConversationList()` (grouped by cwd scope) |
 | 262-348 | `openConversation()`, `showListView()`, view transitions |
 | 349-420 | Swipe gesture handling (touch events) |
 | 421-485 | Long-press / right-click context menu (conversation cards) |
@@ -46,25 +48,25 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 700-760 | `appendDelta()` (RAF-throttled), `flushDelta()`, `finalizeMessage()` |
 | 762-820 | New conversation modal handlers |
 | 822-870 | Dialog system (custom alert/confirm/prompt) |
-| 870-930 | Archive, rename, delete conversation actions |
+| 870-930 | Archive, rename, delete, fork conversation actions |
 | 930-966 | Message actions: `attachMessageActions()` (long-press/right-click on messages) |
-| 968-1000 | `showMsgActionPopup()`, `hideMsgActionPopup()` |
-| 1003-1043 | `startEditMessage()` - inline message editing |
-| 1045-1073 | `attachRegenHandlers()`, `regenerateMessage()`, export button |
-| 1075-1120 | Toast notifications, `showToast()` |
-| 1120-1200 | Directory browser modal |
-| 1200-1280 | Voice input (SpeechRecognition) |
-| 1280-1340 | Text-to-speech (SpeechSynthesis) |
-| 1340-1360 | Model selection dropdown |
-| 1360-1380 | Context bar (token usage display) |
-| 1380-1430 | Model switching, autopilot toggle |
-| 1430-1560 | Stats page rendering |
-| 1560-1610 | Attachment handling: `addAttachment()`, `removeAttachment()`, `clearPendingAttachments()`, `renderAttachmentPreviewUI()` |
-| 1610-1720 | Attachment handling, paste handler |
-| 1720-1810 | Theme system: `applyTheme()`, `cycleTheme()`, OS media query listener |
-| 1810-1860 | Keyboard shortcuts: global `keydown` handler |
-| 1860-1920 | Search filters: `getSearchFilters()`, `triggerSearch()`, filter row handlers |
-| 1920-1954 | Load-more / virtual scroll, IntersectionObserver, init |
+| 968-1020 | `showMsgActionPopup()` (edit, copy, fork), `hideMsgActionPopup()` |
+| 1023-1063 | `startEditMessage()` - inline message editing |
+| 1065-1093 | `attachRegenHandlers()`, `regenerateMessage()`, export button |
+| 1095-1140 | Toast notifications, `showToast()` |
+| 1140-1220 | Directory browser modal |
+| 1220-1300 | Voice input (SpeechRecognition) |
+| 1300-1360 | Text-to-speech (SpeechSynthesis) |
+| 1360-1380 | Model selection dropdown |
+| 1380-1400 | Context bar (token usage display) |
+| 1400-1450 | Model switching, autopilot toggle |
+| 1450-1580 | Stats page rendering |
+| 1580-1630 | Attachment handling: `addAttachment()`, `removeAttachment()`, `clearPendingAttachments()`, `renderAttachmentPreviewUI()` |
+| 1630-1740 | Attachment handling, paste handler |
+| 1740-1830 | Theme system: `applyTheme()`, `cycleTheme()`, OS media query listener |
+| 1830-1880 | Keyboard shortcuts: global `keydown` handler |
+| 1880-1940 | Search filters: `getSearchFilters()`, `triggerSearch()`, filter row handlers |
+| 1940-2039 | Load-more / virtual scroll, IntersectionObserver, init |
 
 ### `public/markdown.js` (~66 lines)
 
@@ -73,7 +75,7 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 1-5 | `escapeHtml()` helper |
 | 7-66 | `renderMarkdown(text)` - full parser |
 
-### `public/style.css` (~2268 lines)
+### `public/style.css` (~2327 lines)
 
 | Lines | Section |
 |-------|---------|
@@ -94,16 +96,17 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 1921-2000 | Attachment preview, attachment items, message attachments |
 | 2001-2040 | Regenerate button, message editing (textarea, actions) |
 | 2041-2170 | Light mode: `[data-theme="light"]` overrides, syntax highlighting, media query |
-| 2171-2268 | Theme toggle, reconnect banner, queued messages, filter bar, filter chips, load-more button |
+| 2171-2270 | Theme toggle, reconnect banner, queued messages, filter bar, filter chips, load-more button |
+| 2271-2327 | Scope grouping: headers, chevrons, counts, collapsible items |
 
-### `public/sw.js` (~52 lines)
+### `public/sw.js` (~71 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-10 | Cache name (`claude-chat-v12`), static asset list |
-| 13-18 | Install event (pre-cache) |
-| 21-28 | Activate event (clean old caches) |
-| 31-52 | Fetch event (cache-first, skip API/WS) |
+| 1-13 | Cache name (`claude-chat-v13`), static asset list, cached API routes |
+| 16-21 | Install event (pre-cache) |
+| 24-31 | Activate event (clean old caches) |
+| 34-71 | Fetch event (cache-first for static, network-first for cacheable API, skip other API/WS) |
 
 ### `public/index.html` (~191 lines)
 
@@ -236,7 +239,7 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 |----------|---------|
 | `connectWS()` | Establish/reconnect WebSocket (exponential backoff) |
 | `loadConversations()` | Fetch + render conversation list |
-| `renderConversationList()` | Build conversation card DOM |
+| `renderConversationList()` | Build conversation card DOM (grouped by cwd scope) |
 | `openConversation(id)` | Load + display conversation |
 | `showListView()` | Return to conversation list |
 | `sendMessage()` | Send user message (async, handles uploads) |
@@ -254,6 +257,8 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `attachMessageActions()` | Add long-press/right-click to message bubbles |
 | `startEditMessage(el, index)` | Inline edit a user message |
 | `regenerateMessage()` | Re-generate last assistant response |
+| `forkConversation(fromMessageIndex)` | Fork conversation from a message |
+| `savePendingMessages()` | Persist offline message queue to localStorage |
 | `applyTheme()` | Apply current theme (auto/light/dark) to DOM |
 | `loadMoreMessages()` | Prepend older messages (virtual scroll) |
 | `triggerSearch()` | Run search with current query + filters |
@@ -286,6 +291,9 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `.filter-chip` | Date range filter pill |
 | `.load-more-btn` | Load earlier messages button |
 | `.queued` | Message queued while offline |
+| `.scope-group` | Conversation group by working directory |
+| `.scope-header` | Collapsible scope section header |
+| `.scope-items` | Container for cards within a scope group |
 
 ---
 

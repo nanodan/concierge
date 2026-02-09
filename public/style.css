@@ -2095,6 +2095,10 @@ html, body {
 [data-theme="light"] .hljs-operator { color: #0550ae; }
 [data-theme="light"] .hljs-punctuation { color: var(--text-secondary); }
 
+[data-theme="light"] .scope-header {
+  border-bottom-color: rgba(0,0,0,0.08);
+}
+
 [data-theme="light"] ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
 }
@@ -2265,4 +2269,59 @@ html, body {
 
 .load-more-btn:active {
   opacity: 0.85;
+}
+
+/* Scope grouping */
+.scope-group {
+  margin-bottom: 4px;
+}
+
+.scope-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: none;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.06));
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.scope-header:active {
+  background: var(--surface);
+}
+
+.scope-chevron {
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.scope-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-count {
+  flex-shrink: 0;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.scope-items.hidden {
+  display: none;
 }

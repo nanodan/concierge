@@ -111,6 +111,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `GET` | `/api/stats` | Aggregate stats across all conversations (cached 30s) |
 | `GET` | `/api/conversations/:id/export` | Export conversation. Query: `?format=markdown\|json` |
 | `POST` | `/api/conversations/:id/upload` | Upload file attachment (raw body, `X-Filename` header) |
+| `POST` | `/api/conversations/:id/fork` | Fork conversation from message index. Body: `{ fromMessageIndex }` |
 
 ### WebSocket Protocol
 
@@ -171,16 +172,17 @@ isRecording               // Voice recording state
 currentTTSBtn             // Active TTS button reference
 pendingAttachments[]      // Files queued for upload with next message
 currentTheme              // 'auto' | 'light' | 'dark'
-pendingMessages[]         // Messages queued while WS disconnected
+pendingMessages[]         // Messages queued while WS disconnected (localStorage-persisted)
 allMessages[]             // Full messages array for virtual scroll
 messagesOffset            // How many messages rendered from start
+collapsedScopes{}         // Which cwd scope groups are collapsed (localStorage-persisted)
 ```
 
 ### Three Views
 
 The app has three mutually exclusive views, transitioned via CSS transforms:
 
-1. **List View** (`#list-view`) - Conversation browser with search, archive toggle, FAB
+1. **List View** (`#list-view`) - Conversation browser grouped by working directory (scope), with search, archive toggle, FAB
 2. **Chat View** (`#chat-view`) - Message list, input bar, header with controls
 3. **Stats View** (`#stats-view`) - Analytics dashboard
 
@@ -274,17 +276,20 @@ Fetches aggregated data from `/api/stats` and renders:
 
 ## Service Worker (`public/sw.js`)
 
-**Strategy:** Cache-first for static assets, network-only for API calls.
+**Strategy:** Cache-first for static assets, network-first for selected API routes (offline support), skip other API calls.
 
 **Cached assets:**
 - `/`, `/style.css`, `/markdown.js`, `/app.js`, `/manifest.json`, `/lib/highlight.min.js`
 
-**Cache versioning:** `claude-chat-v12` - increment the version number to bust caches on deploy.
+**Cached API routes (network-first):**
+- `/api/conversations` — enables offline conversation list loading
+
+**Cache versioning:** `claude-chat-v13` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets
 2. `activate` - Delete old cache versions, claim clients
-3. `fetch` - Skip API routes and WebSocket, serve from cache, fall back to network
+3. `fetch` - Network-first for cacheable API routes (fall back to cache), cache-first for static assets, skip other API/WS
 
 ---
 

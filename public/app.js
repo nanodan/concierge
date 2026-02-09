@@ -54,8 +54,15 @@ let pendingAttachments = []; // Array of { file, previewUrl, name }
 // Theme
 let currentTheme = localStorage.getItem('theme') || 'auto';
 
-// Message queue for offline resilience
-let pendingMessages = [];
+// Message queue for offline resilience (persisted to localStorage)
+let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages') || '[]');
+
+function savePendingMessages() {
+  localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
+}
+
+// Scope grouping collapsed state
+let collapsedScopes = JSON.parse(localStorage.getItem('collapsedScopes') || '{}');
 
 // Virtual scrolling
 const MESSAGES_PER_PAGE = 100;
@@ -150,6 +157,7 @@ function connectWS() {
     if (pendingMessages.length > 0) {
       const queued = [...pendingMessages];
       pendingMessages = [];
+      savePendingMessages();
       queued.forEach(msg => ws.send(JSON.stringify(msg)));
       showToast(`Sent ${queued.length} queued message${queued.length > 1 ? 's' : ''}`);
     }
@@ -303,6 +311,24 @@ async function renameConversation(id, name) {
   await loadConversations();
 }
 
+async function forkConversation(fromMessageIndex) {
+  if (!currentConversationId) return;
+  try {
+    const res = await fetch(`/api/conversations/${currentConversationId}/fork`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromMessageIndex }),
+    });
+    if (!res.ok) { showToast('Fork failed', { variant: 'error' }); return; }
+    const conv = await res.json();
+    showToast('Forked conversation');
+    await loadConversations();
+    openConversation(conv.id);
+  } catch (err) {
+    showToast('Fork failed', { variant: 'error' });
+  }
+}
+
 async function searchConversations(query, filters = {}) {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
@@ -345,7 +371,17 @@ function renderConversationList(items) {
     return;
   }
 
-  conversationList.innerHTML = list.map(c => {
+  // Group by cwd (scope) unless searching
+  const groups = new Map();
+  for (const c of list) {
+    const scope = c.cwd || 'Unknown';
+    if (!groups.has(scope)) groups.set(scope, []);
+    groups.get(scope).push(c);
+  }
+
+  const showCwdOnCards = groups.size <= 1 || isSearch;
+
+  function renderCard(c) {
     const preview = c.lastMessage
       ? truncate(c.lastMessage.text, 60)
       : 'No messages yet';
@@ -353,16 +389,18 @@ function renderConversationList(items) {
       ? formatTime(c.lastMessage.timestamp)
       : formatTime(c.createdAt);
 
-    // Search match snippet
     let matchHtml = '';
     if (c.matchingMessages && c.matchingMessages.length > 0) {
       const snippet = truncate(c.matchingMessages[0].text, 80);
       matchHtml = `<div class="conv-card-match">${escapeHtml(snippet)}</div>`;
     }
 
+    const cwdHtml = showCwdOnCards && c.cwd
+      ? `<div class="conv-card-cwd">${escapeHtml(c.cwd.replace(/^\/Users\/[^/]+/, '~'))}</div>`
+      : '';
+
     const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
     const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
-
     const isUnread = unreadConversations.has(c.id);
     return `
       <div class="conv-card-wrapper">
@@ -377,11 +415,47 @@ function renderConversationList(items) {
           </div>
           <div class="conv-card-preview">${escapeHtml(preview)}</div>
           ${matchHtml}
-          <div class="conv-card-cwd">${escapeHtml(c.cwd)}</div>
+          ${cwdHtml}
         </div>
       </div>
     `;
-  }).join('');
+  }
+
+  // Single group or search: flat list
+  if (groups.size <= 1 || isSearch) {
+    conversationList.innerHTML = list.map(renderCard).join('');
+  } else {
+    const shortPath = (p) => p.replace(/^\/Users\/[^/]+/, '~');
+    conversationList.innerHTML = Array.from(groups.entries()).map(([scope, convs]) => {
+      const collapsed = collapsedScopes[scope];
+      return `
+        <div class="scope-group" data-scope="${escapeHtml(scope)}">
+          <button class="scope-header${collapsed ? ' collapsed' : ''}">
+            <span class="scope-chevron">${collapsed ? '&#x25B6;' : '&#x25BC;'}</span>
+            <span class="scope-path">${escapeHtml(shortPath(scope))}</span>
+            <span class="scope-count">${convs.length}</span>
+          </button>
+          <div class="scope-items${collapsed ? ' hidden' : ''}">
+            ${convs.map(renderCard).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Scope toggle handlers
+    conversationList.querySelectorAll('.scope-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const group = header.closest('.scope-group');
+        const scope = group.dataset.scope;
+        const items = group.querySelector('.scope-items');
+        const isCollapsed = items.classList.toggle('hidden');
+        header.classList.toggle('collapsed', isCollapsed);
+        header.querySelector('.scope-chevron').innerHTML = isCollapsed ? '&#x25B6;' : '&#x25BC;';
+        collapsedScopes[scope] = isCollapsed;
+        localStorage.setItem('collapsedScopes', JSON.stringify(collapsedScopes));
+      });
+    });
+  }
 
   // Attach swipe + click + long-press handlers
   conversationList.querySelectorAll('.conv-card-wrapper').forEach(wrapper => {
@@ -922,6 +996,7 @@ async function sendMessage(text) {
     }
     const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
     pendingMessages.push(msg);
+    savePendingMessages();
     // Show queued message in UI
     const el = document.createElement('div');
     el.className = 'message user animate-in queued';
@@ -1096,8 +1171,18 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   });
   msgActionPopup.appendChild(copyBtn);
 
+  // Fork from here
+  const forkBtn = document.createElement('button');
+  forkBtn.className = 'action-popup-btn';
+  forkBtn.textContent = 'Fork from here';
+  forkBtn.addEventListener('click', () => {
+    hideMsgActionPopup();
+    forkConversation(index);
+  });
+  msgActionPopup.appendChild(forkBtn);
+
   msgActionPopup.style.left = Math.min(x, window.innerWidth - 180) + 'px';
-  msgActionPopup.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+  msgActionPopup.style.top = Math.min(y, window.innerHeight - 200) + 'px';
   msgActionPopup.classList.remove('hidden');
   actionPopupOverlay.classList.remove('hidden');
 }
