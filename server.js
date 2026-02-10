@@ -657,7 +657,7 @@ async function handleEdit(ws, msg) {
     messages: conv.messages,
   }));
 
-  spawnClaude(ws, conversationId, conv, text);
+  spawnClaude(ws, conversationId, conv, text, conv.messages[messageIndex].attachments);
 }
 
 function spawnClaude(ws, conversationId, conv, text, attachments) {
@@ -679,8 +679,24 @@ function spawnClaude(ws, conversationId, conv, text, attachments) {
 
   args.push('--add-dir', conv.cwd);
 
-  // Note: image attachments are uploaded for the UI only.
-  // Claude CLI does not support image inputs via flags.
+  // Grant access to uploads directory so Claude can read attached files
+  if (attachments && attachments.length > 0) {
+    args.push('--add-dir', path.join(UPLOAD_DIR, conversationId));
+  }
+
+  // Append attachment file paths to the prompt so Claude can read them
+  if (attachments && attachments.length > 0) {
+    const imageAtts = attachments.filter(a => a.path && /\.(png|jpg|jpeg|gif|webp)$/i.test(a.path));
+    const fileAtts = attachments.filter(a => a.path && !/\.(png|jpg|jpeg|gif|webp)$/i.test(a.path));
+    if (imageAtts.length > 0) {
+      const paths = imageAtts.map(a => a.path).join('\n');
+      args[1] += `\n\n[Attached image${imageAtts.length > 1 ? 's' : ''} — view by reading ${imageAtts.length > 1 ? 'these files' : 'this file'}:]\n${paths}`;
+    }
+    if (fileAtts.length > 0) {
+      const paths = fileAtts.map(a => a.path).join('\n');
+      args[1] += `\n\n[Attached file${fileAtts.length > 1 ? 's' : ''} — read for context:]\n${paths}`;
+    }
+  }
 
   const proc = spawn('claude', args, {
     cwd: conv.cwd,

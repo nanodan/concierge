@@ -106,6 +106,9 @@ const dirList = document.getElementById('dir-list');
 const dirNewBtn = document.getElementById('dir-new-btn');
 const dirSelectBtn = document.getElementById('dir-select-btn');
 const micBtn = document.getElementById('mic-btn');
+const attachBtn = document.getElementById('attach-btn');
+const fileInput = document.getElementById('file-input');
+const attachmentPreview = document.getElementById('attachment-preview');
 const cancelBtn = document.getElementById('cancel-btn');
 const convAutopilot = document.getElementById('conv-autopilot');
 const dialogOverlay = document.getElementById('dialog-overlay');
@@ -979,15 +982,18 @@ function showListView() {
 
 // --- Send message ---
 async function sendMessage(text) {
-  if (!text.trim() || !currentConversationId) return;
+  if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
   haptic(5);
 
-  // Queue if offline
+  // Queue if offline (without attachments)
   if (!ws || ws.readyState !== WebSocket.OPEN) {
+    if (pendingAttachments.length > 0) {
+      showToast('Cannot upload files while offline', { variant: 'error' });
+      return;
+    }
     const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
     pendingMessages.push(msg);
     savePendingMessages();
-    // Show queued message in UI
     const el = document.createElement('div');
     el.className = 'message user animate-in queued';
     el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>`;
@@ -999,10 +1005,35 @@ async function sendMessage(text) {
     return;
   }
 
+  // Upload attachments first
+  let attachments = [];
+  for (const att of pendingAttachments) {
+    try {
+      const resp = await fetch(
+        `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
+        { method: 'POST', body: att.file }
+      );
+      const result = await resp.json();
+      attachments.push(result);
+    } catch {
+      showToast(`Failed to upload ${att.name}`, { variant: 'error' });
+    }
+  }
+
+  // Build attachment HTML for the message bubble
+  let attachHtml = '';
+  if (attachments.length > 0) {
+    attachHtml = '<div class="msg-attachments">' + attachments.map(a =>
+      /\.(png|jpg|jpeg|gif|webp)$/i.test(a.filename)
+        ? `<img src="${a.url}" class="msg-attachment-img" alt="${escapeHtml(a.filename)}">`
+        : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
+    ).join('') + '</div>';
+  }
+
   // Show message in UI
   const el = document.createElement('div');
   el.className = 'message user animate-in';
-  el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
+  el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   userHasScrolledUp = false;
   scrollToBottom(true);
@@ -1011,14 +1042,60 @@ async function sendMessage(text) {
     type: 'message',
     conversationId: currentConversationId,
     text,
+    attachments: attachments.length > 0 ? attachments : undefined,
   }));
 
+  // Clean up
+  pendingAttachments.forEach(a => { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+  pendingAttachments = [];
+  renderAttachmentPreview();
   setThinking(true);
   messageInput.value = '';
   autoResizeInput();
 }
 
-// Attachments are not supported via Claude CLI; UI input is removed.
+// --- Attachments ---
+let pendingAttachments = [];
+
+attachBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+  for (const file of fileInput.files) {
+    const att = { file, name: file.name };
+    if (file.type.startsWith('image/')) {
+      att.previewUrl = URL.createObjectURL(file);
+    }
+    pendingAttachments.push(att);
+  }
+  fileInput.value = '';
+  renderAttachmentPreview();
+});
+
+function renderAttachmentPreview() {
+  if (pendingAttachments.length === 0) {
+    attachmentPreview.classList.add('hidden');
+    return;
+  }
+  attachmentPreview.classList.remove('hidden');
+  attachmentPreview.innerHTML = pendingAttachments.map((att, i) => {
+    const thumb = att.previewUrl
+      ? `<img src="${att.previewUrl}" class="attachment-thumb">`
+      : '<span class="attachment-file-icon">&#x1F4CE;</span>';
+    return `<div class="attachment-item">
+      ${thumb}
+      <span class="attachment-name">${escapeHtml(att.name)}</span>
+      <button class="attachment-remove" data-index="${i}">&times;</button>
+    </div>`;
+  }).join('');
+  attachmentPreview.querySelectorAll('.attachment-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index);
+      if (pendingAttachments[idx].previewUrl) URL.revokeObjectURL(pendingAttachments[idx].previewUrl);
+      pendingAttachments.splice(idx, 1);
+      renderAttachmentPreview();
+    });
+  });
+}
 
 // --- Message Actions (Edit & Regenerate) ---
 function attachMessageActions() {
