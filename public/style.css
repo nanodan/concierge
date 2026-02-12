@@ -1,6 +1,5 @@
 /* CSS Module Imports */
-/* Theme must be first to define all CSS variables */
-@import url('css/themes/darjeeling.css');
+/* Color theme is loaded via <link id="color-theme-link"> in index.html for dynamic swapping */
 @import url('css/base.css');
 @import url('css/layout.css');
 @import url('css/components.css');

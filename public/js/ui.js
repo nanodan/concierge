@@ -44,6 +44,9 @@ let msgActionPopup = null;
 let actionPopupOverlay = null;
 let themeToggle = null;
 let themeDropdown = null;
+let colorThemeToggle = null;
+let colorThemeDropdown = null;
+let colorThemeLink = null;
 let filterToggle = null;
 let filterRow = null;
 let filterModelSelect = null;
@@ -100,6 +103,9 @@ export function initUI(elements) {
   actionPopupOverlay = elements.actionPopupOverlay;
   themeToggle = elements.themeToggle;
   themeDropdown = elements.themeDropdown;
+  colorThemeToggle = elements.colorThemeToggle;
+  colorThemeDropdown = elements.colorThemeDropdown;
+  colorThemeLink = document.getElementById('color-theme-link');
   filterToggle = elements.filterToggle;
   filterRow = elements.filterRow;
   filterModelSelect = elements.filterModelSelect;
@@ -493,9 +499,15 @@ function applyTheme(animate = false) {
   }
 
   document.documentElement.setAttribute('data-theme', effective);
-  // Update status bar color (Darjeeling palette)
+  // Update status bar color from CSS variable
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = effective === 'light' ? '#F5F0E6' : '#1F1A16';
+  if (meta) {
+    // Read the theme color from the CSS variable after it's been applied
+    setTimeout(() => {
+      const computed = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+      if (computed) meta.content = computed;
+    }, 10);
+  }
 }
 
 function toggleThemeDropdown() {
@@ -548,6 +560,86 @@ function updateThemeIcon() {
   if (themeDropdown) {
     themeDropdown.querySelectorAll('.theme-option').forEach(opt => {
       opt.classList.toggle('active', opt.dataset.theme === currentTheme);
+    });
+  }
+}
+
+// --- Color Theme ---
+const COLOR_THEMES = {
+  darjeeling: { name: 'Darjeeling', icon: '\u{1F3DC}' },
+  claude: { name: 'Claude', icon: '\u{1F49C}' },
+  nord: { name: 'Nord', icon: '\u2744' }
+};
+
+function applyColorTheme(animate = false) {
+  const theme = state.getCurrentColorTheme();
+  if (!colorThemeLink) return;
+
+  if (animate) {
+    document.documentElement.classList.add('theme-transitioning');
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350);
+  }
+
+  colorThemeLink.href = `/css/themes/${theme}.css`;
+
+  // Update status bar color after CSS loads
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    setTimeout(() => {
+      const computed = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+      if (computed) meta.content = computed;
+    }, 50);
+  }
+}
+
+function toggleColorThemeDropdown() {
+  if (!colorThemeDropdown || !colorThemeToggle) return;
+  const isHidden = colorThemeDropdown.classList.contains('hidden');
+  if (isHidden) {
+    // Close other dropdown if open
+    closeThemeDropdown();
+    // Position the dropdown below the toggle button
+    const rect = colorThemeToggle.getBoundingClientRect();
+    colorThemeDropdown.style.top = `${rect.bottom + 4}px`;
+    colorThemeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    colorThemeDropdown.classList.remove('hidden');
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeColorThemeDropdownOnOutsideClick);
+    }, 0);
+  } else {
+    closeColorThemeDropdown();
+  }
+}
+
+function closeColorThemeDropdown() {
+  if (!colorThemeDropdown) return;
+  colorThemeDropdown.classList.add('hidden');
+  document.removeEventListener('click', closeColorThemeDropdownOnOutsideClick);
+}
+
+function closeColorThemeDropdownOnOutsideClick(e) {
+  if (!colorThemeDropdown.contains(e.target) && e.target !== colorThemeToggle) {
+    closeColorThemeDropdown();
+  }
+}
+
+function selectColorTheme(newTheme) {
+  haptic(10);
+  state.setCurrentColorTheme(newTheme);
+  applyColorTheme(true);
+  updateColorThemeIcon();
+  closeColorThemeDropdown();
+  const info = COLOR_THEMES[newTheme] || { name: newTheme };
+  showToast(`Color theme: ${info.name}`);
+}
+
+function updateColorThemeIcon() {
+  // Update active state in dropdown
+  if (colorThemeDropdown) {
+    const currentColorTheme = state.getCurrentColorTheme();
+    colorThemeDropdown.querySelectorAll('.theme-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.colorTheme === currentColorTheme);
     });
   }
 }
@@ -1023,10 +1115,11 @@ export function setupEventListeners(createConversation) {
     listView.classList.remove('slide-out');
   });
 
-  // Theme dropdown
+  // Theme dropdown (light/dark/auto)
   if (themeToggle) {
     themeToggle.addEventListener('click', (e) => {
       e.stopPropagation();
+      closeColorThemeDropdown();
       toggleThemeDropdown();
     });
   }
@@ -1039,6 +1132,23 @@ export function setupEventListeners(createConversation) {
     });
   }
 
+  // Color theme dropdown (darjeeling/claude/nord)
+  if (colorThemeToggle) {
+    colorThemeToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeThemeDropdown();
+      toggleColorThemeDropdown();
+    });
+  }
+  if (colorThemeDropdown) {
+    colorThemeDropdown.addEventListener('click', (e) => {
+      const option = e.target.closest('.theme-option');
+      if (option && option.dataset.colorTheme) {
+        selectColorTheme(option.dataset.colorTheme);
+      }
+    });
+  }
+
   // Listen for OS theme changes when in auto mode
   window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
     if (state.getCurrentTheme() === 'auto') applyTheme();
@@ -1046,6 +1156,8 @@ export function setupEventListeners(createConversation) {
 
   applyTheme();
   updateThemeIcon();
+  applyColorTheme();
+  updateColorThemeIcon();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {

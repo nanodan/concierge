@@ -30,8 +30,11 @@ export let recognition = null;
 export let isRecording = false;
 export let currentTTSBtn = null;
 
-// Theme
+// Theme (light/dark/auto)
 export let currentTheme = localStorage.getItem('theme') || 'auto';
+
+// Color theme (darjeeling, claude, etc.)
+export let currentColorTheme = localStorage.getItem('colorTheme') || 'darjeeling';
 
 // Message queue for offline resilience
 export let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages') || '[]');
@@ -217,6 +220,15 @@ export function setCurrentTheme(theme) {
 
 export function getCurrentTheme() {
   return currentTheme;
+}
+
+export function setCurrentColorTheme(theme) {
+  currentColorTheme = theme;
+  localStorage.setItem('colorTheme', theme);
+}
+
+export function getCurrentColorTheme() {
+  return currentColorTheme;
 }
 
 export function getPendingMessages() {
