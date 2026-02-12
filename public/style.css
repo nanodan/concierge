@@ -1,7 +1,8 @@
 /* CSS Module Imports */
+/* Theme must be first to define all CSS variables */
+@import url('css/themes/darjeeling.css');
 @import url('css/base.css');
 @import url('css/layout.css');
 @import url('css/components.css');
 @import url('css/messages.css');
 @import url('css/list.css');
-@import url('css/themes.css');

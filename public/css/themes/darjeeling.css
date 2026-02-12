@@ -1,0 +1,224 @@
+/*
+ * Darjeeling Limited Theme
+ * Inspired by Wes Anderson's warm, earthy color palette
+ */
+
+/* ========== DARK MODE (default) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-saffron: #E8963A;
+  --palette-saffron-light: #F0A850;
+  --palette-terracotta: #C75B39;
+  --palette-teal: #4A9B9B;
+  --palette-teal-light: #6BC4C4;
+  --palette-sand: #E8D5A3;
+  --palette-sand-muted: #B8A882;
+  --palette-mahogany: #6B3D2E;
+  --palette-earth-dark: #1F1A16;
+  --palette-earth-mid: #2A2420;
+  --palette-earth-light: #352F28;
+  --palette-earth-lighter: #3D3428;
+  --palette-earth-border: #4A3F34;
+  --palette-green: #7CB77B;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-earth-dark);
+  --bg-secondary: var(--palette-earth-mid);
+  --bg-tertiary: var(--palette-earth-lighter);
+  --surface: var(--palette-earth-light);
+  --input-bg: var(--palette-earth-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-sand);
+  --text-secondary: var(--palette-sand-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-saffron);
+  --accent-light: var(--palette-saffron-light);
+  --accent-secondary: var(--palette-teal);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-terracotta);
+  --success: var(--palette-teal);
+  --warning: var(--palette-saffron);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-earth-border);
+  --glass-bg: rgba(42, 36, 32, 0.85);
+  --glass-border: rgba(232, 213, 163, 0.12);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-saffron);
+  --user-bubble-end: var(--palette-terracotta);
+  --assistant-bubble: var(--palette-earth-mid);
+
+  /* === Alpha Variants (for animations, shadows, glows) === */
+  --accent-alpha-8: rgba(232, 150, 58, 0.08);
+  --accent-alpha-12: rgba(232, 150, 58, 0.12);
+  --accent-alpha-15: rgba(232, 150, 58, 0.15);
+  --accent-alpha-20: rgba(232, 150, 58, 0.2);
+  --accent-alpha-25: rgba(232, 150, 58, 0.25);
+  --accent-alpha-30: rgba(232, 150, 58, 0.3);
+  --accent-alpha-35: rgba(232, 150, 58, 0.35);
+  --accent-alpha-50: rgba(232, 150, 58, 0.5);
+
+  --danger-alpha-15: rgba(199, 91, 57, 0.15);
+  --danger-alpha-40: rgba(199, 91, 57, 0.4);
+
+  --teal-alpha-6: rgba(74, 155, 155, 0.06);
+  --teal-alpha-25: rgba(74, 155, 155, 0.25);
+
+  --terracotta-alpha-6: rgba(199, 91, 57, 0.06);
+  --terracotta-alpha-10: rgba(199, 91, 57, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-teal);
+  --status-thinking: var(--palette-saffron);
+  --status-disconnected: var(--palette-earth-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-teal);
+  --mode-manual-bg: var(--accent-alpha-20);
+  --mode-manual-text: var(--palette-saffron);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-saffron);
+  --syntax-string: var(--palette-green);
+  --syntax-number: var(--palette-terracotta);
+  --syntax-comment: #6B5D4D;
+  --syntax-function: var(--palette-teal);
+  --syntax-type: var(--palette-saffron-light);
+  --syntax-variable: var(--palette-terracotta);
+  --syntax-operator: var(--palette-sand-muted);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh (list view background) === */
+  --mesh-color-1: var(--accent-alpha-8);
+  --mesh-color-2: var(--terracotta-alpha-6);
+  --mesh-color-3: var(--teal-alpha-6);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #1F1A16;
+}
+
+/* ========== LIGHT MODE ========== */
+[data-theme="light"] {
+  /* === Core Palette Overrides === */
+  --palette-earth-dark: #F5F0E6;
+  --palette-earth-mid: #EBE4D6;
+  --palette-earth-light: #FFFDF8;
+  --palette-earth-lighter: #DDD5C4;
+  --palette-earth-border: #D4C9B5;
+  --palette-sand: #3D3428;
+  --palette-sand-muted: #6B5D4D;
+
+  /* === Backgrounds === */
+  --bg: #F5F0E6;
+  --bg-secondary: #EBE4D6;
+  --bg-tertiary: #DDD5C4;
+  --surface: #FFFDF8;
+  --input-bg: #FFFDF8;
+
+  /* === Text === */
+  --text: #3D3428;
+  --text-secondary: #6B5D4D;
+
+  /* === Borders === */
+  --border: #D4C9B5;
+  --glass-bg: rgba(255, 253, 248, 0.85);
+  --glass-border: rgba(107, 61, 46, 0.12);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: #F5F0E6;
+
+  /* === Alpha Variants (light mode adjustments) === */
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: #EBE4D6;
+  --code-header-bg: #DDD5C4;
+  --code-inline-bg: rgba(232, 150, 58, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(232, 150, 58, 0.06);
+  --mesh-color-2: rgba(199, 91, 57, 0.04);
+  --mesh-color-3: rgba(74, 155, 155, 0.05);
+
+  /* === Syntax Highlighting (warmer for light bg) === */
+  --syntax-keyword: #C75B39;
+  --syntax-string: #3D7A7A;
+  --syntax-number: #A04B2D;
+  --syntax-comment: #8B7355;
+  --syntax-function: #3D8585;
+  --syntax-type: #D4820F;
+  --syntax-variable: #A04B2D;
+  --syntax-operator: #6B5D4D;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #F5F0E6;
+}
+
+/* Auto theme via media query (when no explicit data-theme) */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-earth-dark: #F5F0E6;
+    --palette-earth-mid: #EBE4D6;
+    --palette-earth-light: #FFFDF8;
+    --palette-earth-lighter: #DDD5C4;
+    --palette-earth-border: #D4C9B5;
+    --palette-sand: #3D3428;
+    --palette-sand-muted: #6B5D4D;
+
+    --bg: #F5F0E6;
+    --bg-secondary: #EBE4D6;
+    --bg-tertiary: #DDD5C4;
+    --surface: #FFFDF8;
+    --input-bg: #FFFDF8;
+    --text: #3D3428;
+    --text-secondary: #6B5D4D;
+    --border: #D4C9B5;
+    --glass-bg: rgba(255, 253, 248, 0.85);
+    --glass-border: rgba(107, 61, 46, 0.12);
+    --assistant-bubble: #F5F0E6;
+
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #EBE4D6;
+    --code-header-bg: #DDD5C4;
+    --code-inline-bg: rgba(232, 150, 58, 0.1);
+    --mesh-color-1: rgba(232, 150, 58, 0.06);
+    --mesh-color-2: rgba(199, 91, 57, 0.04);
+    --mesh-color-3: rgba(74, 155, 155, 0.05);
+    --syntax-keyword: #C75B39;
+    --syntax-string: #3D7A7A;
+    --syntax-number: #A04B2D;
+    --syntax-comment: #8B7355;
+    --syntax-function: #3D8585;
+    --syntax-type: #D4820F;
+    --syntax-variable: #A04B2D;
+    --syntax-operator: #6B5D4D;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #F5F0E6;
+  }
+}

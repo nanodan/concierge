@@ -12,7 +12,7 @@
   border: none;
   font-size: 28px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(232, 150, 58, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px var(--accent-alpha-35), 0 2px 8px var(--black-alpha-20);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,13 +22,13 @@
 }
 
 @keyframes fab-breathe {
-  0%, 100% { box-shadow: 0 4px 16px rgba(232, 150, 58, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2); }
-  50% { box-shadow: 0 6px 24px rgba(232, 150, 58, 0.5), 0 4px 12px rgba(0, 0, 0, 0.25); }
+  0%, 100% { box-shadow: 0 4px 16px var(--accent-alpha-35), 0 2px 8px var(--black-alpha-20); }
+  50% { box-shadow: 0 6px 24px var(--accent-alpha-50), 0 4px 12px var(--black-alpha-25); }
 }
 
 .fab:active {
   transform: scale(0.92);
-  box-shadow: 0 2px 8px rgba(232, 150, 58, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px var(--accent-alpha-25), 0 1px 4px var(--black-alpha-15);
   animation: none;
 }
 
@@ -48,7 +48,7 @@
 
 .input-bar textarea {
   flex: 1;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--white-alpha-6);
   border: 1px solid var(--glass-border);
   border-radius: 22px;
   padding: 10px 16px;
@@ -63,7 +63,7 @@
 }
 
 .input-bar textarea:focus {
-  border-color: rgba(232, 150, 58, 0.5);
+  border-color: var(--accent-alpha-50);
 }
 
 .input-bar textarea::placeholder {
@@ -120,8 +120,8 @@
 }
 
 @keyframes mic-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(199, 91, 57, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(199, 91, 57, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--danger-alpha-40); }
+  50% { box-shadow: 0 0 0 8px transparent; }
 }
 
 .mic-btn.hidden {
@@ -248,7 +248,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--black-alpha-50);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -504,7 +504,7 @@
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--black-alpha-50);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -528,7 +528,7 @@
   width: 100%;
   max-width: 320px;
   border: 1px solid var(--glass-border);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px var(--black-alpha-50);
   animation: modal-enter 0.25s ease;
 }
 
@@ -630,7 +630,7 @@
   border-radius: 10px;
   min-width: 140px;
   padding: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px var(--black-alpha-40);
   z-index: 20;
 }
 
@@ -696,13 +696,13 @@
 }
 
 .mode-badge.autopilot {
-  background: rgba(74, 155, 155, 0.25);
-  color: var(--accent-secondary);
+  background: var(--mode-autopilot-bg);
+  color: var(--mode-autopilot-text);
 }
 
 .mode-badge.manual {
-  background: rgba(232, 150, 58, 0.2);
-  color: var(--accent);
+  background: var(--mode-manual-bg);
+  color: var(--mode-manual-text);
 }
 
 .mode-badge:active {
@@ -733,7 +733,7 @@
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px var(--black-alpha-30);
   opacity: 0;
   transform: translateY(16px);
   pointer-events: auto;
@@ -783,7 +783,7 @@
   cursor: pointer;
   z-index: 8;
   transition: opacity 0.25s ease, transform 0.25s ease;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px var(--black-alpha-30);
 }
 .scroll-pill.visible {
   opacity: 1;
@@ -794,8 +794,8 @@
 .scroll-pill:active { transform: translateX(-50%) scale(0.95); }
 
 @keyframes pill-flash {
-  0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
-  50% { box-shadow: 0 4px 16px rgba(232, 150, 58, 0.5), 0 0 0 4px rgba(232, 150, 58, 0.15); }
+  0%, 100% { box-shadow: 0 4px 16px var(--black-alpha-30); }
+  50% { box-shadow: 0 4px 16px var(--accent-alpha-50), 0 0 0 4px var(--accent-alpha-15); }
 }
 
 /* Theme toggle button */
