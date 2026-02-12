@@ -19,15 +19,22 @@ Claude Remote Chat is a three-tier PWA: a Node.js backend spawns Claude CLI proc
                                    └───────────┘
 ```
 
-## Backend (`server.js`)
+## Backend (`server.js` + `lib/*.js`)
+
+The backend is split into modules:
+- `server.js` (~226 lines) — Entry point, Express/WS setup, WebSocket message handlers
+- `lib/routes.js` (~364 lines) — REST API endpoints
+- `lib/claude.js` (~240 lines) — Claude CLI process spawning and stream parsing
+- `lib/data.js` (~170 lines) — Data storage, atomic writes, lazy loading
 
 ### Server Startup
 
-1. Loads conversation metadata from `data/index.json` into a `Map<id, conversation>`
+1. Loads conversation metadata from `data/index.json` into a `Map<id, conversation>` (via `lib/data.js`)
 2. Migrates legacy `data/conversations.json.bak` if present (one-time)
 3. Starts Express for REST API + static file serving
-4. Starts WebSocket server on the same HTTP(S) server
-5. Auto-detects `certs/key.pem` + `certs/cert.pem` for HTTPS
+4. Sets up REST routes via `setupRoutes()` from `lib/routes.js`
+5. Starts WebSocket server on the same HTTP(S) server
+6. Auto-detects `certs/key.pem` + `certs/cert.pem` for HTTPS
 
 ### Process Management
 
@@ -81,7 +88,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 ```javascript
 {
   id, name, cwd, claudeSessionId, status,
-  archived, autopilot, model, createdAt,
+  archived, pinned, autopilot, model, createdAt,
   messageCount, lastMessage: { role, text, timestamp, cost, duration, sessionId }
 }
 ```
@@ -102,7 +109,7 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `GET` | `/api/conversations` | List conversations. Query: `?archived=true` |
 | `POST` | `/api/conversations` | Create conversation. Body: `{ name, cwd, autopilot, model }` |
 | `GET` | `/api/conversations/:id` | Get conversation with messages |
-| `PATCH` | `/api/conversations/:id` | Update fields (archive, name, model, autopilot) |
+| `PATCH` | `/api/conversations/:id` | Update fields (archive, name, model, autopilot, pinned) |
 | `DELETE` | `/api/conversations/:id` | Delete conversation and message file |
 | `GET` | `/api/conversations/search` | Search. Query: `?q=term&dateFrom=ISO&dateTo=ISO&model=id` |
 | `GET` | `/api/models` | List available Claude models |
@@ -248,10 +255,21 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 - Snaps open/closed based on 60px threshold
 - Only one card open at a time (`activeSwipeCard`)
 
+**Swipe-to-go-back** (chat view):
+- Swipe from left edge (30px) to return to conversation list
+- Visual feedback during swipe (translateX)
+- 80px threshold triggers navigation
+
 **Long-press** (conversation cards):
 - 500ms timer triggers floating action popup
-- Shows Archive/Rename/Delete options
+- Shows Pin/Archive/Rename/Delete options
 - Positioned near the touch point
+
+**Bulk selection mode**:
+- "Select" button in header enters multi-select mode
+- Tap cards to toggle selection
+- Bulk action bar appears at bottom (Select All, Archive, Delete)
+- Cancel exits selection mode
 
 **Long-press / right-click** (message bubbles):
 - 500ms timer triggers message action popup
@@ -261,6 +279,16 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 
 **Desktop fallback:**
 - Right-click opens same context menu as long-press (both cards and messages)
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl+K` | Focus search input |
+| `Cmd/Ctrl+N` | New conversation |
+| `Cmd/Ctrl+E` | Export conversation |
+| `Cmd/Ctrl+Shift+A` | Toggle archived view |
+| `Escape` | Go back / close modal |
 
 ### Voice Input
 
@@ -305,13 +333,15 @@ Fetches aggregated data from `/api/stats` and renders:
 **Strategy:** Cache-first for static assets, network-first for selected API routes (offline support), skip other API calls.
 
 **Cached assets:**
-- `/`, `/style.css`, `/manifest.json`, `/lib/highlight.min.js`
+- `/`, `/index.html`, `/style.css`, `/manifest.json`, `/lib/highlight.min.js`
 - All ES modules in `/js/`: `app.js`, `state.js`, `utils.js`, `websocket.js`, `render.js`, `conversations.js`, `ui.js`, `markdown.js`
+- All CSS files in `/css/`: `base.css`, `layout.css`, `components.css`, `messages.css`, `list.css`
+- All color themes: `themes/darjeeling.css`, `themes/claude.css`, `themes/nord.css`, `themes/budapest.css`
 
 **Cached API routes (network-first):**
 - `/api/conversations` — enables offline conversation list loading
 
-**Cache versioning:** `claude-chat-v15` - increment the version number to bust caches on deploy.
+**Cache versioning:** `claude-chat-v32` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets
@@ -360,22 +390,41 @@ Fetches aggregated data from `/api/stats` and renders:
 
 ---
 
-## CSS Architecture (`public/style.css`)
+## CSS Architecture (`public/css/`)
+
+CSS is split into modular files:
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `base.css` | ~82 | CSS variables, resets, base animations |
+| `layout.css` | ~620 | Page layout, headers, view transitions |
+| `components.css` | ~1070 | Buttons, inputs, modals, toasts, toggles |
+| `messages.css` | ~657 | Chat messages, code blocks, attachments |
+| `list.css` | ~677 | Conversation list, cards, swipe, bulk selection |
+
+### Color Themes (`public/css/themes/`)
+
+Four swappable color themes (~210 lines each):
+- **Darjeeling** (default) — Warm earth tones
+- **Claude** — Purple accent with neutral grays
+- **Nord** — Arctic blue palette
+- **Budapest** — Grand Budapest Hotel inspired (plum/cream)
+
+Themes are loaded via `<link id="color-theme-link">` and swapped dynamically.
 
 ### Design System
 
-**Theme:** Dark and light modes, defined via CSS custom properties. Dark is `:root` default, light is `[data-theme="light"]`. Respects `prefers-color-scheme` in auto mode. Theme cycles: auto → light → dark.
+**Light/Dark Mode:** Each color theme defines both dark (`:root`) and light (`html[data-theme="light"]`) variants. Mode cycles: auto → light → dark.
 
-| Variable | Value | Usage |
-|----------|-------|-------|
-| `--bg` | `#1c1c1e` | Page background |
-| `--bg-secondary` | `#2c2c2e` | Cards, surfaces |
-| `--surface` | `#323234` | Elevated elements |
-| `--text` | `#f0eded` | Primary text |
-| `--text-secondary` | `#a8a3a0` | Muted text |
-| `--accent` | `#7c6cf0` | Primary brand color |
-| `--accent-light` | `#9b8fff` | Hover states |
-| `--danger` | `#e74c3c` | Destructive actions |
+**CSS Variables:** Each theme defines:
+| Variable | Usage |
+|----------|-------|
+| `--bg`, `--bg-secondary`, `--bg-tertiary` | Background hierarchy |
+| `--surface` | Elevated elements |
+| `--text`, `--text-secondary` | Text colors |
+| `--accent`, `--accent-light` | Brand/interactive color |
+| `--user-bubble`, `--user-bubble-end` | User message gradient |
+| `--danger`, `--warning`, `--success` | Semantic colors |
 
 **Glass-morphism:** Headers, input bars, and modals use `backdrop-filter: blur(20px) saturate(1.4)` with semi-transparent backgrounds.
 

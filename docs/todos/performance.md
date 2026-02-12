@@ -63,15 +63,12 @@ Search loads all messages into memory and does string matching. Could be slow wi
 
 ---
 
-## Reduce swipe animation repaints
+## ~~Reduce swipe animation repaints~~ ✅ DONE
 **Priority:** Low
 **Effort:** Low
 
-Touch move events fire every few pixels during swipe gestures, triggering repaints. On slower devices this can feel sluggish.
+~~Touch move events fire every few pixels during swipe gestures.~~ **IMPLEMENTED**
 
-**Approach:**
-- Throttle touch move handler with RAF (already used elsewhere)
-- Use `will-change: transform` on swipeable elements
-- Consider using CSS `touch-action` to let the browser optimize
-
-**Files:** `public/app.js` (swipe handlers), `public/style.css`
+- `will-change: transform` added to swipeable elements
+- `touch-action: pan-y` added to conversation cards
+- CSS transitions optimized

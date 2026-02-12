@@ -2,12 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Detailed Documentation
+## Before You Start
 
-Before reading source files, consult these docs for context:
+**IMPORTANT:** If you haven't already read the documentation in this conversation, read these files FIRST before making any code changes:
 
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Full system design: backend, frontend, service worker, data flow, WebSocket protocol, REST API, CSS architecture
-- **[docs/REFERENCE.md](docs/REFERENCE.md)** — Developer quick reference: file map with line ranges, data models, key functions, CSS classes, common modification patterns, Claude CLI integration details
+1. **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Full system design: backend modules, frontend structure, service worker, data flow, WebSocket protocol, REST API, CSS architecture, touch interactions
+2. **[docs/REFERENCE.md](docs/REFERENCE.md)** — Developer quick reference: file map with line ranges, data models, key functions, CSS classes, common modification patterns
+
+This codebase has a specific modular structure (backend split into `lib/*.js`, CSS split into `public/css/*.css` + themes). Reading the docs first will help you make changes in the right places and follow existing patterns.
 
 ## What This Is
 
@@ -24,31 +26,52 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 
 ## File Map (quick reference)
 
+### Backend
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server.js` | ~868 | Express + WebSocket backend, Claude CLI process management, file uploads |
-| `public/js/app.js` | ~222 | Main entry point, imports all modules, initialization |
-| `public/js/state.js` | ~433 | Shared state module, all mutable state variables and setters |
-| `public/js/utils.js` | ~142 | Helper functions: formatTime, haptic, showToast, showDialog |
-| `public/js/websocket.js` | ~108 | WebSocket connection management, reconnect logic |
-| `public/js/render.js` | ~423 | Rendering functions: messages, code blocks, TTS, reactions |
-| `public/js/conversations.js` | ~534 | Conversation management, list rendering, swipe/long-press |
-| `public/js/ui.js` | ~1085 | UI interactions, event handlers, modals, theme, stats |
-| `public/js/markdown.js` | ~66 | Hand-rolled markdown parser (ES module version) |
-| `public/index.html` | ~194 | HTML structure, three views, modals |
-| `public/style.css` | ~2327 | Dark/light theme, glass-morphism, animations, safe areas |
-| `public/sw.js` | ~78 | Service worker (cache-first for assets, network-first for API) |
+| `server.js` | ~226 | Express + WebSocket server, entry point |
+| `lib/routes.js` | ~364 | REST API endpoints |
+| `lib/claude.js` | ~240 | Claude CLI process management, streaming |
+| `lib/data.js` | ~170 | Data storage, atomic writes, lazy loading |
+
+### Frontend JS (`public/js/`)
+| File | Lines | Purpose |
+|------|-------|---------|
+| `app.js` | ~266 | Main entry point, imports all modules, initialization |
+| `state.js` | ~481 | Shared state module, all mutable state variables and setters |
+| `ui.js` | ~1320 | UI interactions, event handlers, modals, theme, stats |
+| `conversations.js` | ~693 | Conversation management, list rendering, swipe/long-press, bulk selection |
+| `render.js` | ~429 | Rendering functions: messages, code blocks, TTS, reactions |
+| `utils.js` | ~165 | Helper functions: formatTime, haptic, showToast (with undo), showDialog |
+| `websocket.js` | ~108 | WebSocket connection management, reconnect logic |
+| `markdown.js` | ~66 | Hand-rolled markdown parser |
+
+### Frontend CSS (`public/css/`)
+| File | Lines | Purpose |
+|------|-------|---------|
+| `base.css` | ~82 | CSS variables, resets, animations |
+| `layout.css` | ~620 | Page layout, headers, view structure |
+| `components.css` | ~1070 | Buttons, inputs, modals, toasts |
+| `messages.css` | ~657 | Chat messages, code blocks, streaming |
+| `list.css` | ~677 | Conversation list, cards, swipe actions, bulk selection |
+| `themes/*.css` | ~210 ea | Color themes (darjeeling, claude, nord, budapest) |
+
+### Other
+| File | Lines | Purpose |
+|------|-------|---------|
+| `public/index.html` | ~276 | HTML structure, three views, modals |
+| `public/sw.js` | ~86 | Service worker (cache-first for assets, network-first for API) |
 | `public/manifest.json` | — | PWA manifest |
 
 See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each file.
 
 ## Architecture
 
-**Backend** (`server.js`): Express + WebSocket server. Spawns `claude` CLI as a child process per message, streams JSON output back to the client via WebSocket. Conversations stored as JSON files on disk.
+**Backend** (`server.js`, `lib/*.js`): Express + WebSocket server. Code split into modules: `server.js` (entry), `lib/routes.js` (REST API), `lib/claude.js` (CLI process management), `lib/data.js` (storage). Spawns `claude` CLI as a child process per message, streams JSON output back to the client via WebSocket. Conversations stored as JSON files on disk.
 
-**Frontend** (`public/js/*.js`, `public/index.html`, `public/style.css`): Single-page app with three views — conversation list, chat view, and stats dashboard. No framework, no bundler. Code is split into ES modules: `app.js` (entry), `state.js` (shared state), `utils.js` (helpers), `websocket.js` (WS connection), `render.js` (rendering), `conversations.js` (conversation management), `ui.js` (UI interactions), `markdown.js` (markdown parser). Voice input uses SpeechRecognition API, voice output uses SpeechSynthesis API.
+**Frontend** (`public/js/*.js`, `public/index.html`, `public/css/*.css`): Single-page app with three views — conversation list, chat view, and stats dashboard. No framework, no bundler. Code is split into ES modules: `app.js` (entry), `state.js` (shared state), `utils.js` (helpers), `websocket.js` (WS connection), `render.js` (rendering), `conversations.js` (conversation management), `ui.js` (UI interactions), `markdown.js` (markdown parser). CSS is split into: `base.css`, `layout.css`, `components.css`, `messages.css`, `list.css`, plus color themes in `themes/`. Voice input uses SpeechRecognition API, voice output uses SpeechSynthesis API.
 
-**Service Worker** (`public/sw.js`): Cache-first for static assets, network-first for conversation list API (offline support). Cache name `claude-chat-v15`.
+**Service Worker** (`public/sw.js`): Cache-first for static assets, network-first for conversation list API (offline support). Cache name `claude-chat-v32`.
 
 ### Data Flow
 
@@ -73,12 +96,18 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - **Message actions**: Long-press/right-click on messages shows edit (user), copy, and fork options. Regenerate button on last assistant message.
 - **File attachments**: Upload via REST, reference in WS message. Images render inline; files show as chips.
 - **Conversation forking**: Fork from any message via long-press menu. Creates a new conversation with messages up to that point and a fresh Claude session.
-- **Conversation list**: Cards grouped by working directory (scope) with collapsible headers. Swipe-to-reveal actions (archive/delete) and long-press/right-click context menu.
+- **Conversation list**: Cards grouped by working directory (scope) with collapsible headers. Swipe-to-reveal actions (archive/delete) and long-press/right-click context menu (pin/archive/rename/delete).
+- **Pinned conversations**: Pin conversations to the top of the list via long-press menu. Stored as `pinned` boolean on conversation.
+- **Bulk selection**: Multi-select mode for batch archive/delete. "Select" button in header, tap cards to select, bulk action bar at bottom.
+- **Undo delete**: Single conversation deletes show 5-second toast with "Undo" button. Actual deletion is delayed.
+- **Swipe-to-go-back**: In chat view, swipe from left edge to return to list (iOS-style).
+- **Color themes**: Four color palettes (Darjeeling, Claude, Nord, Budapest) in `public/css/themes/`. Switched via dropdown in header.
+- **Light/dark mode**: Cycles auto/light/dark via theme toggle. CSS uses `html[data-theme="light"]` selector.
 - **Offline queue**: Messages queued while offline are persisted to localStorage and flushed on reconnect. SW caches conversation list for offline app loading.
-- **CSS variables**: Dark theme in `:root`, light theme in `[data-theme="light"]`. Accent color is `#7c6cf0`. Theme cycles auto/light/dark via `applyTheme()`.
 - **Virtual scrolling**: Long conversations render last 100 messages initially; "Load earlier messages" button at top loads more pages.
 - **Safe areas**: iOS safe area insets handled via `env(safe-area-inset-*)` CSS variables.
 - **View transitions**: Three views (list, chat, stats) swap via CSS transform + opacity animations with `slide-out`/`slide-in` classes.
+- **Keyboard shortcuts**: Cmd+K (search), Cmd+N (new chat), Cmd+E (export), Cmd+Shift+A (toggle archived), Escape (back/close).
 
 ## REST API
 

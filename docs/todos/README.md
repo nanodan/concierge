@@ -2,15 +2,27 @@
 
 Organized by category. Each file contains individual items with priority, effort estimate, approach, and affected files.
 
+## Recently Completed ✅
+
+- **Module split** — app.js broken into 8 ES modules (state, websocket, render, conversations, ui, utils, markdown, app)
+- **Batch operations** — multi-select mode with bulk archive/delete and undo
+- **Keyboard shortcuts** — Cmd+K search, Cmd+N new chat, Escape back, etc.
+- **Pin conversations** — pin important chats to top of list
+- **Swipe-to-go-back** — iOS-style edge swipe navigation
+- **Undo delete** — 5-second undo toast for single deletes
+- **ARIA labels** — added to 20+ icon-only buttons
+- **Focus-visible styles** — accent-colored focus rings on interactive elements
+- **Swipe optimizations** — will-change and touch-action CSS properties
+
 ## Categories
 
-| File | Items | Focus |
-|------|-------|-------|
-| [performance.md](performance.md) | 5 | Render caching, pagination, search/stats optimization |
-| [ux-features.md](ux-features.md) | 12 | Notifications, templates, tags, batch ops, search, shortcuts |
-| [architecture.md](architecture.md) | 5 | Module split, error handling, reconnect, tests, localStorage |
+| File | Open Items | Focus |
+|------|------------|-------|
+| [performance.md](performance.md) | 4 | Render caching, pagination, search/stats optimization |
+| [ux-features.md](ux-features.md) | 15 | Notifications, templates, tags, search, timestamps, lightbox |
+| [architecture.md](architecture.md) | 4 | Error handling, reconnect jitter, tests, localStorage |
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
-| [accessibility.md](accessibility.md) | 4 | ARIA, keyboard focus, screen readers, contrast |
+| [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
 
 ## Priority Guide
@@ -20,8 +32,6 @@ Organized by category. Each file contains individual items with priority, effort
 - Tab-unfocused completion notification (ux)
 - Prompt templates (ux)
 - Conversation tags/favorites (ux)
-- Batch operations (ux)
-- Break up app.js (architecture)
 - Consistent error handling (architecture)
 - Authentication (security, if used remotely)
 
@@ -30,4 +40,3 @@ Organized by category. Each file contains individual items with priority, effort
 - Dynamic token limits per model (ux)
 - Accent color customization (ux)
 - Input validation hardening (security)
-- ARIA labels (accessibility)

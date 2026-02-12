@@ -1,27 +1,20 @@
 # Architecture TODOs
 
-## Break up app.js into modules
+## ~~Break up app.js into modules~~ ✅ DONE
 **Priority:** High
 **Effort:** High
 
-`app.js` is 2039 lines with ~25 top-level state variables. Hard to reason about and maintain.
+~~`app.js` is 2039 lines with ~25 top-level state variables.~~ **IMPLEMENTED**
 
-**Approach:**
-- Split into ES modules (native browser support, no bundler needed):
-  - `state.js` — central state store, getters/setters
-  - `ws.js` — WebSocket connection, reconnect, message handling
-  - `render.js` — DOM rendering (conversation list, messages, modals)
-  - `gestures.js` — swipe, long-press, pull-to-refresh
-  - `voice.js` — speech recognition and synthesis
-  - `search.js` — search UI and filtering logic
-  - `stats.js` — stats view rendering
-- Use a simple pub/sub or event emitter for cross-module communication
-- Update `index.html` to use `<script type="module">`
-- Update service worker cache list
-
-**Files:** `public/app.js` (split), `public/index.html` (script tags), `public/sw.js` (cache list)
-
-**Risk:** Large refactor, easy to introduce regressions without tests. Consider doing incrementally — extract one module at a time.
+Code has been split into ES modules:
+- `state.js` — central state store, getters/setters
+- `websocket.js` — WebSocket connection, reconnect, message handling
+- `render.js` — DOM rendering, message display
+- `conversations.js` — conversation list, CRUD, swipe gestures
+- `ui.js` — UI interactions, settings, theme handling
+- `utils.js` — utilities, toast, dialog
+- `markdown.js` — markdown parsing
+- `app.js` — main entry point, initialization
 
 ---
 

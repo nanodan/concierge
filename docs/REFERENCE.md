@@ -6,62 +6,81 @@ Fast-access reference for coding in this repository. Consult this before reading
 
 ## File Map with Key Line Ranges
 
-### `server.js` (~868 lines)
+### Backend
+
+#### `server.js` (~226 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-20 | Imports, constants, `MODELS` array |
-| 22-47 | HTTPS cert detection, Express setup, static serving (incl. uploads) |
-| 49-53 | `atomicWrite(filePath, data)` - safe file writes |
-| 55-145 | `loadConversations()`, `saveIndex()`, `saveMessages()`, legacy migration |
-| 147-154 | `ensureMessages(id)` - lazy message loading |
-| 156-158 | `activeProcesses` Map, `PROCESS_TIMEOUT` (5min) |
-| 160-210 | REST: `POST /api/conversations` (create) |
-| 212-260 | REST: `GET /api/conversations` (list), `GET :id` (detail) |
-| 262-300 | REST: `PATCH :id` (update) |
-| 302-393 | REST: `GET /api/conversations/search`, `GET /api/stats` (cached, 30s TTL) |
-| 395-460 | REST: `GET /api/conversations/:id/export`, `POST /api/conversations/:id/upload` |
-| 464-490 | REST: `POST /api/conversations/:id/fork` - fork conversation from message index |
-| 492-504 | REST: `DELETE :id` (delete + upload cleanup) |
-| 506-510 | REST: `GET /api/models`, `GET /api/browse`, `POST /api/mkdir` |
-| 512-566 | WebSocket: `cancel`, `message`, `regenerate`, `edit` handlers (dispatcher) |
-| 568-644 | `handleRegenerate()`, `handleEdit()` - message mutation + re-send |
-| 645-720 | `spawnClaude()` - spawns Claude CLI, streams output |
-| 722-810 | `processStreamEvent()` - parses Claude JSON output |
-| 812-855 | Server listen, shutdown handler |
+| 1-25 | Imports, HTTPS cert detection, Express setup |
+| 27-48 | Static serving, routes setup |
+| 50-95 | WebSocket handlers: `handleMessage`, `handleCancel` |
+| 97-160 | `handleRegenerate()`, `handleEdit()` |
+| 162-210 | `broadcastStatus()`, server startup |
+
+#### `lib/routes.js` (~364 lines)
+
+| Lines | Section |
+|-------|---------|
+| 1-25 | Imports from data.js and claude.js |
+| 27-55 | `GET/POST /api/conversations` |
+| 57-100 | `GET /api/conversations` (list with pinned sorting) |
+| 102-160 | `GET /api/conversations/search` |
+| 162-175 | `PATCH /api/conversations/:id` (archive, name, model, autopilot, pinned) |
+| 177-260 | `GET /api/stats` (cached 30s) |
+| 262-310 | `GET /api/conversations/:id/export`, `POST /api/conversations/:id/upload` |
+| 312-360 | `POST /api/conversations/:id/fork`, `DELETE /api/conversations/:id` |
+
+#### `lib/claude.js` (~240 lines)
+
+| Lines | Section |
+|-------|---------|
+| 1-20 | Imports, `MODELS` array, constants |
+| 22-100 | `spawnClaude()` - spawn CLI, stream handling |
+| 102-200 | `processStreamEvent()` - parse Claude JSON output |
+| 202-240 | `cancelProcess()`, `hasActiveProcess()` |
+
+#### `lib/data.js` (~170 lines)
+
+| Lines | Section |
+|-------|---------|
+| 1-30 | Constants, paths, conversations Map |
+| 32-50 | `convMeta()` - extract metadata (incl. pinned) |
+| 52-80 | `saveIndex()`, `saveConversation()` |
+| 82-130 | `loadMessages()`, `loadFromDisk()`, migration |
+| 132-170 | `ensureMessages()`, stats cache helpers |
 
 ### Frontend ES Modules (`public/js/`)
 
 The frontend is split into ES modules. Entry point is `public/js/app.js`.
 
-#### `public/js/app.js` (~222 lines) - Main entry point
+#### `public/js/app.js` (~266 lines) - Main entry point
 
 | Lines | Section |
 |-------|---------|
-| 1-7 | Module imports |
-| 9-80 | DOM element references |
-| 82-100 | Module initialization (toast, dialog, state, WS) |
-| 102-160 | Module initialization (conversations, UI) |
-| 162-180 | Action popup and event listener setup |
-| 182-200 | `loadModels()` - fetch available models |
-| 202-222 | Init: connectWS, loadModels, loadConversations, service worker |
+| 1-25 | Module imports |
+| 27-100 | DOM element references |
+| 102-150 | Module initialization (toast, dialog, state, WS, conversations, UI) |
+| 152-210 | Action popup and event listener setup |
+| 212-235 | `loadModels()` - fetch available models |
+| 237-266 | Init, service worker, bulk selection handlers |
 
-#### `public/js/state.js` (~433 lines) - Shared state
-
-| Lines | Section |
-|-------|---------|
-| 1-60 | State variable declarations (conversations, models, streaming, UI) |
-| 62-200 | State getters and setters |
-| 202-300 | More state functions (pending messages, reactions, attachments) |
-| 302-433 | Status/thinking state, DOM element management, scrollToBottom |
-
-#### `public/js/utils.js` (~142 lines) - Helper functions
+#### `public/js/state.js` (~481 lines) - Shared state
 
 | Lines | Section |
 |-------|---------|
-| 1-35 | `haptic()`, `formatTime()`, `formatTokens()`, `truncate()`, `setLoading()` |
-| 37-60 | Toast system: `initToast()`, `showToast()` |
-| 62-142 | Dialog system: `initDialog()`, `showDialog()`, dialog helpers |
+| 1-70 | State variable declarations (conversations, models, streaming, UI, selection) |
+| 72-200 | State getters and setters |
+| 202-340 | More state functions (pending messages, reactions, attachments, selection mode) |
+| 342-481 | Status/thinking state, DOM element management, scrollToBottom |
+
+#### `public/js/utils.js` (~165 lines) - Helper functions
+
+| Lines | Section |
+|-------|---------|
+| 1-40 | `haptic()`, `formatTime()`, `formatTokens()`, `truncate()`, `setLoading()` |
+| 42-80 | Toast system: `initToast()`, `showToast()` (with action/undo support) |
+| 82-165 | Dialog system: `initDialog()`, `showDialog()`, dialog helpers |
 
 #### `public/js/websocket.js` (~108 lines) - WebSocket management
 
@@ -71,7 +90,7 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
 | 22-60 | `connectWS()` - establish connection, handle reconnect |
 | 62-108 | `handleWSMessage()` - dispatch incoming events |
 
-#### `public/js/render.js` (~423 lines) - Rendering functions
+#### `public/js/render.js` (~429 lines) - Rendering functions
 
 | Lines | Section |
 |-------|---------|
@@ -83,39 +102,43 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
 | 212-260 | `finalizeMessage()` - complete streaming |
 | 262-320 | Reactions: `renderAllReactions()`, `renderReactionsForMessage()`, `toggleReaction()` |
 | 322-380 | TTS: `attachTTSHandlers()`, `toggleTTS()`, `resetTTSBtn()` |
-| 382-423 | `attachRegenHandlers()`, `attachMessageActions()` callback |
+| 382-429 | `attachRegenHandlers()`, `attachMessageActions()` callback |
 
-#### `public/js/conversations.js` (~534 lines) - Conversation management
+#### `public/js/conversations.js` (~693 lines) - Conversation management
 
 | Lines | Section |
 |-------|---------|
-| 1-30 | Imports, DOM element references, initialization |
-| 32-80 | `loadConversations()`, `getConversation()` |
-| 82-150 | `createConversation()`, `deleteConversation()`, `archiveConversation()`, `renameConversation()` |
-| 152-190 | `forkConversation()`, `searchConversations()` |
-| 192-300 | `renderConversationList()` - render cards, scope grouping |
-| 302-360 | `setupSwipe()`, `resetSwipe()` - swipe gesture handling |
-| 362-410 | `setupLongPress()`, `showActionPopup()`, `hideActionPopup()` |
-| 412-480 | `setupActionPopupHandlers()`, search filters |
-| 482-534 | `openConversation()`, `showChatView()`, `showListView()` |
+| 1-35 | Imports, DOM element references, initialization |
+| 37-95 | `loadConversations()`, `getConversation()`, `createConversation()` |
+| 97-145 | `deleteConversation()`, `softDeleteConversation()` (with undo) |
+| 147-170 | `archiveConversation()`, `renameConversation()`, `pinConversation()` |
+| 172-210 | `forkConversation()`, `searchConversations()` |
+| 212-340 | `renderConversationList()` - render cards, scope grouping, pin icons |
+| 342-420 | `setupSwipe()`, `resetSwipe()` - swipe gesture handling |
+| 422-480 | `setupLongPress()`, `showActionPopup()`, `hideActionPopup()` |
+| 482-550 | `setupActionPopupHandlers()` (pin/archive/rename/delete), search filters |
+| 552-610 | `openConversation()`, `showChatView()`, `showListView()` |
+| 612-693 | Bulk selection: `enterSelectionMode()`, `exitSelectionMode()`, `bulkArchive()`, `bulkDelete()` |
 
-#### `public/js/ui.js` (~1085 lines) - UI interactions
+#### `public/js/ui.js` (~1320 lines) - UI interactions
 
 | Lines | Section |
 |-------|---------|
 | 1-70 | Imports, DOM element references |
 | 72-120 | `initUI()` - element initialization |
 | 122-200 | `sendMessage()` - send with attachments |
-| 202-250 | `renderAttachmentPreview()`, `attachMessageActions()` |
-| 252-340 | `showMsgActionPopup()`, `hideMsgActionPopup()`, `startEditMessage()` |
-| 342-380 | `regenerateMessage()`, model/mode badges |
-| 382-430 | `updateContextBar()`, `switchModel()` |
-| 432-500 | Directory browser: `browseTo()` |
-| 502-560 | Voice input: `startRecording()`, `stopRecording()` |
-| 562-620 | Theme: `applyTheme()`, `cycleTheme()`, `updateThemeIcon()` |
-| 622-750 | Stats: `loadStats()`, `renderStats()` |
-| 752-780 | `populateFilterModels()` |
-| 782-1085 | `setupEventListeners()` - all event handlers |
+| 202-260 | `renderAttachmentPreview()`, `attachMessageActions()` |
+| 262-350 | `showMsgActionPopup()`, `hideMsgActionPopup()`, `startEditMessage()` |
+| 352-400 | `regenerateMessage()`, model/mode badges |
+| 402-460 | `updateContextBar()`, `switchModel()` |
+| 462-540 | Directory browser: `browseTo()` |
+| 542-600 | Voice input: `startRecording()`, `stopRecording()` |
+| 602-700 | Theme: `applyTheme()`, `cycleTheme()`, `updateThemeIcon()` |
+| 702-780 | Color themes: `applyColorTheme()`, `selectColorTheme()` |
+| 782-900 | Stats: `loadStats()`, `renderStats()` |
+| 902-940 | `populateFilterModels()` |
+| 942-1270 | `setupEventListeners()` - all event handlers |
+| 1272-1320 | Swipe-to-go-back, keyboard shortcuts |
 
 #### `public/js/markdown.js` (~66 lines) - Markdown parser
 
@@ -124,58 +147,45 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
 | 1-10 | `escapeHtml()` helper |
 | 12-66 | `renderMarkdown(text)` - full parser |
 
-### `public/markdown.js` (~66 lines)
+### Frontend CSS (`public/css/`)
+
+CSS is split into modular files:
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `base.css` | ~82 | CSS variables, resets, base animations |
+| `layout.css` | ~620 | Page layout, headers, view transitions |
+| `components.css` | ~1070 | Buttons, inputs, modals, toasts (with undo action) |
+| `messages.css` | ~657 | Chat messages, code blocks, attachments |
+| `list.css` | ~677 | Conversation list, cards, swipe, bulk selection, pin icon |
+| `themes/darjeeling.css` | ~224 | Default warm earth tone theme |
+| `themes/claude.css` | ~210 | Purple accent with neutral grays |
+| `themes/nord.css` | ~213 | Arctic blue palette |
+| `themes/budapest.css` | ~214 | Grand Budapest Hotel inspired |
+
+### `public/sw.js` (~86 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-5 | `escapeHtml()` helper |
-| 7-66 | `renderMarkdown(text)` - full parser |
+| 1-28 | Cache name (`claude-chat-v32`), static asset list (JS modules, CSS files, themes) |
+| 30-36 | Install event (pre-cache) |
+| 38-46 | Activate event (clean old caches) |
+| 48-86 | Fetch event (cache-first for static, network-first for cacheable API, skip other API/WS) |
 
-### `public/style.css` (~2327 lines)
-
-| Lines | Section |
-|-------|---------|
-| 1-30 | CSS variables (`:root` theme) |
-| 32-70 | Base styles, animations (`loading-bar`) |
-| 72-160 | Top bar, status indicators |
-| 162-300 | Conversation list, cards, swipe actions |
-| 302-520 | Chat view, messages (user/assistant), typing indicator |
-| 522-600 | Input bar, mic button, recording animation |
-| 602-700 | Code blocks, copy button, syntax highlighting |
-| 702-900 | Modals, dialog, folder browser |
-| 902-1000 | Model selector, context bar |
-| 1002-1100 | Stats page, stat cards, charts |
-| 1102-1200 | Action popup, search bar |
-| 1202-1280 | View transitions (slide-out, slide-in) |
-| 1282-1860 | highlight.js theme, misc utilities, safe area padding |
-| 1861-1920 | Export button, attach button |
-| 1921-2000 | Attachment preview, attachment items, message attachments |
-| 2001-2040 | Regenerate button, message editing (textarea, actions) |
-| 2041-2170 | Light mode: `[data-theme="light"]` overrides, syntax highlighting, media query |
-| 2171-2270 | Theme toggle, reconnect banner, queued messages, filter bar, filter chips, load-more button |
-| 2271-2327 | Scope grouping: headers, chevrons, counts, collapsible items |
-
-### `public/sw.js` (~78 lines)
+### `public/index.html` (~276 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-21 | Cache name (`claude-chat-v15`), static asset list (including all JS modules), cached API routes |
-| 23-28 | Install event (pre-cache) |
-| 30-37 | Activate event (clean old caches) |
-| 39-78 | Fetch event (cache-first for static, network-first for cacheable API, skip other API/WS) |
-
-### `public/index.html` (~191 lines)
-
-| Lines | Section |
-|-------|---------|
-| 1-16 | Head: meta tags, PWA config, CSS |
-| 17-37 | List view DOM |
-| 39-48 | Action popup (conversations + messages) |
-| 50-101 | Chat view DOM (incl. export btn, attachment preview, attach btn, file input) |
-| 103-110 | Stats view DOM |
-| 116-158 | New conversation modal |
-| 160-171 | Dialog system |
-| 173-177 | Script tags |
+| 1-26 | Head: meta tags, PWA config, color theme link, CSS imports |
+| 27-48 | List view header: select mode, color theme toggle, theme toggle, stats, archive |
+| 49-65 | Search bar, filters, pull indicator |
+| 66-88 | Conversation list, FAB, bulk action bar |
+| 89-100 | Action popups (conversations: pin/archive/rename/delete, messages) |
+| 101-145 | Chat view DOM (header, messages, typing, attachments, input) |
+| 146-175 | Stats view DOM |
+| 176-220 | New conversation modal |
+| 221-250 | Dialog system, theme/color dropdowns |
+| 251-276 | Script tags (ES modules) |
 
 ---
 
@@ -192,6 +202,7 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
   messages: Message[],     // null when not loaded (lazy)
   status: 'idle' | 'thinking',
   archived: boolean,
+  pinned: boolean,         // Pinned conversations sort to top
   autopilot: boolean,      // --dangerously-skip-permissions
   model: string,           // Model ID from MODELS array
   createdAt: number,       // Unix timestamp (ms)
@@ -234,20 +245,20 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
 
 ### Adding a new REST endpoint
 
-1. Add route in `server.js` after existing routes (before WebSocket setup ~line 482)
-2. Access conversation data via `conversations` Map
+1. Add route in `lib/routes.js` inside `setupRoutes(app)`
+2. Access conversation data via `conversations` Map (imported from `lib/data.js`)
 3. Call `ensureMessages(id)` before accessing `.messages`
-4. Call `saveIndex()` after metadata changes, `saveMessages(id)` after message changes
+4. Call `saveIndex()` after metadata changes, `saveConversation(id)` after message changes
 
 ### Adding a new WebSocket event type
 
-1. **Server → Client**: Add to the WS dispatcher in `server.js` ~line 482. Send via `ws.send(JSON.stringify({ type: 'newtype', ... }))`
+1. **Server → Client**: Add to the WS handler in `server.js`. Send via `ws.send(JSON.stringify({ type: 'newtype', ... }))`
 2. **Client handler**: Add case to `handleWSMessage()` in `public/js/websocket.js`
 
 ### Adding a new UI feature to chat view
 
 1. Add DOM elements to `#chat-view` in `index.html`
-2. Add styling in `style.css` (chat view section ~line 302)
+2. Add styling in appropriate CSS file (`messages.css` for chat, `components.css` for UI elements)
 3. Add DOM reference in `public/js/app.js`, pass to `initUI()`
 4. Add handler logic in `public/js/ui.js` - either in `initUI()` or `setupEventListeners()`
 5. If it needs shared state, add to `public/js/state.js`
@@ -255,12 +266,13 @@ The frontend is split into ES modules. Entry point is `public/js/app.js`.
 
 ### Adding a conversation property
 
-1. Add to creation in `POST /api/conversations` in `server.js` ~line 199
-2. Add to `PATCH` handler in `server.js` ~line 270
-3. Add UI control in the new conversation modal (`index.html` ~line 116)
-4. Add state variable in `public/js/state.js` if needed
-5. Add to `openConversation()` in `public/js/conversations.js` to restore state
-6. Pass to Claude CLI args if needed in `spawnClaude()` ~line 615
+1. Add to creation in `POST /api/conversations` in `lib/routes.js`
+2. Add to `PATCH` handler in `lib/routes.js`
+3. Add to `convMeta()` in `lib/data.js`
+4. Add UI control in the new conversation modal (`index.html`)
+5. Add state variable in `public/js/state.js` if needed
+6. Add to `openConversation()` in `public/js/conversations.js` to restore state
+7. Pass to Claude CLI args if needed in `spawnClaude()` in `lib/claude.js`
 
 ### Modifying the markdown renderer
 
@@ -273,24 +285,36 @@ Edit `public/js/markdown.js`. The order of regex operations matters:
 
 ### Updating the service worker cache
 
-Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v15`). Add new static assets to the `STATIC_ASSETS` array. All JS modules in `public/js/` should be listed.
+Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v32`). Add new static assets to the `STATIC_ASSETS` array. All JS modules in `public/js/` and CSS files in `public/css/` should be listed.
+
+### Adding a new color theme
+
+1. Create new theme file in `public/css/themes/` (copy from `darjeeling.css`)
+2. Define both `:root` (dark) and `html[data-theme="light"]` variants
+3. Add to `STATIC_ASSETS` in `public/sw.js`
+4. Add option to color theme dropdown in `index.html`
+5. Increment service worker cache version
 
 ---
 
 ## Key Functions Reference
 
-### Backend (`server.js`)
+### Backend (`server.js` + `lib/*.js`)
 
-| Function | Purpose |
-|----------|---------|
-| `atomicWrite(path, data)` | Write JSON safely (tmp + rename) |
-| `loadConversations()` | Load index.json into memory Map |
-| `saveIndex()` | Persist metadata to index.json |
-| `saveMessages(id)` | Persist messages to conv/{id}.json |
-| `ensureMessages(id)` | Lazy-load messages from disk |
-| `spawnClaude(ws, convId, conv, text, attachments)` | Spawn Claude CLI process with streaming |
-| `handleRegenerate(ws, msg)` | Pop last assistant msg, re-send last user msg |
-| `handleEdit(ws, msg)` | Update message at index, truncate, re-send |
+| Function | Location | Purpose |
+|----------|----------|---------|
+| `atomicWrite(path, data)` | `lib/data.js` | Write JSON safely (tmp + rename) |
+| `loadFromDisk()` | `lib/data.js` | Load index.json into memory Map |
+| `saveIndex()` | `lib/data.js` | Persist metadata to index.json |
+| `saveConversation(id)` | `lib/data.js` | Persist messages to conv/{id}.json |
+| `ensureMessages(id)` | `lib/data.js` | Lazy-load messages from disk |
+| `convMeta(conv)` | `lib/data.js` | Extract metadata including pinned field |
+| `spawnClaude(ws, convId, conv, ...)` | `lib/claude.js` | Spawn Claude CLI process with streaming |
+| `processStreamEvent(line)` | `lib/claude.js` | Parse Claude JSON output line |
+| `cancelProcess(convId)` | `lib/claude.js` | Kill active Claude process |
+| `setupRoutes(app)` | `lib/routes.js` | Register all REST API endpoints |
+| `handleRegenerate(ws, msg)` | `server.js` | Pop last assistant msg, re-send last user msg |
+| `handleEdit(ws, msg)` | `server.js` | Update message at index, truncate, re-send |
 
 ### Frontend (ES Modules in `public/js/`)
 
@@ -301,7 +325,7 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `haptic(ms)` | Trigger vibration feedback |
 | `formatTime(ts)` | Format timestamp for display |
 | `formatTokens(count)` | Format token count (e.g., "10.5k") |
-| `showToast(message, opts)` | Show toast notification |
+| `showToast(message, opts)` | Show toast notification (supports `action` and `onAction` for undo) |
 | `showDialog(opts)` | Show custom dialog (alert/confirm/prompt) |
 
 #### `websocket.js`
@@ -330,11 +354,17 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | Function | Purpose |
 |----------|---------|
 | `loadConversations()` | Fetch + render conversation list |
-| `renderConversationList(items)` | Build conversation card DOM (grouped by cwd scope) |
+| `renderConversationList(items)` | Build conversation card DOM (grouped by cwd scope, pinned first) |
 | `openConversation(id)` | Load + display conversation |
 | `showListView()` | Return to conversation list |
 | `forkConversation(fromMessageIndex)` | Fork conversation from a message |
 | `triggerSearch()` | Run search with current query + filters |
+| `pinConversation(id, pinned)` | Pin/unpin a conversation |
+| `softDeleteConversation(id)` | Delete with 5-second undo toast |
+| `enterSelectionMode()` | Enable bulk selection mode |
+| `exitSelectionMode()` | Exit bulk selection mode |
+| `bulkArchive()` | Archive all selected conversations |
+| `bulkDelete()` | Delete all selected conversations |
 
 #### `ui.js`
 
@@ -370,11 +400,14 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 
 | Class | Usage |
 |-------|-------|
-| `.message.user` | User message bubble (right-aligned, purple) |
+| `.message.user` | User message bubble (right-aligned, gradient) |
 | `.message.assistant` | Assistant message bubble (left-aligned, dark) |
 | `.message.editing` | Message being inline-edited |
-| `.conversation-card` | Conversation list item |
-| `.swipe-content` | Swipeable inner content of card |
+| `.conv-card` | Conversation list item |
+| `.conv-card-wrapper` | Container for card + swipe actions |
+| `.conv-card-wrapper.pinned` | Pinned conversation |
+| `.conv-card.selected` | Selected in bulk mode |
+| `.conv-card-select` | Selection checkbox (hidden unless selection mode) |
 | `.swipe-actions` | Hidden action buttons behind card |
 | `.slide-out` | List view exiting (dims + shifts left) |
 | `.slide-in` | Chat/stats view entering (slides from right) |
@@ -395,6 +428,11 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `.scope-group` | Conversation group by working directory |
 | `.scope-header` | Collapsible scope section header |
 | `.scope-items` | Container for cards within a scope group |
+| `.pin-icon` | Pin icon on pinned conversations |
+| `.selection-mode` | Applied to list view in bulk select mode |
+| `.bulk-action-bar` | Fixed bar at bottom with bulk actions |
+| `.select-mode-btn` | Button to enter selection mode |
+| `.toast-action` | Undo button in toast notifications |
 
 ---
 

@@ -1,36 +1,41 @@
 # Accessibility TODOs
 
-## Add ARIA labels and roles
+## Add ARIA labels and roles — PARTIAL ✅
 **Priority:** Medium
 **Effort:** Medium
 
-Semantic HTML is used in places, but ARIA attributes are largely missing.
+~~Semantic HTML is used in places, but ARIA attributes are largely missing.~~
 
-**Approach:**
+**Done:**
+- `aria-label` added to all icon-only buttons (20+ buttons have labels)
+
+**Remaining:**
 - Add `role="list"` / `role="listitem"` to conversation list
-- Add `aria-label` to icon-only buttons (settings, new chat, back, voice, etc.)
 - Add `aria-live="polite"` to the message container for streaming updates
 - Add `aria-expanded` to collapsible scope headers
 - Mark modal dialogs with `role="dialog"` and `aria-modal="true"`
 - Add `aria-busy="true"` during streaming responses
 
-**Files:** `public/index.html` (static elements), `public/app.js` (dynamic elements)
+**Files:** `public/index.html` (static elements), `public/js/*.js` (dynamic elements)
 
 ---
 
-## Keyboard focus management
+## Keyboard focus management — PARTIAL ✅
 **Priority:** Medium
 **Effort:** Medium
 
-Focus isn't trapped in modals, doesn't return to trigger elements on close, and there's no visible focus ring on many interactive elements.
+~~Focus isn't trapped in modals, doesn't return to trigger elements on close, and there's no visible focus ring on many interactive elements.~~
 
-**Approach:**
+**Done:**
+- `:focus-visible` styles added to 15+ interactive elements (buttons, cards, toggles)
+- Accent-colored focus rings with offset
+
+**Remaining:**
 - Trap focus within modals when open (Tab cycles through modal elements)
 - Return focus to the triggering element when modal/menu closes
-- Add visible focus indicators (`:focus-visible` styles) for all interactive elements
 - Ensure all custom controls (swipe actions, long-press menus) have keyboard equivalents
 
-**Files:** `public/style.css` (focus styles), `public/app.js` (modal open/close, menu handling)
+**Files:** `public/css/*.css` (focus styles), `public/js/*.js` (modal open/close, menu handling)
 
 ---
 
