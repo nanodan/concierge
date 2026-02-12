@@ -2,6 +2,8 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 :root {
@@ -22,6 +24,8 @@
   --glass-border: rgba(255, 255, 255, 0.1);
   --transition-fast: 0.15s ease;
   --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 }
@@ -35,6 +39,17 @@ html, body {
   background: var(--bg);
   color: var(--text);
   -webkit-text-size-adjust: 100%;
+}
+
+/* Subtle noise texture overlay for depth */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 9999;
 }
 
 /* Views */
@@ -327,11 +342,18 @@ html, body {
   justify-content: center;
   z-index: 10;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  animation: fab-breathe 3s ease-in-out infinite;
+}
+
+@keyframes fab-breathe {
+  0%, 100% { box-shadow: 0 4px 16px rgba(124, 108, 240, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2); }
+  50% { box-shadow: 0 6px 24px rgba(124, 108, 240, 0.5), 0 4px 12px rgba(0, 0, 0, 0.25); }
 }
 
 .fab:active {
   transform: scale(0.92);
   box-shadow: 0 2px 8px rgba(124, 108, 240, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
+  animation: none;
 }
 
 /* Messages */
@@ -365,12 +387,13 @@ html, body {
 
 .message.assistant {
   align-self: flex-start;
-  background: var(--assistant-bubble);
+  background: linear-gradient(var(--assistant-bubble), var(--assistant-bubble)) padding-box,
+              linear-gradient(135deg, rgba(124, 108, 240, 0.25), rgba(124, 108, 240, 0.05) 50%, transparent) border-box;
   color: var(--text);
   border-bottom-left-radius: 6px;
   max-width: 92%;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--glass-border);
+  border: 1px solid transparent;
 }
 
 .message .meta {
@@ -1087,7 +1110,30 @@ html, body {
   overflow: hidden;
   margin-bottom: 8px;
   border-radius: 14px;
+  animation: card-stagger 0.4s var(--spring) backwards;
 }
+
+@keyframes card-stagger {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.conv-card-wrapper:nth-child(1) { animation-delay: 0s; }
+.conv-card-wrapper:nth-child(2) { animation-delay: 0.04s; }
+.conv-card-wrapper:nth-child(3) { animation-delay: 0.08s; }
+.conv-card-wrapper:nth-child(4) { animation-delay: 0.12s; }
+.conv-card-wrapper:nth-child(5) { animation-delay: 0.16s; }
+.conv-card-wrapper:nth-child(6) { animation-delay: 0.2s; }
+.conv-card-wrapper:nth-child(7) { animation-delay: 0.24s; }
+.conv-card-wrapper:nth-child(8) { animation-delay: 0.28s; }
+.conv-card-wrapper:nth-child(9) { animation-delay: 0.32s; }
+.conv-card-wrapper:nth-child(10) { animation-delay: 0.36s; }
 
 .conv-card-wrapper .conv-card {
   margin-bottom: 0;
@@ -2061,6 +2107,8 @@ html, body {
 }
 
 [data-theme="light"] .message.assistant {
+  background: linear-gradient(var(--assistant-bubble), var(--assistant-bubble)) padding-box,
+              linear-gradient(135deg, rgba(106, 90, 224, 0.2), rgba(106, 90, 224, 0.05) 50%, transparent) border-box;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
