@@ -6,21 +6,39 @@ function enhanceCodeBlocks(container) {
     if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
     const pre = el.parentElement;
     if (pre.parentElement?.classList.contains('code-block')) return;
+
+    // Detect language from class (e.g., "language-javascript" -> "javascript")
+    const langClass = [...el.classList].find(c => c.startsWith('language-'));
+    const lang = langClass ? langClass.replace('language-', '') : '';
+
     const wrapper = document.createElement('div');
     wrapper.className = 'code-block';
     pre.parentNode.insertBefore(wrapper, pre);
-    wrapper.appendChild(pre);
+
+    // Add header with language badge and copy button
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+
+    const langBadge = document.createElement('span');
+    langBadge.className = 'code-lang-badge';
+    langBadge.textContent = lang || 'code';
+
     const btn = document.createElement('button');
     btn.className = 'copy-btn';
     btn.textContent = 'Copy';
     btn.addEventListener('click', () => {
+      haptic(10);
       navigator.clipboard.writeText(el.textContent).then(() => {
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
         showToast('Copied to clipboard');
       });
     });
-    wrapper.appendChild(btn);
+
+    header.appendChild(langBadge);
+    header.appendChild(btn);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
   });
 }
 
@@ -676,6 +694,7 @@ searchInput.addEventListener('input', triggerSearch);
 
 // --- Archive toggle ---
 archiveToggle.addEventListener('click', () => {
+  haptic(10);
   showingArchived = !showingArchived;
   archiveToggle.classList.toggle('active', showingArchived);
   archiveToggleLabel.textContent = showingArchived ? 'Active' : 'Archived';
@@ -725,6 +744,20 @@ conversationList.addEventListener('touchend', async () => {
   pullIndicator.classList.remove('refreshing');
   delete pullIndicator.dataset.hapticFired;
   pullIndicator.querySelector('svg').style.transform = '';
+}, { passive: true });
+
+// --- Scroll-linked compact header ---
+const listHeader = listView.querySelector('.list-header');
+let lastScrollTop = 0;
+
+conversationList.addEventListener('scroll', () => {
+  const scrollTop = conversationList.scrollTop;
+  if (scrollTop > 50 && !listHeader.classList.contains('compact')) {
+    listHeader.classList.add('compact');
+  } else if (scrollTop <= 20 && listHeader.classList.contains('compact')) {
+    listHeader.classList.remove('compact');
+  }
+  lastScrollTop = scrollTop;
 }, { passive: true });
 
 async function openConversation(id) {
@@ -785,8 +818,20 @@ function renderMessages(messages) {
   attachTTSHandlers();
   attachRegenHandlers();
   attachMessageActions();
+  renderAllReactions();
   scrollToBottom(true);
 }
+
+function renderAllReactions() {
+  if (!currentConversationId) return;
+  messagesContainer.querySelectorAll('.message[data-index]').forEach(el => {
+    const idx = parseInt(el.dataset.index, 10);
+    renderReactionsForMessage(idx);
+  });
+}
+
+// Claude avatar SVG (sparkle/AI icon)
+const CLAUDE_AVATAR_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>`;
 
 function renderMessageSlice(messages, startIndex) {
   return messages.map((m, i) => {
@@ -818,6 +863,14 @@ function renderMessageSlice(messages, startIndex) {
     const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
       ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
       : '';
+
+    // Wrap assistant messages with avatar
+    if (cls === 'assistant') {
+      return `<div class="message-wrapper assistant">
+        <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
+        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>
+      </div>`;
+    }
     return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
   }).join('');
 }
@@ -841,9 +894,21 @@ function loadMoreMessages() {
 
 function appendDelta(text) {
   if (!streamingMessageEl) {
+    // Create wrapper with avatar
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-wrapper assistant animate-in';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'claude-avatar';
+    avatar.innerHTML = CLAUDE_AVATAR_SVG;
+
     streamingMessageEl = document.createElement('div');
-    streamingMessageEl.className = 'message assistant animate-in';
-    messagesContainer.appendChild(streamingMessageEl);
+    streamingMessageEl.className = 'message assistant';
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(streamingMessageEl);
+    messagesContainer.appendChild(wrapper);
+
     streamingText = '';
     pendingDelta = '';
     isStreaming = true;
@@ -1125,6 +1190,95 @@ function attachMessageActions() {
   });
 }
 
+// --- Message Reactions ---
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
+let messageReactions = JSON.parse(localStorage.getItem('messageReactions') || '{}');
+
+function saveReactions() {
+  localStorage.setItem('messageReactions', JSON.stringify(messageReactions));
+}
+
+function getReactionKey(convId, msgIndex) {
+  return `${convId}:${msgIndex}`;
+}
+
+function toggleReaction(msgIndex, emoji) {
+  const key = getReactionKey(currentConversationId, msgIndex);
+  if (!messageReactions[key]) messageReactions[key] = {};
+  if (messageReactions[key][emoji]) {
+    delete messageReactions[key][emoji];
+  } else {
+    messageReactions[key][emoji] = 1;
+  }
+  saveReactions();
+  renderReactionsForMessage(msgIndex);
+}
+
+function renderReactionsForMessage(msgIndex) {
+  const key = getReactionKey(currentConversationId, msgIndex);
+  const reactions = messageReactions[key] || {};
+  const msgEl = messagesContainer.querySelector(`.message[data-index="${msgIndex}"]`);
+  if (!msgEl) return;
+
+  // Find or create the wrapper
+  let wrapper = msgEl.closest('.message-wrapper') || msgEl.parentElement;
+
+  // Remove existing reaction container
+  wrapper.querySelector('.message-reactions')?.remove();
+
+  const emojis = Object.keys(reactions);
+  if (emojis.length === 0) return;
+
+  const reactionsDiv = document.createElement('div');
+  reactionsDiv.className = 'message-reactions';
+
+  emojis.forEach(emoji => {
+    const pill = document.createElement('button');
+    pill.className = 'reaction-pill active';
+    pill.innerHTML = `${emoji}`;
+    pill.addEventListener('click', () => {
+      haptic(10);
+      toggleReaction(msgIndex, emoji);
+    });
+    reactionsDiv.appendChild(pill);
+  });
+
+  wrapper.appendChild(reactionsDiv);
+}
+
+function showReactionPicker(x, y, msgIndex) {
+  hideMsgActionPopup();
+
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  picker.style.position = 'fixed';
+  picker.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+  picker.style.top = Math.max(y - 50, 10) + 'px';
+
+  REACTION_EMOJIS.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'reaction-picker-btn';
+    btn.textContent = emoji;
+    btn.addEventListener('click', () => {
+      haptic(10);
+      toggleReaction(msgIndex, emoji);
+      picker.remove();
+      actionPopupOverlay.classList.add('hidden');
+    });
+    picker.appendChild(btn);
+  });
+
+  document.body.appendChild(picker);
+  actionPopupOverlay.classList.remove('hidden');
+
+  // Close on overlay click
+  const closeHandler = () => {
+    picker.remove();
+    actionPopupOverlay.removeEventListener('click', closeHandler);
+  };
+  actionPopupOverlay.addEventListener('click', closeHandler);
+}
+
 function showMsgActionPopup(x, y, el, index, isUser) {
   msgActionPopup.innerHTML = '';
 
@@ -1140,6 +1294,7 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   copyBtn.className = 'action-popup-btn';
   copyBtn.textContent = 'Copy';
   copyBtn.addEventListener('click', () => {
+    haptic(10);
     hideMsgActionPopup();
     const clone = el.cloneNode(true);
     clone.querySelector('.meta')?.remove();
@@ -1149,11 +1304,21 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   });
   msgActionPopup.appendChild(copyBtn);
 
+  // React button
+  const reactBtn = document.createElement('button');
+  reactBtn.className = 'action-popup-btn';
+  reactBtn.textContent = 'React';
+  reactBtn.addEventListener('click', () => {
+    showReactionPicker(x, y, index);
+  });
+  msgActionPopup.appendChild(reactBtn);
+
   // Fork from here
   const forkBtn = document.createElement('button');
   forkBtn.className = 'action-popup-btn';
   forkBtn.textContent = 'Fork from here';
   forkBtn.addEventListener('click', () => {
+    haptic(10);
     hideMsgActionPopup();
     forkConversation(index);
   });
@@ -1352,6 +1517,7 @@ function autoResizeInput() {
 // --- Event listeners ---
 inputForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  haptic(10);
   sendMessage(messageInput.value);
 });
 
@@ -1378,20 +1544,26 @@ messagesContainer.addEventListener('scroll', () => {
 });
 
 jumpToBottomBtn.addEventListener('click', () => {
+  haptic(10);
   messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
   userHasScrolledUp = false;
   jumpToBottomBtn.classList.remove('visible');
 });
 
-backBtn.addEventListener('click', showListView);
+backBtn.addEventListener('click', () => {
+  haptic(10);
+  showListView();
+});
 
 deleteBtn.addEventListener('click', async () => {
   if (!currentConversationId) return;
+  haptic(10);
   const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
   if (ok) deleteConversation(currentConversationId);
 });
 
 newChatBtn.addEventListener('click', () => {
+  haptic(15);
   convNameInput.value = '';
   convCwdInput.value = '';
   dirBrowser.classList.add('hidden');
@@ -1877,6 +2049,7 @@ function applyTheme() {
 }
 
 function cycleTheme() {
+  haptic(10);
   const order = ['auto', 'light', 'dark'];
   const idx = order.indexOf(currentTheme);
   currentTheme = order[(idx + 1) % order.length];

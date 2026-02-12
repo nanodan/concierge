@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orange Color Palettes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #1a1a1c;
+      color: #f0f0f0;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ff9a56, #ff6b35);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 48px;
+      font-size: 14px;
+    }
+
+    .palettes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .palette {
+      background: #242428;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .palette-header {
+      padding: 20px 24px 16px;
+    }
+
+    .palette-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .palette-desc {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.5;
+    }
+
+    .palette-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .tag-wes {
+      background: rgba(255, 183, 77, 0.2);
+      color: #ffb74d;
+    }
+
+    .tag-modern {
+      background: rgba(129, 199, 132, 0.2);
+      color: #81c784;
+    }
+
+    .tag-retro {
+      background: rgba(186, 104, 200, 0.2);
+      color: #ba68c8;
+    }
+
+    .tag-warm {
+      background: rgba(255, 138, 101, 0.2);
+      color: #ff8a65;
+    }
+
+    .swatches {
+      display: flex;
+      height: 80px;
+    }
+
+    .swatch {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      cursor: pointer;
+      transition: transform 0.15s;
+      position: relative;
+    }
+
+    .swatch:hover {
+      transform: scaleY(1.1);
+      transform-origin: bottom;
+    }
+
+    .swatch-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.6);
+      text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+    }
+
+    .swatch.light-text .swatch-label {
+      color: rgba(255,255,255,0.8);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .palette-colors {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      padding: 16px 24px 20px;
+      background: #1e1e22;
+    }
+
+    .color-chip {
+      text-align: center;
+    }
+
+    .color-chip-swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .color-chip-swatch:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .color-chip-hex {
+      font-size: 10px;
+      font-family: 'SF Mono', monospace;
+      color: #888;
+    }
+
+    .color-chip-name {
+      font-size: 9px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .preview-section {
+      padding: 20px 24px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .preview-ui {
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-avatar svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .preview-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .preview-message {
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+
+    .preview-message.user {
+      align-self: flex-end;
+      color: white;
+    }
+
+    .preview-message.assistant {
+      align-self: flex-start;
+    }
+
+    .preview-input {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .preview-input-field {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: 1px solid;
+      font-size: 13px;
+      background: transparent;
+    }
+
+    .preview-send {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .preview-send svg {
+      width: 16px;
+      height: 16px;
+      transform: rotate(-90deg);
+    }
+
+    .copied-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      z-index: 100;
+    }
+
+    .copied-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: #666;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Orange Color Palettes</h1>
+  <p class="subtitle">Click any color to copy its hex code</p>
+
+  <div class="palettes">
+    <!-- Fantastic Mr. Fox -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-wes">Wes Anderson</span>
+        <div class="palette-name">Fantastic Mr. Fox</div>
+        <div class="palette-desc">Autumn warmth with earthy browns and golden oranges</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #CD853F" data-color="#CD853F"><span class="swatch-label">#CD853F</span></div>
+        <div class="swatch" style="background: #D2691E" data-color="#D2691E"><span class="swatch-label">#D2691E</span></div>
+        <div class="swatch" style="background: #E8A545" data-color="#E8A545"><span class="swatch-label">#E8A545</span></div>
+        <div class="swatch" style="background: #8B4513" data-color="#8B4513"><span class="swatch-label light-text">#8B4513</span></div>
+        <div class="swatch" style="background: #F5DEB3" data-color="#F5DEB3"><span class="swatch-label">#F5DEB3</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #CD853F" data-color="#CD853F"></div>
+          <div class="color-chip-hex">#CD853F</div>
+          <div class="color-chip-name">Peru</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #D2691E" data-color="#D2691E"></div>
+          <div class="color-chip-hex">#D2691E</div>
+          <div class="color-chip-name">Chocolate</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E8A545" data-color="#E8A545"></div>
+          <div class="color-chip-hex">#E8A545</div>
+          <div class="color-chip-name">Honey</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #8B4513" data-color="#8B4513"></div>
+          <div class="color-chip-hex">#8B4513</div>
+          <div class="color-chip-name">Saddle</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #F5DEB3" data-color="#F5DEB3"></div>
+          <div class="color-chip-hex">#F5DEB3</div>
+          <div class="color-chip-name">Wheat</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #2D2418;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #E8A545, #CD853F);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #F5DEB3;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #E8A545, #CD853F);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #3D3428; color: #F5DEB3; border: 1px solid rgba(232,165,69,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(232,165,69,0.3); color: #F5DEB3;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #E8A545, #CD853F);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Moonrise Kingdom -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-wes">Wes Anderson</span>
+        <div class="palette-name">Moonrise Kingdom</div>
+        <div class="palette-desc">Scout camp nostalgia with khaki, mustard, and olive</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #C4A35A" data-color="#C4A35A"><span class="swatch-label">#C4A35A</span></div>
+        <div class="swatch" style="background: #E07B39" data-color="#E07B39"><span class="swatch-label">#E07B39</span></div>
+        <div class="swatch" style="background: #8B8B3D" data-color="#8B8B3D"><span class="swatch-label">#8B8B3D</span></div>
+        <div class="swatch" style="background: #D4C5A9" data-color="#D4C5A9"><span class="swatch-label">#D4C5A9</span></div>
+        <div class="swatch" style="background: #5C4033" data-color="#5C4033"><span class="swatch-label light-text">#5C4033</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #C4A35A" data-color="#C4A35A"></div>
+          <div class="color-chip-hex">#C4A35A</div>
+          <div class="color-chip-name">Mustard</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E07B39" data-color="#E07B39"></div>
+          <div class="color-chip-hex">#E07B39</div>
+          <div class="color-chip-name">Burnt</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #8B8B3D" data-color="#8B8B3D"></div>
+          <div class="color-chip-hex">#8B8B3D</div>
+          <div class="color-chip-name">Olive</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #D4C5A9" data-color="#D4C5A9"></div>
+          <div class="color-chip-hex">#D4C5A9</div>
+          <div class="color-chip-name">Khaki</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #5C4033" data-color="#5C4033"></div>
+          <div class="color-chip-hex">#5C4033</div>
+          <div class="color-chip-name">Umber</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #252318;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #C4A35A, #E07B39);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #D4C5A9;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #C4A35A, #E07B39);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #35322A; color: #D4C5A9; border: 1px solid rgba(196,163,90,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(196,163,90,0.3); color: #D4C5A9;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #C4A35A, #E07B39);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Darjeeling Limited -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-wes">Wes Anderson</span>
+        <div class="palette-name">Darjeeling Limited</div>
+        <div class="palette-desc">Indian railway warmth with saffron and turquoise accents</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #E8963A" data-color="#E8963A"><span class="swatch-label">#E8963A</span></div>
+        <div class="swatch" style="background: #C75B39" data-color="#C75B39"><span class="swatch-label">#C75B39</span></div>
+        <div class="swatch" style="background: #4A9B9B" data-color="#4A9B9B"><span class="swatch-label">#4A9B9B</span></div>
+        <div class="swatch" style="background: #E8D5A3" data-color="#E8D5A3"><span class="swatch-label">#E8D5A3</span></div>
+        <div class="swatch" style="background: #6B3D2E" data-color="#6B3D2E"><span class="swatch-label light-text">#6B3D2E</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E8963A" data-color="#E8963A"></div>
+          <div class="color-chip-hex">#E8963A</div>
+          <div class="color-chip-name">Saffron</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #C75B39" data-color="#C75B39"></div>
+          <div class="color-chip-hex">#C75B39</div>
+          <div class="color-chip-name">Terracotta</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #4A9B9B" data-color="#4A9B9B"></div>
+          <div class="color-chip-hex">#4A9B9B</div>
+          <div class="color-chip-name">Teal</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E8D5A3" data-color="#E8D5A3"></div>
+          <div class="color-chip-hex">#E8D5A3</div>
+          <div class="color-chip-name">Sand</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #6B3D2E" data-color="#6B3D2E"></div>
+          <div class="color-chip-hex">#6B3D2E</div>
+          <div class="color-chip-name">Mahogany</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #1F1A16;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #E8963A, #C75B39);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #E8D5A3;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #E8963A, #C75B39);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #2A2420; color: #E8D5A3; border: 1px solid rgba(232,150,58,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(232,150,58,0.3); color: #E8D5A3;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #E8963A, #C75B39);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modern Coral -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-modern">Modern</span>
+        <div class="palette-name">Coral Sunset</div>
+        <div class="palette-desc">Fresh and vibrant with coral, peach, and warm neutrals</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #FF7F50" data-color="#FF7F50"><span class="swatch-label">#FF7F50</span></div>
+        <div class="swatch" style="background: #FF6B6B" data-color="#FF6B6B"><span class="swatch-label">#FF6B6B</span></div>
+        <div class="swatch" style="background: #FFA07A" data-color="#FFA07A"><span class="swatch-label">#FFA07A</span></div>
+        <div class="swatch" style="background: #2D2D2D" data-color="#2D2D2D"><span class="swatch-label light-text">#2D2D2D</span></div>
+        <div class="swatch" style="background: #FAF0E6" data-color="#FAF0E6"><span class="swatch-label">#FAF0E6</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FF7F50" data-color="#FF7F50"></div>
+          <div class="color-chip-hex">#FF7F50</div>
+          <div class="color-chip-name">Coral</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FF6B6B" data-color="#FF6B6B"></div>
+          <div class="color-chip-hex">#FF6B6B</div>
+          <div class="color-chip-name">Salmon</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FFA07A" data-color="#FFA07A"></div>
+          <div class="color-chip-hex">#FFA07A</div>
+          <div class="color-chip-name">Peach</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #2D2D2D" data-color="#2D2D2D"></div>
+          <div class="color-chip-hex">#2D2D2D</div>
+          <div class="color-chip-name">Charcoal</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FAF0E6" data-color="#FAF0E6"></div>
+          <div class="color-chip-hex">#FAF0E6</div>
+          <div class="color-chip-name">Linen</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #1E1E1E;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #FF7F50, #FF6B6B);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #FAF0E6;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #FF7F50, #FF6B6B);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #2A2A2A; color: #FAF0E6; border: 1px solid rgba(255,127,80,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(255,127,80,0.3); color: #FAF0E6;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #FF7F50, #FF6B6B);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Retro 70s -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-retro">Retro</span>
+        <div class="palette-name">70s Groove</div>
+        <div class="palette-desc">Vintage vibes with burnt orange, avocado, and cream</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #CC5500" data-color="#CC5500"><span class="swatch-label">#CC5500</span></div>
+        <div class="swatch" style="background: #E07020" data-color="#E07020"><span class="swatch-label">#E07020</span></div>
+        <div class="swatch" style="background: #6B8E23" data-color="#6B8E23"><span class="swatch-label">#6B8E23</span></div>
+        <div class="swatch" style="background: #8B4000" data-color="#8B4000"><span class="swatch-label light-text">#8B4000</span></div>
+        <div class="swatch" style="background: #FFFDD0" data-color="#FFFDD0"><span class="swatch-label">#FFFDD0</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #CC5500" data-color="#CC5500"></div>
+          <div class="color-chip-hex">#CC5500</div>
+          <div class="color-chip-name">Burnt</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E07020" data-color="#E07020"></div>
+          <div class="color-chip-hex">#E07020</div>
+          <div class="color-chip-name">Tangerine</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #6B8E23" data-color="#6B8E23"></div>
+          <div class="color-chip-hex">#6B8E23</div>
+          <div class="color-chip-name">Avocado</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #8B4000" data-color="#8B4000"></div>
+          <div class="color-chip-hex">#8B4000</div>
+          <div class="color-chip-name">Rust</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FFFDD0" data-color="#FFFDD0"></div>
+          <div class="color-chip-hex">#FFFDD0</div>
+          <div class="color-chip-name">Cream</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #1A1612;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #E07020, #CC5500);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #FFFDD0;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #E07020, #CC5500);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #2A231C; color: #FFFDD0; border: 1px solid rgba(224,112,32,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(224,112,32,0.3); color: #FFFDD0;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #E07020, #CC5500);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ember Glow -->
+    <div class="palette">
+      <div class="palette-header">
+        <span class="palette-tag tag-warm">Warm</span>
+        <div class="palette-name">Ember Glow</div>
+        <div class="palette-desc">Deep and cozy with ember oranges and charcoal</div>
+      </div>
+      <div class="swatches">
+        <div class="swatch" style="background: #E85D04" data-color="#E85D04"><span class="swatch-label">#E85D04</span></div>
+        <div class="swatch" style="background: #F48C06" data-color="#F48C06"><span class="swatch-label">#F48C06</span></div>
+        <div class="swatch" style="background: #FAA307" data-color="#FAA307"><span class="swatch-label">#FAA307</span></div>
+        <div class="swatch" style="background: #370617" data-color="#370617"><span class="swatch-label light-text">#370617</span></div>
+        <div class="swatch" style="background: #F8E1C8" data-color="#F8E1C8"><span class="swatch-label">#F8E1C8</span></div>
+      </div>
+      <div class="palette-colors">
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #E85D04" data-color="#E85D04"></div>
+          <div class="color-chip-hex">#E85D04</div>
+          <div class="color-chip-name">Ember</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #F48C06" data-color="#F48C06"></div>
+          <div class="color-chip-hex">#F48C06</div>
+          <div class="color-chip-name">Flame</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #FAA307" data-color="#FAA307"></div>
+          <div class="color-chip-hex">#FAA307</div>
+          <div class="color-chip-name">Amber</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #370617" data-color="#370617"></div>
+          <div class="color-chip-hex">#370617</div>
+          <div class="color-chip-name">Maroon</div>
+        </div>
+        <div class="color-chip">
+          <div class="color-chip-swatch" style="background: #F8E1C8" data-color="#F8E1C8"></div>
+          <div class="color-chip-hex">#F8E1C8</div>
+          <div class="color-chip-name">Bisque</div>
+        </div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-ui" style="background: #1A1010;">
+          <div class="preview-header">
+            <div class="preview-avatar" style="background: linear-gradient(135deg, #F48C06, #E85D04);">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>
+            </div>
+            <span class="preview-title" style="color: #F8E1C8;">Claude</span>
+          </div>
+          <div class="preview-message user" style="background: linear-gradient(135deg, #F48C06, #E85D04);">Hello there!</div>
+          <div class="preview-message assistant" style="background: #2A1A1A; color: #F8E1C8; border: 1px solid rgba(244,140,6,0.2);">Hi! How can I help you today?</div>
+          <div class="preview-input">
+            <input class="preview-input-field" style="border-color: rgba(244,140,6,0.3); color: #F8E1C8;" placeholder="Message..." readonly>
+            <button class="preview-send" style="background: linear-gradient(135deg, #F48C06, #E85D04);"><svg fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Click any swatch or chip to copy the hex code
+  </footer>
+
+  <div class="copied-toast" id="toast">Copied!</div>
+
+  <script>
+    const toast = document.getElementById('toast');
+
+    document.querySelectorAll('[data-color], .color-chip-swatch').forEach(el => {
+      el.addEventListener('click', () => {
+        const color = el.dataset.color || el.style.background;
+        const hex = color.toUpperCase();
+        navigator.clipboard.writeText(hex).then(() => {
+          toast.textContent = `Copied ${hex}`;
+          toast.classList.add('show');
+          setTimeout(() => toast.classList.remove('show'), 1500);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

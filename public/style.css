@@ -42,14 +42,48 @@ html, body {
 }
 
 /* Subtle noise texture overlay for depth */
-body::before {
+body::after {
   content: '';
   position: fixed;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.03;
+  opacity: 0.015;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 10000;
+  mix-blend-mode: overlay;
+}
+
+/* Animated gradient mesh background for list view */
+#list-view {
+  position: relative;
+  overflow: hidden;
+}
+
+#list-view::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(124, 108, 240, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(199, 146, 234, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 30%, rgba(137, 221, 255, 0.05) 0%, transparent 40%);
+  animation: gradient-drift 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes gradient-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, 1%) rotate(1deg); }
+  66% { transform: translate(-1%, 2%) rotate(-1deg); }
+}
+
+#list-view > *:not(.fab) {
+  position: relative;
+  z-index: 1;
 }
 
 /* Views */
@@ -109,6 +143,18 @@ body::before {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  transition: font-size 0.2s var(--smooth), transform 0.2s var(--smooth);
+}
+
+/* Scroll-linked compact header */
+.top-bar.compact {
+  padding-top: calc(8px + var(--safe-top));
+  padding-bottom: 8px;
+  min-height: 44px;
+}
+
+.top-bar.compact h1 {
+  font-size: 17px;
 }
 
 /* Chat Header */
@@ -396,6 +442,45 @@ body::before {
   border: 1px solid transparent;
 }
 
+/* Claude avatar for assistant messages */
+.message-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.message-wrapper.user {
+  justify-content: flex-end;
+}
+
+.message-wrapper .message {
+  max-width: calc(92% - 36px);
+}
+
+.message-wrapper.user .message {
+  max-width: 85%;
+}
+
+.claude-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: white;
+  box-shadow: 0 2px 8px rgba(124, 108, 240, 0.3);
+}
+
+.claude-avatar svg {
+  width: 16px;
+  height: 16px;
+}
+
 .message .meta {
   font-size: 11px;
   color: var(--text-secondary);
@@ -407,20 +492,147 @@ body::before {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Markdown in messages */
-.code-block {
-  display: grid;
-  margin: 8px 0;
+/* Message reactions */
+.message-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
 
-.code-block > pre,
-.code-block > .copy-btn {
-  grid-area: 1 / 1;
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(124, 108, 240, 0.12);
+  border: 1px solid rgba(124, 108, 240, 0.2);
+  border-radius: 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s var(--spring), background 0.15s;
+  user-select: none;
+}
+
+.reaction-pill:hover {
+  background: rgba(124, 108, 240, 0.2);
+}
+
+.reaction-pill:active {
+  transform: scale(0.9);
+}
+
+.reaction-pill.active {
+  background: rgba(124, 108, 240, 0.25);
+  border-color: var(--accent);
+}
+
+.reaction-pill .reaction-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.add-reaction-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s var(--spring);
+}
+
+.message-wrapper:hover .add-reaction-btn,
+.message:hover + .message-reactions .add-reaction-btn {
+  opacity: 0.6;
+}
+
+.add-reaction-btn:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+}
+
+.reaction-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  gap: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+.reaction-picker.hidden {
+  display: none;
+}
+
+.reaction-picker-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.15s var(--spring), background 0.15s;
+}
+
+.reaction-picker-btn:hover {
+  background: var(--surface);
+  transform: scale(1.2);
+}
+
+/* Markdown in messages */
+.code-block {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
 }
 
 .code-block > pre {
-  min-width: 0;
   margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.5;
+  background: transparent;
+  max-height: 350px;
+}
+
+.code-lang-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .message.assistant pre {
@@ -434,26 +646,21 @@ body::before {
 }
 
 .copy-btn {
-  justify-self: end;
-  align-self: start;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  margin: 6px 6px 0 0;
-  background: var(--bg-tertiary);
+  background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: 11px;
   font-family: inherit;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  opacity: 0.5;
-  transition: opacity var(--transition-fast);
+  opacity: 0.7;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
 }
 
 .copy-btn:hover, .copy-btn:active {
   opacity: 1;
+  background: var(--bg-secondary);
 }
 
 .message.assistant code {
@@ -580,8 +787,7 @@ body::before {
 }
 
 .input-bar textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.15);
+  border-color: rgba(124, 108, 240, 0.5);
 }
 
 .input-bar textarea::placeholder {
@@ -590,8 +796,8 @@ body::before {
 
 /* Attach Button */
 .attach-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--surface);
   color: var(--text-secondary);
@@ -672,8 +878,8 @@ body::before {
 
 /* Mic Button */
 .mic-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--surface);
   color: var(--text-secondary);
@@ -731,8 +937,8 @@ body::before {
 }
 
 #send-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: linear-gradient(135deg, #7c6cf0, #6a5ae0);
   color: white;
@@ -763,8 +969,8 @@ body::before {
 }
 
 .cancel-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--danger);
   color: white;
@@ -2142,6 +2348,36 @@ body::before {
 
 [data-theme="light"] .scope-header {
   border-bottom-color: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] #list-view::after {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(106, 90, 224, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(199, 146, 234, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 30%, rgba(137, 221, 255, 0.04) 0%, transparent 40%);
+}
+
+[data-theme="light"] .code-block {
+  background: #e8e8ed;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .code-block-header {
+  background: #d1d1d6;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .reaction-pill {
+  background: rgba(106, 90, 224, 0.1);
+  border-color: rgba(106, 90, 224, 0.2);
+}
+
+[data-theme="light"] .reaction-pill:hover {
+  background: rgba(106, 90, 224, 0.15);
+}
+
+[data-theme="light"] .reaction-pill.active {
+  background: rgba(106, 90, 224, 0.2);
 }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb {
