@@ -31,7 +31,7 @@
 }
 
 [data-theme="light"] .message.assistant pre {
-  background: #e8e8ed;
+  background: #EBE4D6;
 }
 
 [data-theme="light"] .message.assistant :not(pre) > code {
@@ -70,12 +70,12 @@
 }
 
 [data-theme="light"] .code-block {
-  background: #e8e8ed;
+  background: #EBE4D6;
   border-color: rgba(0, 0, 0, 0.08);
 }
 
 [data-theme="light"] .code-block-header {
-  background: #d1d1d6;
+  background: #DDD5C4;
   border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 

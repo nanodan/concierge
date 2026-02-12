@@ -141,17 +141,17 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #555;
+  background: var(--border);
   flex-shrink: 0;
 }
 
 .status-dot.thinking {
-  background: #f1c40f;
+  background: var(--accent);
   animation: pulse 1s ease-in-out infinite;
 }
 
 .status-dot.idle {
-  background: #2ecc71;
+  background: var(--accent-secondary);
 }
 
 @keyframes pulse {
@@ -493,11 +493,11 @@
 }
 
 .context-bar.warning .context-bar-fill {
-  background: #f39c12;
+  background: var(--accent);
 }
 
 .context-bar.warning .context-bar-label {
-  color: #f39c12;
+  color: var(--accent);
 }
 
 .context-bar.danger .context-bar-fill {
@@ -517,8 +517,8 @@
 /* Reconnect banner */
 .reconnect-banner {
   padding: 6px 16px;
-  background: rgba(241, 196, 15, 0.15);
-  color: #f1c40f;
+  background: rgba(232, 150, 58, 0.15);
+  color: var(--accent);
   font-size: 13px;
   font-weight: 600;
   text-align: center;
@@ -550,5 +550,15 @@
 .empty-state .icon {
   font-size: 48px;
   margin-bottom: 16px;
-  opacity: 0.5;
+  opacity: 0.6;
+  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.empty-state p {
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 280px;
 }

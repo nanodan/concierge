@@ -478,15 +478,22 @@ function stopRecording() {
 }
 
 // --- Theme ---
-function applyTheme() {
+function applyTheme(animate = false) {
   let effective = state.getCurrentTheme();
   if (effective === 'auto') {
     effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
+
+  // Smooth transition when toggling themes
+  if (animate) {
+    document.documentElement.classList.add('theme-transitioning');
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350);
+  }
+
   document.documentElement.setAttribute('data-theme', effective);
-  // Update status bar color
+  // Update status bar color (Darjeeling palette)
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = effective === 'light' ? '#f5f5f7' : '#1c1c1e';
+  if (meta) meta.content = effective === 'light' ? '#F5F0E6' : '#1F1A16';
 }
 
 function cycleTheme() {
@@ -496,7 +503,7 @@ function cycleTheme() {
   const idx = order.indexOf(currentTheme);
   const newTheme = order[(idx + 1) % order.length];
   state.setCurrentTheme(newTheme);
-  applyTheme();
+  applyTheme(true); // animate the transition
   updateThemeIcon();
   const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
   showToast(`Theme: ${labels[newTheme]}`);
