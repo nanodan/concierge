@@ -1,0 +1,214 @@
+/*
+ * Grand Budapest Hotel Theme
+ * Inspired by Wes Anderson's iconic pink and burgundy palette
+ */
+
+/* ========== DARK MODE (default) - Evening hotel ========== */
+:root {
+  /* === Core Palette === */
+  --palette-cream: #FAF6F1;
+  --palette-cream-mid: #F0E8E0;
+  --palette-cream-dark: #E5DBD0;
+  --palette-rose: #E8A4B8;
+  --palette-rose-dark: #D4889C;
+  --palette-burgundy: #6B1D32;
+  --palette-burgundy-light: #8B2942;
+  --palette-burgundy-text: #4A1525;
+  --palette-gold: #D4A84B;
+  --palette-gold-light: #E8C87A;
+  --palette-lavender: #B89CC4;
+  --palette-green: #8BC48B;
+
+  /* === Semantic: Backgrounds (dark plum) === */
+  --bg: #2A1520;
+  --bg-secondary: #3A2530;
+  --bg-tertiary: #4A3540;
+  --surface: #3A2530;
+  --input-bg: #3A2530;
+
+  /* === Semantic: Text === */
+  --text: #FAF6F1;
+  --text-secondary: #D4C4C8;
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-rose);
+  --accent-light: #F0BCC8;
+  --accent-secondary: var(--palette-gold);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-burgundy-light);
+  --success: var(--palette-green);
+  --warning: var(--palette-gold);
+
+  /* === Semantic: Borders === */
+  --border: rgba(232, 164, 184, 0.2);
+  --glass-bg: rgba(42, 21, 32, 0.95);
+  --glass-border: rgba(232, 164, 184, 0.1);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-rose);
+  --user-bubble-end: var(--palette-burgundy-light);
+  --assistant-bubble: #3A2530;
+
+  /* === Alpha Variants (for animations, shadows, glows) === */
+  --accent-alpha-8: rgba(232, 164, 184, 0.08);
+  --accent-alpha-12: rgba(232, 164, 184, 0.12);
+  --accent-alpha-15: rgba(232, 164, 184, 0.15);
+  --accent-alpha-20: rgba(232, 164, 184, 0.2);
+  --accent-alpha-25: rgba(232, 164, 184, 0.25);
+  --accent-alpha-30: rgba(232, 164, 184, 0.3);
+  --accent-alpha-35: rgba(232, 164, 184, 0.35);
+  --accent-alpha-50: rgba(232, 164, 184, 0.5);
+
+  --danger-alpha-15: rgba(139, 41, 66, 0.15);
+  --danger-alpha-40: rgba(139, 41, 66, 0.4);
+
+  --teal-alpha-6: rgba(212, 168, 75, 0.06);
+  --teal-alpha-25: rgba(212, 168, 75, 0.25);
+
+  --terracotta-alpha-6: rgba(139, 41, 66, 0.06);
+  --terracotta-alpha-10: rgba(139, 41, 66, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-green);
+  --status-thinking: var(--palette-gold);
+  --status-disconnected: #4A3540;
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-gold-light);
+  --mode-manual-bg: var(--accent-alpha-20);
+  --mode-manual-text: var(--palette-rose);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-rose);
+  --syntax-string: var(--palette-green);
+  --syntax-number: var(--palette-gold);
+  --syntax-comment: #7A6570;
+  --syntax-function: var(--palette-lavender);
+  --syntax-type: #F0BCC8;
+  --syntax-variable: var(--palette-gold-light);
+  --syntax-operator: #D4C4C8;
+
+  /* === Component: Code Blocks === */
+  --code-bg: #2A1520;
+  --code-header-bg: #4A3540;
+  --code-inline-bg: rgba(232, 164, 184, 0.15);
+
+  /* === Component: Gradient Mesh (list view background) === */
+  --mesh-color-1: rgba(232, 164, 184, 0.08);
+  --mesh-color-2: rgba(212, 168, 75, 0.05);
+  --mesh-color-3: rgba(139, 41, 66, 0.08);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #2A1520;
+}
+
+/* ========== LIGHT MODE - Cream stationery ========== */
+html[data-theme="light"] {
+  /* === Backgrounds (cream/ivory) === */
+  --bg: #FAF6F1;
+  --bg-secondary: #F0E8E0;
+  --bg-tertiary: #E5DBD0;
+  --surface: #FFFFFF;
+  --input-bg: #FFFFFF;
+
+  /* === Text === */
+  --text: #4A1525;
+  --text-secondary: #7A5A65;
+
+  /* === Accent === */
+  --accent: #8B2942;
+  --accent-light: #D4889C;
+
+  /* === Borders === */
+  --border: rgba(107, 29, 50, 0.15);
+  --glass-bg: rgba(250, 246, 241, 0.95);
+  --glass-border: rgba(107, 29, 50, 0.1);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: #F0E8E0;
+
+  /* === Alpha Variants === */
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: #F0E8E0;
+  --code-header-bg: #E5DBD0;
+  --code-inline-bg: rgba(139, 41, 66, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(232, 164, 184, 0.15);
+  --mesh-color-2: rgba(196, 154, 58, 0.08);
+  --mesh-color-3: rgba(107, 29, 50, 0.05);
+
+  /* === Syntax Highlighting === */
+  --syntax-keyword: #6B1D32;
+  --syntax-string: #4A7A4A;
+  --syntax-number: #A68030;
+  --syntax-comment: #A08878;
+  --syntax-function: #7A5A88;
+  --syntax-type: #8B2942;
+  --syntax-variable: #C49A3A;
+  --syntax-operator: #7A5A65;
+
+  /* === Status === */
+  --status-disconnected: #E5DBD0;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(107, 29, 50, 0.2);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #FAF6F1;
+}
+
+/* Auto theme via media query (when no explicit data-theme) */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --bg: #FAF6F1;
+    --bg-secondary: #F0E8E0;
+    --bg-tertiary: #E5DBD0;
+    --surface: #FFFFFF;
+    --input-bg: #FFFFFF;
+    --text: #4A1525;
+    --text-secondary: #7A5A65;
+    --accent: #8B2942;
+    --accent-light: #D4889C;
+    --border: rgba(107, 29, 50, 0.15);
+    --glass-bg: rgba(250, 246, 241, 0.95);
+    --glass-border: rgba(107, 29, 50, 0.1);
+    --assistant-bubble: #F0E8E0;
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #F0E8E0;
+    --code-header-bg: #E5DBD0;
+    --code-inline-bg: rgba(139, 41, 66, 0.1);
+    --mesh-color-1: rgba(232, 164, 184, 0.15);
+    --mesh-color-2: rgba(196, 154, 58, 0.08);
+    --mesh-color-3: rgba(107, 29, 50, 0.05);
+    --syntax-keyword: #6B1D32;
+    --syntax-string: #4A7A4A;
+    --syntax-number: #A68030;
+    --syntax-comment: #A08878;
+    --syntax-function: #7A5A88;
+    --syntax-type: #8B2942;
+    --syntax-variable: #C49A3A;
+    --syntax-operator: #7A5A65;
+    --status-disconnected: #E5DBD0;
+    --scrollbar-thumb: rgba(107, 29, 50, 0.2);
+    --theme-color: #FAF6F1;
+  }
+}

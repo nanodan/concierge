@@ -568,7 +568,8 @@ function updateThemeIcon() {
 const COLOR_THEMES = {
   darjeeling: { name: 'Darjeeling', icon: '\u{1F3DC}' },
   claude: { name: 'Claude', icon: '\u{1F49C}' },
-  nord: { name: 'Nord', icon: '\u2744' }
+  nord: { name: 'Nord', icon: '\u2744' },
+  budapest: { name: 'Budapest', icon: '\u{1F3E8}' }
 };
 
 function applyColorTheme(animate = false) {
