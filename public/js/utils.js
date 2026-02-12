@@ -45,19 +45,42 @@ export function initToast(container) {
   toastContainer = container;
 }
 
-export function showToast(message, { variant = 'default', duration = 3000 } = {}) {
+export function showToast(message, { variant = 'default', duration = 3000, action, onAction } = {}) {
   if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${variant}`;
-  toast.textContent = message;
+
+  const textSpan = document.createElement('span');
+  textSpan.textContent = message;
+  toast.appendChild(textSpan);
+
+  let actionClicked = false;
+  if (action && onAction) {
+    const actionBtn = document.createElement('button');
+    actionBtn.className = 'toast-action';
+    actionBtn.textContent = action;
+    actionBtn.addEventListener('click', () => {
+      actionClicked = true;
+      onAction();
+      toast.classList.add('toast-exit');
+      toast.addEventListener('animationend', () => toast.remove());
+    });
+    toast.appendChild(actionBtn);
+  }
+
   while (toastContainer.children.length >= 2)
     toastContainer.removeChild(toastContainer.firstChild);
   toastContainer.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('toast-enter'));
-  setTimeout(() => {
-    toast.classList.add('toast-exit');
-    toast.addEventListener('animationend', () => toast.remove());
+
+  const timeoutId = setTimeout(() => {
+    if (!actionClicked) {
+      toast.classList.add('toast-exit');
+      toast.addEventListener('animationend', () => toast.remove());
+    }
   }, duration);
+
+  return { cancel: () => { clearTimeout(timeoutId); toast.remove(); } };
 }
 
 // --- Dialog system ---

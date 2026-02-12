@@ -1267,4 +1267,54 @@ export function setupEventListeners(createConversation) {
     window.visualViewport.addEventListener('resize', syncViewportHeight);
     syncViewportHeight();
   }
+
+  // Swipe-to-go-back (edge swipe from left)
+  let swipeBackStartX = 0;
+  let swipeBackStartY = 0;
+  let swipeBackActive = false;
+  const SWIPE_EDGE_WIDTH = 30; // px from left edge
+  const SWIPE_BACK_THRESHOLD = 80;
+
+  chatView.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    // Only trigger from left edge
+    if (touch.clientX <= SWIPE_EDGE_WIDTH && chatView.classList.contains('slide-in')) {
+      swipeBackStartX = touch.clientX;
+      swipeBackStartY = touch.clientY;
+      swipeBackActive = true;
+    }
+  }, { passive: true });
+
+  chatView.addEventListener('touchmove', (e) => {
+    if (!swipeBackActive) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - swipeBackStartX;
+    const dy = Math.abs(touch.clientY - swipeBackStartY);
+
+    // Cancel if vertical scroll is dominant
+    if (dy > Math.abs(dx)) {
+      swipeBackActive = false;
+      return;
+    }
+
+    // Visual feedback: translate chat view
+    if (dx > 0) {
+      chatView.style.transform = `translateX(${Math.min(dx, 150)}px)`;
+      chatView.style.transition = 'none';
+    }
+  }, { passive: true });
+
+  chatView.addEventListener('touchend', (e) => {
+    if (!swipeBackActive) return;
+    swipeBackActive = false;
+
+    const currentTransform = parseFloat(chatView.style.transform.replace(/[^0-9.-]/g, '') || 0);
+    chatView.style.transition = '';
+    chatView.style.transform = '';
+
+    if (currentTransform >= SWIPE_BACK_THRESHOLD) {
+      haptic(15);
+      showListView();
+    }
+  }, { passive: true });
 }

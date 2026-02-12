@@ -93,6 +93,53 @@ export async function deleteConversation(id) {
   await loadConversations();
 }
 
+// Soft delete with undo - hides immediately, deletes after timeout unless undone
+let pendingDelete = null;
+
+export function softDeleteConversation(id) {
+  // Cancel any existing pending delete
+  if (pendingDelete) {
+    clearTimeout(pendingDelete.timeout);
+    pendingDelete.toast?.cancel?.();
+  }
+
+  const conv = state.conversations.find(c => c.id === id);
+  const convName = conv?.name || 'Conversation';
+
+  // Immediately hide from list by filtering
+  state.setConversations(state.conversations.filter(c => c.id !== id));
+  renderConversationList();
+
+  if (state.getCurrentConversationId() === id) {
+    showListView();
+  }
+
+  // Show toast with undo
+  const toast = showToast(`"${convName}" deleted`, {
+    duration: 5000,
+    action: 'Undo',
+    onAction: () => {
+      // Restore conversation
+      if (pendingDelete && pendingDelete.id === id) {
+        clearTimeout(pendingDelete.timeout);
+        pendingDelete = null;
+        loadConversations(); // Reload to restore
+        showToast('Restored');
+      }
+    }
+  });
+
+  // Schedule actual deletion
+  const timeout = setTimeout(async () => {
+    if (pendingDelete && pendingDelete.id === id) {
+      await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+      pendingDelete = null;
+    }
+  }, 5000);
+
+  pendingDelete = { id, timeout, toast };
+}
+
 export async function archiveConversation(id, archived) {
   await fetch(`/api/conversations/${id}`, {
     method: 'PATCH',
@@ -107,6 +154,15 @@ export async function renameConversation(id, name) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
+  });
+  await loadConversations();
+}
+
+export async function pinConversation(id, pinned) {
+  await fetch(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pinned }),
   });
   await loadConversations();
 }
@@ -180,7 +236,7 @@ export function renderConversationList(items) {
     groups.get(scope).push(c);
   }
 
-  const showCwdOnCards = groups.size <= 1 || isSearch;
+  const showCwdOnCards = isSearch; // Only show cwd on individual cards during search
 
   function renderCard(c) {
     const preview = c.lastMessage
@@ -204,8 +260,10 @@ export function renderConversationList(items) {
     const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
     const isUnread = state.hasUnread(c.id);
     const isSelected = state.getSelectedConversations().has(c.id);
+    const isPinned = c.pinned;
+    const pinIcon = isPinned ? '<svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>' : '';
     return `
-      <div class="conv-card-wrapper">
+      <div class="conv-card-wrapper${isPinned ? ' pinned' : ''}">
         <div class="swipe-actions">
           <button class="swipe-action-btn ${archiveBtnClass}" data-id="${c.id}" data-action="archive">${archiveLabel}</button>
           <button class="swipe-action-btn delete-action-btn" data-id="${c.id}" data-action="delete">Delete</button>
@@ -216,7 +274,7 @@ export function renderConversationList(items) {
           </div>
           <div class="conv-card-content">
             <div class="conv-card-top">
-              ${isUnread ? '<span class="unread-dot"></span>' : ''}<span class="conv-card-name">${escapeHtml(c.name)}</span>
+              ${isUnread ? '<span class="unread-dot"></span>' : ''}${pinIcon}<span class="conv-card-name">${escapeHtml(c.name)}</span>
               <span class="conv-card-time">${time}</span>
             </div>
             <div class="conv-card-preview">${escapeHtml(preview)}</div>
@@ -228,10 +286,11 @@ export function renderConversationList(items) {
     `;
   }
 
-  // Single group or search: flat list
-  if (groups.size <= 1 || isSearch) {
+  // Search: flat list without headers
+  if (isSearch) {
     conversationList.innerHTML = list.map(renderCard).join('');
   } else {
+    // Always show scope headers (even with single folder)
     const shortPath = (p) => p.replace(/^\/Users\/[^/]+/, '~');
     conversationList.innerHTML = Array.from(groups.entries()).map(([scope, convs]) => {
       const collapsed = collapsedScopes[scope];
@@ -297,11 +356,7 @@ export function renderConversationList(items) {
       const action = btn.dataset.action;
       const id = btn.dataset.id;
       if (action === 'delete') {
-        const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
-        if (ok) {
-          deleteConversation(id);
-          showToast('Conversation deleted');
-        }
+        softDeleteConversation(id);
       } else if (action === 'archive') {
         const conv = state.conversations.find(c => c.id === id);
         archiveConversation(id, !conv?.archived);
@@ -410,6 +465,8 @@ function showActionPopup(x, y, id) {
   state.setLongPressTarget(id);
   const conv = state.conversations.find(c => c.id === id);
   popupArchiveBtn.textContent = conv?.archived ? 'Unarchive' : 'Archive';
+  const popupPinBtn = document.getElementById('popup-pin-btn');
+  if (popupPinBtn) popupPinBtn.textContent = conv?.pinned ? 'Unpin' : 'Pin';
 
   // Position popup near touch point
   actionPopup.style.left = Math.min(x, window.innerWidth - 180) + 'px';
@@ -437,16 +494,16 @@ export function setupActionPopupHandlers(hideMsgActionPopup) {
       hideActionPopup();
       if (!id) return;
 
-      if (action === 'archive') {
+      if (action === 'pin') {
+        const conv = state.conversations.find(c => c.id === id);
+        pinConversation(id, !conv?.pinned);
+        showToast(conv?.pinned ? 'Conversation unpinned' : 'Conversation pinned');
+      } else if (action === 'archive') {
         const conv = state.conversations.find(c => c.id === id);
         archiveConversation(id, !conv?.archived);
         showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
       } else if (action === 'delete') {
-        const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
-        if (ok) {
-          deleteConversation(id);
-          showToast('Conversation deleted');
-        }
+        softDeleteConversation(id);
       } else if (action === 'rename') {
         const conv = state.conversations.find(c => c.id === id);
         const newName = await showDialog({ title: 'Rename conversation', input: true, defaultValue: conv?.name || '', placeholder: 'Conversation name', confirmLabel: 'Rename' });

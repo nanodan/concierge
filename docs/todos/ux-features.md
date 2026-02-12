@@ -48,38 +48,53 @@ Star or tag conversations for quick access. Scope-based grouping alone isn't eno
 
 ---
 
-## Batch operations on conversation list
+## ~~Batch operations on conversation list~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium
 
-Multi-select mode for archive/delete. Managing lots of conversations is tedious one-by-one.
+Multi-select mode for archive/delete. ~~Managing lots of conversations is tedious one-by-one.~~ **IMPLEMENTED**
 
-**Approach:**
-- Long-press or checkbox toggle enters multi-select mode
-- Floating action bar appears with archive/delete/tag buttons
-- Batch API endpoint: `POST /api/conversations/batch` with `{action, ids}`
-- Select all / deselect all buttons
-
-**Files:** `server.js` (new batch endpoint), `public/app.js` (selection state, UI), `public/style.css`
+- "Select" button in header enters multi-select mode
+- Tap cards to select/deselect
+- Bulk action bar with Select All, Archive, Delete
+- Undo delete with 5-second toast
 
 ---
 
-## Keyboard shortcuts
+## ~~Keyboard shortcuts~~ ✅ DONE
 **Priority:** Medium
 **Effort:** Medium
 
-No keyboard navigation. Desktop experience suffers.
+~~No keyboard navigation.~~ **IMPLEMENTED**
 
-**Approach:**
-- `Ctrl/Cmd+K` — focus search
+- `Cmd/Ctrl+K` — focus search
+- `Cmd/Ctrl+N` — new conversation
+- `Cmd/Ctrl+Shift+A` — toggle archived
+- `Cmd/Ctrl+E` — export conversation
 - `Escape` — go back / close modal
-- `Ctrl/Cmd+N` — new conversation
-- `Up/Down` arrows — navigate conversation list
-- `Enter` — open selected conversation
-- `Ctrl/Cmd+Shift+Backspace` — delete conversation (with confirm)
-- Show shortcut hints in a help modal (`?` key)
 
-**Files:** `public/app.js` (global keydown handler), `public/index.html` (help modal)
+---
+
+## ~~Pin conversations~~ ✅ DONE
+**Priority:** Medium
+**Effort:** Low
+
+Pin important conversations to the top of the list. **IMPLEMENTED**
+
+- Long-press menu includes Pin/Unpin option
+- Pinned conversations sort to top
+- Pin icon displayed on pinned cards
+
+---
+
+## ~~Swipe-to-go-back~~ ✅ DONE
+**Priority:** Medium
+**Effort:** Low
+
+iOS-style edge swipe to go back from chat view. **IMPLEMENTED**
+
+- Swipe from left edge (30px) triggers back navigation
+- Visual feedback during swipe
 
 ---
 
@@ -176,3 +191,113 @@ Compare two conversations or responses to the same prompt across models.
 - Useful for model comparison workflows
 
 **Files:** `public/app.js` (new view), `public/index.html` (view markup), `public/style.css`
+
+---
+
+## Message timestamps
+**Priority:** Medium
+**Effort:** Low
+
+Show exact timestamp when tapping/hovering on messages.
+
+**Approach:**
+- Add timestamp tooltip or expandable detail on tap
+- Show relative time ("2 hours ago") or absolute time based on preference
+- Could also show token count, cost for that message
+
+**Files:** `public/js/render.js`, `public/css/messages.css`
+
+---
+
+## Search within conversation
+**Priority:** Medium
+**Effort:** Medium
+
+Cmd+F style search in current chat to find specific messages.
+
+**Approach:**
+- Search bar in chat header (toggles with Cmd+F)
+- Highlight matching text in messages
+- Navigate between matches with up/down arrows
+- Show match count
+
+**Files:** `public/js/ui.js`, `public/js/render.js`, `public/css/messages.css`
+
+---
+
+## Per-conversation stats
+**Priority:** Low
+**Effort:** Low
+
+Show token usage, message count, and cost for each conversation.
+
+**Approach:**
+- Add stats section to conversation detail view (maybe in header dropdown)
+- Calculate totals from messages array
+- Show input/output token breakdown
+
+**Files:** `public/js/ui.js`, `public/css/components.css`
+
+---
+
+## Image lightbox
+**Priority:** Low
+**Effort:** Low
+
+Full-screen preview when tapping image attachments.
+
+**Approach:**
+- Modal overlay with zoomed image
+- Pinch-to-zoom on mobile
+- Download button
+- Swipe to dismiss
+
+**Files:** `public/js/render.js`, `public/index.html`, `public/css/components.css`
+
+---
+
+## Starred messages
+**Priority:** Low
+**Effort:** Medium
+
+Bookmark important messages within conversations for quick reference.
+
+**Approach:**
+- Star icon on messages (visible on hover/tap)
+- Starred messages view or filter
+- Persist in message metadata
+- Jump-to-starred navigation
+
+**Files:** `server.js` (message metadata), `public/js/render.js`, `public/css/messages.css`
+
+---
+
+## Better code blocks
+**Priority:** Low
+**Effort:** Medium
+
+Line numbers, syntax theme matching color theme, improved copy feedback.
+
+**Approach:**
+- Optional line numbers (toggle)
+- Match syntax highlighting to color theme (darjeeling, budapest, etc.)
+- "Copied!" feedback animation on copy button
+- Horizontal scroll indicator
+
+**Files:** `public/js/render.js`, `public/css/messages.css`, color theme files
+
+---
+
+## Accessibility audit
+**Priority:** Medium
+**Effort:** Medium
+
+Ensure all interactive elements have proper ARIA labels and keyboard support.
+
+**Approach:**
+- Add aria-label to icon-only buttons
+- Ensure focus management in modals
+- Screen reader announcements for dynamic content
+- Test with VoiceOver/NVDA
+
+**Files:** `public/index.html`, `public/js/*.js`

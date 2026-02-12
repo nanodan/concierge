@@ -809,6 +809,9 @@
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
@@ -822,6 +825,28 @@
   opacity: 0;
   transform: translateY(16px);
   pointer-events: auto;
+}
+
+.toast-action {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin: -4px -8px -4px 0;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.toast-action:hover {
+  background: var(--accent-alpha-15);
+}
+
+.toast-action:active {
+  opacity: 0.7;
 }
 
 .toast.toast-enter {
