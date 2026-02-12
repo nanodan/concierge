@@ -52,6 +52,10 @@ export let messageReactions = JSON.parse(localStorage.getItem('messageReactions'
 export let longPressTimer = null;
 export let longPressTarget = null;
 
+// Selection mode
+export let selectionMode = false;
+export let selectedConversations = new Set();
+
 // Search
 export let searchDebounceTimer = null;
 
@@ -301,6 +305,38 @@ export function setLongPressTarget(target) {
 
 export function getLongPressTarget() {
   return longPressTarget;
+}
+
+export function setSelectionMode(mode) {
+  selectionMode = mode;
+  if (!mode) {
+    selectedConversations.clear();
+  }
+}
+
+export function getSelectionMode() {
+  return selectionMode;
+}
+
+export function toggleSelectedConversation(id) {
+  if (selectedConversations.has(id)) {
+    selectedConversations.delete(id);
+  } else {
+    selectedConversations.add(id);
+  }
+  return selectedConversations.has(id);
+}
+
+export function getSelectedConversations() {
+  return selectedConversations;
+}
+
+export function selectAllConversations(ids) {
+  ids.forEach(id => selectedConversations.add(id));
+}
+
+export function clearSelectedConversations() {
+  selectedConversations.clear();
 }
 
 export function setSearchDebounceTimer(timer) {

@@ -8,7 +8,12 @@ import {
   initConversations,
   loadConversations,
   createConversation,
-  setupActionPopupHandlers
+  setupActionPopupHandlers,
+  enterSelectionMode,
+  exitSelectionMode,
+  selectAllConversations,
+  bulkArchive,
+  bulkDelete
 } from './conversations.js';
 import {
   initUI,
@@ -87,6 +92,12 @@ const statsView = document.getElementById('stats-view');
 const statsBackBtn = document.getElementById('stats-back-btn');
 const statsContent = document.getElementById('stats-content');
 const listHeader = listView.querySelector('.list-header');
+const selectModeBtn = document.getElementById('select-mode-btn');
+const bulkActionBar = document.getElementById('bulk-action-bar');
+const bulkCancelBtn = document.getElementById('bulk-cancel-btn');
+const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
+const bulkArchiveBtn = document.getElementById('bulk-archive-btn');
+const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
 
 // --- Initialize modules ---
 
@@ -225,4 +236,31 @@ loadConversations();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// --- Bulk selection handlers ---
+if (selectModeBtn) {
+  selectModeBtn.addEventListener('click', () => {
+    if (state.getSelectionMode()) {
+      exitSelectionMode();
+    } else {
+      enterSelectionMode();
+    }
+  });
+}
+
+if (bulkCancelBtn) {
+  bulkCancelBtn.addEventListener('click', () => exitSelectionMode());
+}
+
+if (bulkSelectAllBtn) {
+  bulkSelectAllBtn.addEventListener('click', () => selectAllConversations());
+}
+
+if (bulkArchiveBtn) {
+  bulkArchiveBtn.addEventListener('click', () => bulkArchive());
+}
+
+if (bulkDeleteBtn) {
+  bulkDeleteBtn.addEventListener('click', () => bulkDelete());
 }

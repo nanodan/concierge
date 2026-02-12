@@ -203,20 +203,26 @@ export function renderConversationList(items) {
     const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
     const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
     const isUnread = state.hasUnread(c.id);
+    const isSelected = state.getSelectedConversations().has(c.id);
     return `
       <div class="conv-card-wrapper">
         <div class="swipe-actions">
           <button class="swipe-action-btn ${archiveBtnClass}" data-id="${c.id}" data-action="archive">${archiveLabel}</button>
           <button class="swipe-action-btn delete-action-btn" data-id="${c.id}" data-action="delete">Delete</button>
         </div>
-        <div class="conv-card" data-id="${c.id}">
-          <div class="conv-card-top">
-            ${isUnread ? '<span class="unread-dot"></span>' : ''}<span class="conv-card-name">${escapeHtml(c.name)}</span>
-            <span class="conv-card-time">${time}</span>
+        <div class="conv-card${isSelected ? ' selected' : ''}" data-id="${c.id}">
+          <div class="conv-card-select">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <div class="conv-card-preview">${escapeHtml(preview)}</div>
-          ${matchHtml}
-          ${cwdHtml}
+          <div class="conv-card-content">
+            <div class="conv-card-top">
+              ${isUnread ? '<span class="unread-dot"></span>' : ''}<span class="conv-card-name">${escapeHtml(c.name)}</span>
+              <span class="conv-card-time">${time}</span>
+            </div>
+            <div class="conv-card-preview">${escapeHtml(preview)}</div>
+            ${matchHtml}
+            ${cwdHtml}
+          </div>
         </div>
       </div>
     `;
@@ -271,6 +277,15 @@ export function renderConversationList(items) {
     card.addEventListener('click', (e) => {
       // Don't navigate if card is swiped open
       if (Math.abs(parseFloat(card.style.transform?.replace(/[^0-9.-]/g, '') || 0)) > 10) return;
+
+      // Handle selection mode
+      if (state.getSelectionMode()) {
+        const isSelected = state.toggleSelectedConversation(id);
+        card.classList.toggle('selected', isSelected);
+        updateBulkSelectionCount();
+        return;
+      }
+
       openConversation(id);
     });
   });
@@ -530,5 +545,92 @@ export function showListView() {
   const jumpToBottomBtn = state.getJumpToBottomBtn();
   if (jumpToBottomBtn) jumpToBottomBtn.classList.remove('visible');
   if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+  loadConversations();
+}
+
+// --- Bulk Selection ---
+export function enterSelectionMode() {
+  state.setSelectionMode(true);
+  listView.classList.add('selection-mode');
+  document.getElementById('bulk-action-bar')?.classList.remove('hidden');
+  document.getElementById('select-mode-btn')?.classList.add('active');
+  updateBulkSelectionCount();
+}
+
+export function exitSelectionMode() {
+  state.setSelectionMode(false);
+  listView.classList.remove('selection-mode');
+  document.getElementById('bulk-action-bar')?.classList.add('hidden');
+  document.getElementById('select-mode-btn')?.classList.remove('active');
+  // Remove selected class from all cards
+  conversationList.querySelectorAll('.conv-card.selected').forEach(card => {
+    card.classList.remove('selected');
+  });
+}
+
+export function updateBulkSelectionCount() {
+  const count = state.getSelectedConversations().size;
+  const countEl = document.getElementById('bulk-count');
+  if (countEl) {
+    countEl.textContent = count === 1 ? '1 selected' : `${count} selected`;
+  }
+  // Disable action buttons if nothing selected
+  const archiveBtn = document.getElementById('bulk-archive-btn');
+  const deleteBtn = document.getElementById('bulk-delete-btn');
+  if (archiveBtn) archiveBtn.disabled = count === 0;
+  if (deleteBtn) deleteBtn.disabled = count === 0;
+}
+
+export function selectAllConversations() {
+  const showingArchived = state.getShowingArchived();
+  const visibleConvs = state.conversations.filter(c => showingArchived ? c.archived : !c.archived);
+  const ids = visibleConvs.map(c => c.id);
+  state.selectAllConversations(ids);
+  // Update UI
+  conversationList.querySelectorAll('.conv-card').forEach(card => {
+    if (ids.includes(card.dataset.id)) {
+      card.classList.add('selected');
+    }
+  });
+  updateBulkSelectionCount();
+}
+
+export async function bulkArchive() {
+  const selected = Array.from(state.getSelectedConversations());
+  if (selected.length === 0) return;
+
+  const showingArchived = state.getShowingArchived();
+  const action = showingArchived ? 'unarchive' : 'archive';
+  const ok = await showDialog({
+    title: `${showingArchived ? 'Unarchive' : 'Archive'} ${selected.length} conversation${selected.length > 1 ? 's' : ''}?`,
+    confirmLabel: showingArchived ? 'Unarchive' : 'Archive'
+  });
+  if (!ok) return;
+
+  for (const id of selected) {
+    await archiveConversation(id, !showingArchived);
+  }
+  showToast(`${selected.length} conversation${selected.length > 1 ? 's' : ''} ${action}d`);
+  exitSelectionMode();
+  loadConversations();
+}
+
+export async function bulkDelete() {
+  const selected = Array.from(state.getSelectedConversations());
+  if (selected.length === 0) return;
+
+  const ok = await showDialog({
+    title: `Delete ${selected.length} conversation${selected.length > 1 ? 's' : ''}?`,
+    message: 'This cannot be undone.',
+    confirmLabel: 'Delete',
+    danger: true
+  });
+  if (!ok) return;
+
+  for (const id of selected) {
+    await deleteConversation(id);
+  }
+  showToast(`${selected.length} conversation${selected.length > 1 ? 's' : ''} deleted`);
+  exitSelectionMode();
   loadConversations();
 }
