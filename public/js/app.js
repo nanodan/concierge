@@ -42,7 +42,6 @@ const modalCancel = document.getElementById('modal-cancel');
 const convNameInput = document.getElementById('conv-name');
 const convCwdInput = document.getElementById('conv-cwd');
 const archiveToggle = document.getElementById('archive-toggle');
-const archiveToggleLabel = document.getElementById('archive-toggle-label');
 const searchInput = document.getElementById('search-input');
 const actionPopup = document.getElementById('action-popup');
 const actionPopupOverlay = document.getElementById('action-popup-overlay');
@@ -85,10 +84,14 @@ const fileBrowserList = document.getElementById('file-browser-list');
 const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
-const themeToggle = document.getElementById('theme-toggle');
 const themeDropdown = document.getElementById('theme-dropdown');
-const colorThemeToggle = document.getElementById('color-theme-toggle');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
+const moreMenuBtn = document.getElementById('more-menu-btn');
+const moreMenuDropdown = document.getElementById('more-menu-dropdown');
+const moreColorTheme = document.getElementById('more-color-theme');
+const moreThemeToggle = document.getElementById('more-theme-toggle');
+const moreThemeIcon = document.getElementById('more-theme-icon');
+const moreThemeLabel = document.getElementById('more-theme-label');
 const filterToggle = document.getElementById('filter-toggle');
 const filterRow = document.getElementById('filter-row');
 const filterModelSelect = document.getElementById('filter-model');
@@ -169,7 +172,6 @@ initUI({
   convAutopilot,
   convModelSelect,
   archiveToggle,
-  archiveToggleLabel,
   searchInput,
   browseBtn,
   dirBrowser,
@@ -191,10 +193,14 @@ initUI({
   jumpToBottomBtn,
   msgActionPopup,
   actionPopupOverlay,
-  themeToggle,
   themeDropdown,
-  colorThemeToggle,
   colorThemeDropdown,
+  moreMenuBtn,
+  moreMenuDropdown,
+  moreColorTheme,
+  moreThemeToggle,
+  moreThemeIcon,
+  moreThemeLabel,
   filterToggle,
   filterRow,
   filterModelSelect,

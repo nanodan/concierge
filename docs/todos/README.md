@@ -13,6 +13,7 @@ Organized by category. Each file contains individual items with priority, effort
 - **ARIA labels** — added to 20+ icon-only buttons
 - **Focus-visible styles** — accent-colored focus rings on interactive elements
 - **Swipe optimizations** — will-change and touch-action CSS properties
+- **File browser** — browse/download files from conversation cwd or anywhere on server
 
 ## Categories
 
@@ -24,6 +25,7 @@ Organized by category. Each file contains individual items with priority, effort
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
+| [file-browser.md](file-browser.md) | 7 | Upload, quick actions, recent files, editing, previews |
 
 ## Priority Guide
 

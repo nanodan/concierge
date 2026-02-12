@@ -20,7 +20,6 @@ let convCwdInput = null;
 let convAutopilot = null;
 let convModelSelect = null;
 let archiveToggle = null;
-let archiveToggleLabel = null;
 let searchInput = null;
 let browseBtn = null;
 let dirBrowser = null;
@@ -42,10 +41,14 @@ let contextBarLabel = null;
 let jumpToBottomBtn = null;
 let msgActionPopup = null;
 let actionPopupOverlay = null;
-let themeToggle = null;
 let themeDropdown = null;
-let colorThemeToggle = null;
 let colorThemeDropdown = null;
+let moreMenuBtn = null;
+let moreMenuDropdown = null;
+let moreColorTheme = null;
+let moreThemeToggle = null;
+let moreThemeIcon = null;
+let moreThemeLabel = null;
 let colorThemeLink = null;
 let filterToggle = null;
 let filterRow = null;
@@ -91,7 +94,6 @@ export function initUI(elements) {
   convAutopilot = elements.convAutopilot;
   convModelSelect = elements.convModelSelect;
   archiveToggle = elements.archiveToggle;
-  archiveToggleLabel = elements.archiveToggleLabel;
   searchInput = elements.searchInput;
   browseBtn = elements.browseBtn;
   dirBrowser = elements.dirBrowser;
@@ -113,10 +115,14 @@ export function initUI(elements) {
   jumpToBottomBtn = elements.jumpToBottomBtn;
   msgActionPopup = elements.msgActionPopup;
   actionPopupOverlay = elements.actionPopupOverlay;
-  themeToggle = elements.themeToggle;
   themeDropdown = elements.themeDropdown;
-  colorThemeToggle = elements.colorThemeToggle;
   colorThemeDropdown = elements.colorThemeDropdown;
+  moreMenuBtn = elements.moreMenuBtn;
+  moreMenuDropdown = elements.moreMenuDropdown;
+  moreColorTheme = elements.moreColorTheme;
+  moreThemeToggle = elements.moreThemeToggle;
+  moreThemeIcon = elements.moreThemeIcon;
+  moreThemeLabel = elements.moreThemeLabel;
   colorThemeLink = document.getElementById('color-theme-link');
   filterToggle = elements.filterToggle;
   filterRow = elements.filterRow;
@@ -709,16 +715,47 @@ function applyTheme(animate = false) {
   }
 }
 
-function toggleThemeDropdown() {
-  if (!themeDropdown || !themeToggle) return;
-  const isHidden = themeDropdown.classList.contains('hidden');
+// --- More Menu ---
+function toggleMoreMenu() {
+  if (!moreMenuDropdown || !moreMenuBtn) return;
+  const isHidden = moreMenuDropdown.classList.contains('hidden');
   if (isHidden) {
-    // Position the dropdown below the toggle button
-    const rect = themeToggle.getBoundingClientRect();
-    themeDropdown.style.top = `${rect.bottom + 4}px`;
-    themeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    closeThemeDropdown();
+    closeColorThemeDropdown();
+    moreMenuDropdown.classList.remove('hidden');
+    setTimeout(() => {
+      document.addEventListener('click', closeMoreMenuOnOutsideClick);
+    }, 0);
+  } else {
+    closeMoreMenu();
+  }
+}
+
+function closeMoreMenu() {
+  if (!moreMenuDropdown) return;
+  moreMenuDropdown.classList.add('hidden');
+  document.removeEventListener('click', closeMoreMenuOnOutsideClick);
+}
+
+function closeMoreMenuOnOutsideClick(e) {
+  if (!moreMenuDropdown.contains(e.target) && e.target !== moreMenuBtn && !moreMenuBtn.contains(e.target)) {
+    closeMoreMenu();
+  }
+}
+
+function toggleThemeDropdown() {
+  if (!themeDropdown) return;
+  const isHidden = themeDropdown.classList.contains('hidden');
+  closeMoreMenu();
+  if (isHidden) {
+    closeColorThemeDropdown();
+    // Position below the more menu
+    if (moreMenuDropdown) {
+      const rect = moreMenuDropdown.getBoundingClientRect();
+      themeDropdown.style.top = `${rect.top}px`;
+      themeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    }
     themeDropdown.classList.remove('hidden');
-    // Close on outside click
     setTimeout(() => {
       document.addEventListener('click', closeThemeDropdownOnOutsideClick);
     }, 0);
@@ -734,7 +771,7 @@ function closeThemeDropdown() {
 }
 
 function closeThemeDropdownOnOutsideClick(e) {
-  if (!themeDropdown.contains(e.target) && e.target !== themeToggle) {
+  if (!themeDropdown.contains(e.target)) {
     closeThemeDropdown();
   }
 }
@@ -751,16 +788,20 @@ function selectTheme(newTheme) {
 
 function updateThemeIcon() {
   const currentTheme = state.getCurrentTheme();
+  const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
 
-  // Update the toggle button SVG based on current theme
-  const themeIcon = document.getElementById('theme-icon');
-  if (themeIcon) {
+  // Update the more menu icon and label
+  if (moreThemeIcon) {
     const svgPaths = {
       auto: '<circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 1 0 20"/>',
       light: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
       dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
     };
-    themeIcon.innerHTML = svgPaths[currentTheme] || svgPaths.auto;
+    moreThemeIcon.innerHTML = svgPaths[currentTheme] || svgPaths.auto;
+  }
+
+  if (moreThemeLabel) {
+    moreThemeLabel.textContent = labels[currentTheme] || 'Auto';
   }
 
   // Update active state in dropdown
@@ -801,17 +842,18 @@ function applyColorTheme(animate = false) {
 }
 
 function toggleColorThemeDropdown() {
-  if (!colorThemeDropdown || !colorThemeToggle) return;
+  if (!colorThemeDropdown) return;
   const isHidden = colorThemeDropdown.classList.contains('hidden');
+  closeMoreMenu();
   if (isHidden) {
-    // Close other dropdown if open
     closeThemeDropdown();
-    // Position the dropdown below the toggle button
-    const rect = colorThemeToggle.getBoundingClientRect();
-    colorThemeDropdown.style.top = `${rect.bottom + 4}px`;
-    colorThemeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    // Position below the more menu
+    if (moreMenuDropdown) {
+      const rect = moreMenuDropdown.getBoundingClientRect();
+      colorThemeDropdown.style.top = `${rect.top}px`;
+      colorThemeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    }
     colorThemeDropdown.classList.remove('hidden');
-    // Close on outside click
     setTimeout(() => {
       document.addEventListener('click', closeColorThemeDropdownOnOutsideClick);
     }, 0);
@@ -827,7 +869,7 @@ function closeColorThemeDropdown() {
 }
 
 function closeColorThemeDropdownOnOutsideClick(e) {
-  if (!colorThemeDropdown.contains(e.target) && e.target !== colorThemeToggle) {
+  if (!colorThemeDropdown.contains(e.target)) {
     closeColorThemeDropdown();
   }
 }
@@ -1289,9 +1331,9 @@ export function setupEventListeners(createConversation) {
     const newShowing = !state.getShowingArchived();
     state.setShowingArchived(newShowing);
     archiveToggle.classList.toggle('active', newShowing);
-    archiveToggleLabel.textContent = newShowing ? 'Active' : 'Archived';
     searchInput.value = '';
     loadConversations();
+    showToast(newShowing ? 'Showing archived' : 'Showing active');
   });
 
   // Search
@@ -1365,29 +1407,36 @@ export function setupEventListeners(createConversation) {
     listView.classList.remove('slide-out');
   });
 
-  // Theme dropdown (light/dark/auto)
-  if (themeToggle) {
-    themeToggle.addEventListener('click', (e) => {
+  // More menu button
+  if (moreMenuBtn) {
+    moreMenuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      closeColorThemeDropdown();
+      toggleMoreMenu();
+    });
+  }
+
+  // More menu items
+  if (moreColorTheme) {
+    moreColorTheme.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleColorThemeDropdown();
+    });
+  }
+
+  if (moreThemeToggle) {
+    moreThemeToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
       toggleThemeDropdown();
     });
   }
+
+  // Theme dropdown (light/dark/auto)
   if (themeDropdown) {
     themeDropdown.addEventListener('click', (e) => {
       const option = e.target.closest('.theme-option');
       if (option && option.dataset.theme) {
         selectTheme(option.dataset.theme);
       }
-    });
-  }
-
-  // Color theme dropdown (darjeeling/claude/nord)
-  if (colorThemeToggle) {
-    colorThemeToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeThemeDropdown();
-      toggleColorThemeDropdown();
     });
   }
   if (colorThemeDropdown) {
