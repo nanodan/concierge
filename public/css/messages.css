@@ -22,16 +22,16 @@
 
 .message.user {
   align-self: flex-end;
-  background: linear-gradient(135deg, #7c6cf0, #6a5ae0);
+  background: linear-gradient(135deg, var(--accent), var(--user-bubble-end));
   color: white;
   border-bottom-right-radius: 6px;
-  box-shadow: 0 2px 12px rgba(124, 108, 240, 0.3);
+  box-shadow: 0 2px 12px rgba(232, 150, 58, 0.3);
 }
 
 .message.assistant {
   align-self: flex-start;
   background: linear-gradient(var(--assistant-bubble), var(--assistant-bubble)) padding-box,
-              linear-gradient(135deg, rgba(124, 108, 240, 0.25), rgba(124, 108, 240, 0.05) 50%, transparent) border-box;
+              linear-gradient(135deg, rgba(232, 150, 58, 0.25), rgba(232, 150, 58, 0.05) 50%, transparent) border-box;
   color: var(--text);
   border-bottom-left-radius: 6px;
   max-width: 92%;
@@ -70,7 +70,7 @@
   flex-shrink: 0;
   font-size: 14px;
   color: white;
-  box-shadow: 0 2px 8px rgba(124, 108, 240, 0.3);
+  box-shadow: 0 2px 8px rgba(232, 150, 58, 0.3);
 }
 
 .claude-avatar svg {
@@ -102,8 +102,8 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background: rgba(124, 108, 240, 0.12);
-  border: 1px solid rgba(124, 108, 240, 0.2);
+  background: rgba(232, 150, 58, 0.12);
+  border: 1px solid rgba(232, 150, 58, 0.2);
   border-radius: 12px;
   font-size: 13px;
   cursor: pointer;
@@ -112,7 +112,7 @@
 }
 
 .reaction-pill:hover {
-  background: rgba(124, 108, 240, 0.2);
+  background: rgba(232, 150, 58, 0.2);
 }
 
 .reaction-pill:active {
@@ -120,7 +120,7 @@
 }
 
 .reaction-pill.active {
-  background: rgba(124, 108, 240, 0.25);
+  background: rgba(232, 150, 58, 0.25);
   border-color: var(--accent);
 }
 
@@ -266,7 +266,7 @@
 }
 
 .message.assistant :not(pre) > code {
-  background: rgba(124, 108, 240, 0.15);
+  background: rgba(232, 150, 58, 0.15);
   padding: 2px 5px;
   border-radius: 4px;
 }

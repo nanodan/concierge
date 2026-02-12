@@ -12,9 +12,9 @@
   width: 200%;
   height: 200%;
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(124, 108, 240, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(199, 146, 234, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 30%, rgba(137, 221, 255, 0.05) 0%, transparent 40%);
+    radial-gradient(ellipse at 20% 20%, rgba(232, 150, 58, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(199, 91, 57, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 30%, rgba(74, 155, 155, 0.06) 0%, transparent 40%);
   animation: gradient-drift 20s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
@@ -281,8 +281,8 @@
 }
 
 .stat-card.accent {
-  background: linear-gradient(135deg, rgba(124, 108, 240, 0.2), rgba(106, 90, 224, 0.1));
-  border-color: rgba(124, 108, 240, 0.3);
+  background: linear-gradient(135deg, rgba(232, 150, 58, 0.2), rgba(199, 91, 57, 0.1));
+  border-color: rgba(232, 150, 58, 0.3);
 }
 
 .stat-value {
@@ -292,7 +292,7 @@
 }
 
 .stat-card.accent .stat-value {
-  background: linear-gradient(135deg, var(--accent-light), #c792ea);
+  background: linear-gradient(135deg, var(--accent-light), var(--accent-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -399,7 +399,7 @@
 }
 
 .words-bar.claude {
-  background: linear-gradient(90deg, #c792ea, #89ddff);
+  background: linear-gradient(90deg, var(--accent-secondary), #6BC4C4);
 }
 
 .words-bar-count {

@@ -7,12 +7,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c6cf0, #6a5ae0);
+  background: linear-gradient(135deg, var(--accent), var(--user-bubble-end));
   color: white;
   border: none;
   font-size: 28px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(124, 108, 240, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(232, 150, 58, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,13 +22,13 @@
 }
 
 @keyframes fab-breathe {
-  0%, 100% { box-shadow: 0 4px 16px rgba(124, 108, 240, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2); }
-  50% { box-shadow: 0 6px 24px rgba(124, 108, 240, 0.5), 0 4px 12px rgba(0, 0, 0, 0.25); }
+  0%, 100% { box-shadow: 0 4px 16px rgba(232, 150, 58, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2); }
+  50% { box-shadow: 0 6px 24px rgba(232, 150, 58, 0.5), 0 4px 12px rgba(0, 0, 0, 0.25); }
 }
 
 .fab:active {
   transform: scale(0.92);
-  box-shadow: 0 2px 8px rgba(124, 108, 240, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(232, 150, 58, 0.25), 0 1px 4px rgba(0, 0, 0, 0.15);
   animation: none;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .input-bar textarea:focus {
-  border-color: rgba(124, 108, 240, 0.5);
+  border-color: rgba(232, 150, 58, 0.5);
 }
 
 .input-bar textarea::placeholder {
@@ -133,7 +133,7 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c6cf0, #6a5ae0);
+  background: linear-gradient(135deg, var(--accent), var(--user-bubble-end));
   color: white;
   border: none;
   cursor: pointer;
@@ -795,7 +795,7 @@
 
 @keyframes pill-flash {
   0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
-  50% { box-shadow: 0 4px 16px rgba(124, 108, 240, 0.5), 0 0 0 4px rgba(124, 108, 240, 0.15); }
+  50% { box-shadow: 0 4px 16px rgba(232, 150, 58, 0.5), 0 0 0 4px rgba(232, 150, 58, 0.15); }
 }
 
 /* Theme toggle button */

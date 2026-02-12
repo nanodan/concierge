@@ -24,7 +24,7 @@
 
 .search-bar input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 108, 240, 0.12);
+  box-shadow: 0 0 0 3px rgba(232, 150, 58, 0.12);
 }
 
 .search-bar input::placeholder {
@@ -429,6 +429,6 @@
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 6px rgba(124, 108, 240, 0.5);
+  box-shadow: 0 0 6px rgba(232, 150, 58, 0.5);
   flex-shrink: 0;
 }
