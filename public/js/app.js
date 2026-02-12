@@ -82,6 +82,7 @@ const fileBrowserClose = document.getElementById('file-browser-close');
 const fileBrowserUp = document.getElementById('file-browser-up');
 const fileBrowserCurrentPath = document.getElementById('file-browser-current-path');
 const fileBrowserList = document.getElementById('file-browser-list');
+const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
 const themeToggle = document.getElementById('theme-toggle');
@@ -208,6 +209,7 @@ initUI({
   fileBrowserUp,
   fileBrowserCurrentPath,
   fileBrowserList,
+  generalFilesBtn,
   conversationList,
   pullIndicator,
   listHeader,
