@@ -43,6 +43,7 @@ let jumpToBottomBtn = null;
 let msgActionPopup = null;
 let actionPopupOverlay = null;
 let themeToggle = null;
+let themeDropdown = null;
 let filterToggle = null;
 let filterRow = null;
 let filterModelSelect = null;
@@ -98,6 +99,7 @@ export function initUI(elements) {
   msgActionPopup = elements.msgActionPopup;
   actionPopupOverlay = elements.actionPopupOverlay;
   themeToggle = elements.themeToggle;
+  themeDropdown = elements.themeDropdown;
   filterToggle = elements.filterToggle;
   filterRow = elements.filterRow;
   filterModelSelect = elements.filterModelSelect;
@@ -496,15 +498,42 @@ function applyTheme(animate = false) {
   if (meta) meta.content = effective === 'light' ? '#F5F0E6' : '#1F1A16';
 }
 
-function cycleTheme() {
+function toggleThemeDropdown() {
+  if (!themeDropdown || !themeToggle) return;
+  const isHidden = themeDropdown.classList.contains('hidden');
+  if (isHidden) {
+    // Position the dropdown below the toggle button
+    const rect = themeToggle.getBoundingClientRect();
+    themeDropdown.style.top = `${rect.bottom + 4}px`;
+    themeDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    themeDropdown.classList.remove('hidden');
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeThemeDropdownOnOutsideClick);
+    }, 0);
+  } else {
+    closeThemeDropdown();
+  }
+}
+
+function closeThemeDropdown() {
+  if (!themeDropdown) return;
+  themeDropdown.classList.add('hidden');
+  document.removeEventListener('click', closeThemeDropdownOnOutsideClick);
+}
+
+function closeThemeDropdownOnOutsideClick(e) {
+  if (!themeDropdown.contains(e.target) && e.target !== themeToggle) {
+    closeThemeDropdown();
+  }
+}
+
+function selectTheme(newTheme) {
   haptic(10);
-  const order = ['auto', 'light', 'dark'];
-  const currentTheme = state.getCurrentTheme();
-  const idx = order.indexOf(currentTheme);
-  const newTheme = order[(idx + 1) % order.length];
   state.setCurrentTheme(newTheme);
   applyTheme(true); // animate the transition
   updateThemeIcon();
+  closeThemeDropdown();
   const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
   showToast(`Theme: ${labels[newTheme]}`);
 }
@@ -512,7 +541,15 @@ function cycleTheme() {
 function updateThemeIcon() {
   if (!themeToggle) return;
   const icons = { auto: '\u25D0', light: '\u2600', dark: '\u263E' };
-  themeToggle.textContent = icons[state.getCurrentTheme()] || '\u25D0';
+  const currentTheme = state.getCurrentTheme();
+  themeToggle.textContent = icons[currentTheme] || '\u25D0';
+
+  // Update active state in dropdown
+  if (themeDropdown) {
+    themeDropdown.querySelectorAll('.theme-option').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.theme === currentTheme);
+    });
+  }
 }
 
 // --- Stats ---
@@ -986,9 +1023,20 @@ export function setupEventListeners(createConversation) {
     listView.classList.remove('slide-out');
   });
 
-  // Theme
+  // Theme dropdown
   if (themeToggle) {
-    themeToggle.addEventListener('click', cycleTheme);
+    themeToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleThemeDropdown();
+    });
+  }
+  if (themeDropdown) {
+    themeDropdown.addEventListener('click', (e) => {
+      const option = e.target.closest('.theme-option');
+      if (option && option.dataset.theme) {
+        selectTheme(option.dataset.theme);
+      }
+    });
   }
 
   // Listen for OS theme changes when in auto mode

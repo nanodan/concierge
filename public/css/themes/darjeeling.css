@@ -119,7 +119,7 @@
 }
 
 /* ========== LIGHT MODE ========== */
-[data-theme="light"] {
+html[data-theme="light"] {
   /* === Core Palette Overrides === */
   --palette-earth-dark: #F5F0E6;
   --palette-earth-mid: #EBE4D6;

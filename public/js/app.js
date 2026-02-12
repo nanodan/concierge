@@ -74,6 +74,7 @@ const exportBtn = document.getElementById('export-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
 const themeToggle = document.getElementById('theme-toggle');
+const themeDropdown = document.getElementById('theme-dropdown');
 const filterToggle = document.getElementById('filter-toggle');
 const filterRow = document.getElementById('filter-row');
 const filterModelSelect = document.getElementById('filter-model');
@@ -171,6 +172,7 @@ initUI({
   msgActionPopup,
   actionPopupOverlay,
   themeToggle,
+  themeDropdown,
   filterToggle,
   filterRow,
   filterModelSelect,
