@@ -11,6 +11,7 @@ Organized by category. Each file contains individual items with priority, effort
 | [architecture.md](architecture.md) | 5 | Module split, error handling, reconnect, tests, localStorage |
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 4 | ARIA, keyboard focus, screen readers, contrast |
+| [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
 
 ## Priority Guide
 
