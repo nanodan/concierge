@@ -1,0 +1,423 @@
+// --- Rendering functions ---
+import { escapeHtml, renderMarkdown } from './markdown.js';
+import { formatTime, formatTokens, haptic, showToast } from './utils.js';
+import * as state from './state.js';
+
+// Claude avatar SVG (sparkle/AI icon)
+export const CLAUDE_AVATAR_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>`;
+
+// Reaction emojis
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
+
+export function enhanceCodeBlocks(container) {
+  container.querySelectorAll('pre code').forEach(el => {
+    if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
+    const pre = el.parentElement;
+    if (pre.parentElement?.classList.contains('code-block')) return;
+
+    // Detect language from class (e.g., "language-javascript" -> "javascript")
+    const langClass = [...el.classList].find(c => c.startsWith('language-'));
+    const lang = langClass ? langClass.replace('language-', '') : '';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    pre.parentNode.insertBefore(wrapper, pre);
+
+    // Add header with language badge and copy button
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+
+    const langBadge = document.createElement('span');
+    langBadge.className = 'code-lang-badge';
+    langBadge.textContent = lang || 'code';
+
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', () => {
+      haptic(10);
+      navigator.clipboard.writeText(el.textContent).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        showToast('Copied to clipboard');
+      });
+    });
+
+    header.appendChild(langBadge);
+    header.appendChild(btn);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+  });
+}
+
+export function renderMessages(messages) {
+  const messagesContainer = state.getMessagesContainer();
+  const loadMoreBtn = state.getLoadMoreBtn();
+
+  state.setStreamingMessageEl(null);
+  state.setStreamingText('');
+  state.setPendingDelta('');
+  state.setRenderScheduled(false);
+
+  state.setAllMessages(messages);
+  const MESSAGES_PER_PAGE = state.MESSAGES_PER_PAGE;
+
+  // If more messages than MESSAGES_PER_PAGE, show only the last page
+  if (messages.length > MESSAGES_PER_PAGE) {
+    state.setMessagesOffset(messages.length - MESSAGES_PER_PAGE);
+    const visible = messages.slice(state.getMessagesOffset());
+    messagesContainer.innerHTML = renderMessageSlice(visible, state.getMessagesOffset());
+    if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
+  } else {
+    state.setMessagesOffset(0);
+    messagesContainer.innerHTML = renderMessageSlice(messages, 0);
+    if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+  }
+
+  enhanceCodeBlocks(messagesContainer);
+  attachTTSHandlers();
+  attachRegenHandlers();
+  attachMessageActions();
+  renderAllReactions();
+  state.scrollToBottom(true);
+}
+
+export function renderMessageSlice(messages, startIndex) {
+  const allMessages = state.getAllMessages();
+  return messages.map((m, i) => {
+    const globalIndex = startIndex + i;
+    const cls = m.role === 'user' ? 'user' : 'assistant';
+    const content = m.role === 'assistant' ? renderMarkdown(m.text) : escapeHtml(m.text);
+    let meta = formatTime(m.timestamp);
+    if (m.cost != null) {
+      meta += ` &middot; $${m.cost.toFixed(4)}`;
+    }
+    if (m.duration != null) {
+      meta += ` &middot; ${(m.duration / 1000).toFixed(1)}s`;
+    }
+    if (m.inputTokens != null) {
+      meta += ` &middot; ${formatTokens(m.inputTokens)} in / ${formatTokens(m.outputTokens)} out`;
+    }
+    let attachHtml = '';
+    if (m.attachments && m.attachments.length > 0) {
+      attachHtml = '<div class="msg-attachments">' + m.attachments.map(a =>
+        a.url && /\.(png|jpg|jpeg|gif|webp)$/i.test(a.filename)
+          ? `<img src="${a.url}" class="msg-attachment-img" alt="${escapeHtml(a.filename)}">`
+          : `<span class="msg-attachment-file">${escapeHtml(a.filename)}</span>`
+      ).join('') + '</div>';
+    }
+    const isLastAssistant = cls === 'assistant' && globalIndex === allMessages.length - 1;
+    const regenBtn = isLastAssistant
+      ? '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>'
+      : '';
+    const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
+      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      : '';
+
+    // Wrap assistant messages with avatar
+    if (cls === 'assistant') {
+      return `<div class="message-wrapper assistant">
+        <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
+        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>
+      </div>`;
+    }
+    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
+  }).join('');
+}
+
+export function loadMoreMessages() {
+  const messagesContainer = state.getMessagesContainer();
+  const loadMoreBtn = state.getLoadMoreBtn();
+  const allMessages = state.getAllMessages();
+  let messagesOffset = state.getMessagesOffset();
+
+  if (messagesOffset <= 0) return;
+  const prevScrollHeight = messagesContainer.scrollHeight;
+  const loadCount = Math.min(state.MESSAGES_PER_PAGE, messagesOffset);
+  const newOffset = messagesOffset - loadCount;
+  const slice = allMessages.slice(newOffset, messagesOffset);
+  const html = renderMessageSlice(slice, newOffset);
+  messagesContainer.insertAdjacentHTML('afterbegin', html);
+  enhanceCodeBlocks(messagesContainer);
+  attachTTSHandlers();
+  attachMessageActions();
+  state.setMessagesOffset(newOffset);
+  // Preserve scroll position
+  messagesContainer.scrollTop += messagesContainer.scrollHeight - prevScrollHeight;
+  if (newOffset <= 0 && loadMoreBtn) loadMoreBtn.classList.add('hidden');
+}
+
+export function appendDelta(text) {
+  const messagesContainer = state.getMessagesContainer();
+  let streamingMessageEl = state.getStreamingMessageEl();
+
+  if (!streamingMessageEl) {
+    // Create wrapper with avatar
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-wrapper assistant animate-in';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'claude-avatar';
+    avatar.innerHTML = CLAUDE_AVATAR_SVG;
+
+    streamingMessageEl = document.createElement('div');
+    streamingMessageEl.className = 'message assistant';
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(streamingMessageEl);
+    messagesContainer.appendChild(wrapper);
+
+    state.setStreamingMessageEl(streamingMessageEl);
+    state.setStreamingText('');
+    state.setPendingDelta('');
+    state.setIsStreaming(true);
+    state.setUserHasScrolledUp(!state.isNearBottom(150));
+  }
+
+  state.appendPendingDelta(text);
+  if (!state.getRenderScheduled()) {
+    state.setRenderScheduled(true);
+    requestAnimationFrame(flushDelta);
+  }
+}
+
+export function flushDelta() {
+  state.setRenderScheduled(false);
+  const pendingDelta = state.getPendingDelta();
+  const streamingMessageEl = state.getStreamingMessageEl();
+
+  if (!pendingDelta || !streamingMessageEl) return;
+  state.appendStreamingText(pendingDelta);
+  state.setPendingDelta('');
+  streamingMessageEl.innerHTML = renderMarkdown(state.getStreamingText());
+  enhanceCodeBlocks(streamingMessageEl);
+  state.scrollToBottom();
+}
+
+export function finalizeMessage(data) {
+  const jumpToBottomBtn = state.getJumpToBottomBtn();
+  const streamingMessageEl = state.getStreamingMessageEl();
+
+  // Flush any pending delta
+  if (state.getPendingDelta() && streamingMessageEl) {
+    state.appendStreamingText(state.getPendingDelta());
+    state.setPendingDelta('');
+    state.setRenderScheduled(false);
+  }
+
+  state.setThinking(false);
+  state.setIsStreaming(false);
+
+  if (streamingMessageEl) {
+    const finalText = data.text || state.getStreamingText();
+    let meta = formatTime(Date.now());
+    if (data.cost != null) {
+      meta += ` &middot; $${data.cost.toFixed(4)}`;
+    }
+    if (data.duration != null) {
+      meta += ` &middot; ${(data.duration / 1000).toFixed(1)}s`;
+    }
+    if (data.inputTokens != null) {
+      meta += ` &middot; ${formatTokens(data.inputTokens)} in / ${formatTokens(data.outputTokens)} out`;
+    }
+    const ttsBtn = window.speechSynthesis
+      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      : '';
+    const regenBtn = '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>';
+    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}${regenBtn}</div>`;
+    enhanceCodeBlocks(streamingMessageEl);
+    attachTTSHandlers();
+    attachRegenHandlers();
+    state.setStreamingMessageEl(null);
+    state.setStreamingText('');
+    state.scrollToBottom();
+    if (state.getUserHasScrolledUp() && jumpToBottomBtn) {
+      jumpToBottomBtn.classList.add('flash');
+      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), 1500);
+    }
+  }
+
+  if (data.inputTokens != null) {
+    // Import dynamically to avoid circular dependency
+    import('./ui.js').then(ui => {
+      ui.updateContextBar(data.inputTokens, data.outputTokens, state.getCurrentModel());
+    });
+  }
+}
+
+export function renderAllReactions() {
+  const currentConversationId = state.getCurrentConversationId();
+  const messagesContainer = state.getMessagesContainer();
+
+  if (!currentConversationId) return;
+  messagesContainer.querySelectorAll('.message[data-index]').forEach(el => {
+    const idx = parseInt(el.dataset.index, 10);
+    renderReactionsForMessage(idx);
+  });
+}
+
+export function renderReactionsForMessage(msgIndex) {
+  const currentConversationId = state.getCurrentConversationId();
+  const messagesContainer = state.getMessagesContainer();
+  const messageReactions = state.getMessageReactions();
+
+  const key = `${currentConversationId}:${msgIndex}`;
+  const reactions = messageReactions[key] || {};
+  const msgEl = messagesContainer.querySelector(`.message[data-index="${msgIndex}"]`);
+  if (!msgEl) return;
+
+  // Find or create the wrapper
+  let wrapper = msgEl.closest('.message-wrapper') || msgEl.parentElement;
+
+  // Remove existing reaction container
+  wrapper.querySelector('.message-reactions')?.remove();
+
+  const emojis = Object.keys(reactions);
+  if (emojis.length === 0) return;
+
+  const reactionsDiv = document.createElement('div');
+  reactionsDiv.className = 'message-reactions';
+
+  emojis.forEach(emoji => {
+    const pill = document.createElement('button');
+    pill.className = 'reaction-pill active';
+    pill.innerHTML = `${emoji}`;
+    pill.addEventListener('click', () => {
+      haptic(10);
+      toggleReaction(msgIndex, emoji);
+    });
+    reactionsDiv.appendChild(pill);
+  });
+
+  wrapper.appendChild(reactionsDiv);
+}
+
+export function toggleReaction(msgIndex, emoji) {
+  const currentConversationId = state.getCurrentConversationId();
+  const messageReactions = state.getMessageReactions();
+
+  const key = `${currentConversationId}:${msgIndex}`;
+  if (!messageReactions[key]) messageReactions[key] = {};
+  if (messageReactions[key][emoji]) {
+    delete messageReactions[key][emoji];
+  } else {
+    messageReactions[key][emoji] = 1;
+  }
+  state.setMessageReactions(messageReactions);
+  renderReactionsForMessage(msgIndex);
+}
+
+export function showReactionPicker(x, y, msgIndex, hideMsgActionPopup, actionPopupOverlay) {
+  hideMsgActionPopup();
+
+  const picker = document.createElement('div');
+  picker.className = 'reaction-picker';
+  picker.style.position = 'fixed';
+  picker.style.left = Math.min(x, window.innerWidth - 220) + 'px';
+  picker.style.top = Math.max(y - 50, 10) + 'px';
+
+  REACTION_EMOJIS.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'reaction-picker-btn';
+    btn.textContent = emoji;
+    btn.addEventListener('click', () => {
+      haptic(10);
+      toggleReaction(msgIndex, emoji);
+      picker.remove();
+      actionPopupOverlay.classList.add('hidden');
+    });
+    picker.appendChild(btn);
+  });
+
+  document.body.appendChild(picker);
+  actionPopupOverlay.classList.remove('hidden');
+
+  // Close on overlay click
+  const closeHandler = () => {
+    picker.remove();
+    actionPopupOverlay.removeEventListener('click', closeHandler);
+  };
+  actionPopupOverlay.addEventListener('click', closeHandler);
+}
+
+export function attachTTSHandlers() {
+  if (!window.speechSynthesis) return;
+  const messagesContainer = state.getMessagesContainer();
+  messagesContainer.querySelectorAll('.tts-btn').forEach(btn => {
+    if (btn.dataset.ttsAttached) return;
+    btn.dataset.ttsAttached = 'true';
+    btn.addEventListener('click', () => toggleTTS(btn));
+  });
+}
+
+export function toggleTTS(btn) {
+  let currentTTSBtn = state.getCurrentTTSBtn();
+
+  // If this button is currently speaking, stop
+  if (btn.classList.contains('speaking')) {
+    speechSynthesis.cancel();
+    resetTTSBtn(btn);
+    return;
+  }
+
+  // Cancel any other ongoing speech
+  if (currentTTSBtn) {
+    speechSynthesis.cancel();
+    resetTTSBtn(currentTTSBtn);
+  }
+
+  // Get plain text from the message (strip HTML)
+  const messageEl = btn.closest('.message');
+  if (!messageEl) return;
+
+  // Clone, remove the meta div, then get text content
+  const clone = messageEl.cloneNode(true);
+  const metaEl = clone.querySelector('.meta');
+  if (metaEl) metaEl.remove();
+  const plainText = clone.textContent.trim();
+
+  if (!plainText) return;
+
+  const utterance = new SpeechSynthesisUtterance(plainText);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  utterance.onend = () => resetTTSBtn(btn);
+  utterance.onerror = () => resetTTSBtn(btn);
+
+  btn.classList.add('speaking');
+  btn.innerHTML = '&#x23F9;'; // stop icon
+  state.setCurrentTTSBtn(btn);
+
+  speechSynthesis.speak(utterance);
+}
+
+function resetTTSBtn(btn) {
+  btn.classList.remove('speaking');
+  btn.innerHTML = '&#x1F50A;'; // speaker icon
+  if (state.getCurrentTTSBtn() === btn) state.setCurrentTTSBtn(null);
+}
+
+export function attachRegenHandlers() {
+  const messagesContainer = state.getMessagesContainer();
+  messagesContainer.querySelectorAll('.regen-btn').forEach(btn => {
+    if (btn.dataset.attached) return;
+    btn.dataset.attached = 'true';
+    btn.addEventListener('click', () => {
+      import('./ui.js').then(ui => ui.regenerateMessage());
+    });
+  });
+}
+
+// Message actions (needs to be set up by UI module)
+let attachMessageActionsCallback = null;
+
+export function setAttachMessageActionsCallback(callback) {
+  attachMessageActionsCallback = callback;
+}
+
+export function attachMessageActions() {
+  if (attachMessageActionsCallback) {
+    attachMessageActionsCallback();
+  }
+}

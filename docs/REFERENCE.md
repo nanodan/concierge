@@ -30,43 +30,99 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 722-810 | `processStreamEvent()` - parses Claude JSON output |
 | 812-855 | Server listen, shutdown handler |
 
-### `public/app.js` (~2039 lines)
+### Frontend ES Modules (`public/js/`)
+
+The frontend is split into ES modules. Entry point is `public/js/app.js`.
+
+#### `public/js/app.js` (~222 lines) - Main entry point
 
 | Lines | Section |
 |-------|---------|
-| 1-25 | DOM element references (incl. export, attach, file input, attachment preview, msg action popup, reconnect banner, theme toggle, filter elements, load-more) |
-| 26-125 | Global state variables (incl. streaming throttle, reconnect, attachments, theme, message queue with localStorage, virtual scroll, scope grouping) |
-| 127-195 | `connectWS()`, WebSocket event handlers (incl. `messages_updated`, reconnect banner, message queue flush + localStorage clear) |
-| 187-260 | `loadConversations()`, `renderConversationList()` (grouped by cwd scope) |
-| 262-348 | `openConversation()`, `showListView()`, view transitions |
-| 349-420 | Swipe gesture handling (touch events) |
-| 421-485 | Long-press / right-click context menu (conversation cards) |
-| 486-500 | Search (debounced, 250ms) |
-| 500-560 | `sendMessage()` (async, uploads attachments first), `cancelMessage()` |
-| 562-580 | `setThinking()`, `scrollToBottom()`, `isNearBottom()` |
-| 640-700 | `renderMessages()` - full message rendering (with attachments, regen btn, message actions) |
-| 700-760 | `appendDelta()` (RAF-throttled), `flushDelta()`, `finalizeMessage()` |
-| 762-820 | New conversation modal handlers |
-| 822-870 | Dialog system (custom alert/confirm/prompt) |
-| 870-930 | Archive, rename, delete, fork conversation actions |
-| 930-966 | Message actions: `attachMessageActions()` (long-press/right-click on messages) |
-| 968-1020 | `showMsgActionPopup()` (edit, copy, fork), `hideMsgActionPopup()` |
-| 1023-1063 | `startEditMessage()` - inline message editing |
-| 1065-1093 | `attachRegenHandlers()`, `regenerateMessage()`, export button |
-| 1095-1140 | Toast notifications, `showToast()` |
-| 1140-1220 | Directory browser modal |
-| 1220-1300 | Voice input (SpeechRecognition) |
-| 1300-1360 | Text-to-speech (SpeechSynthesis) |
-| 1360-1380 | Model selection dropdown |
-| 1380-1400 | Context bar (token usage display) |
-| 1400-1450 | Model switching, autopilot toggle |
-| 1450-1580 | Stats page rendering |
-| 1580-1630 | Attachment handling: `addAttachment()`, `removeAttachment()`, `clearPendingAttachments()`, `renderAttachmentPreviewUI()` |
-| 1630-1740 | Attachment handling, paste handler |
-| 1740-1830 | Theme system: `applyTheme()`, `cycleTheme()`, OS media query listener |
-| 1830-1880 | Keyboard shortcuts: global `keydown` handler |
-| 1880-1940 | Search filters: `getSearchFilters()`, `triggerSearch()`, filter row handlers |
-| 1940-2039 | Load-more / virtual scroll, IntersectionObserver, init |
+| 1-7 | Module imports |
+| 9-80 | DOM element references |
+| 82-100 | Module initialization (toast, dialog, state, WS) |
+| 102-160 | Module initialization (conversations, UI) |
+| 162-180 | Action popup and event listener setup |
+| 182-200 | `loadModels()` - fetch available models |
+| 202-222 | Init: connectWS, loadModels, loadConversations, service worker |
+
+#### `public/js/state.js` (~433 lines) - Shared state
+
+| Lines | Section |
+|-------|---------|
+| 1-60 | State variable declarations (conversations, models, streaming, UI) |
+| 62-200 | State getters and setters |
+| 202-300 | More state functions (pending messages, reactions, attachments) |
+| 302-433 | Status/thinking state, DOM element management, scrollToBottom |
+
+#### `public/js/utils.js` (~142 lines) - Helper functions
+
+| Lines | Section |
+|-------|---------|
+| 1-35 | `haptic()`, `formatTime()`, `formatTokens()`, `truncate()`, `setLoading()` |
+| 37-60 | Toast system: `initToast()`, `showToast()` |
+| 62-142 | Dialog system: `initDialog()`, `showDialog()`, dialog helpers |
+
+#### `public/js/websocket.js` (~108 lines) - WebSocket management
+
+| Lines | Section |
+|-------|---------|
+| 1-20 | Imports, state variables, initialization |
+| 22-60 | `connectWS()` - establish connection, handle reconnect |
+| 62-108 | `handleWSMessage()` - dispatch incoming events |
+
+#### `public/js/render.js` (~423 lines) - Rendering functions
+
+| Lines | Section |
+|-------|---------|
+| 1-50 | `CLAUDE_AVATAR_SVG`, `enhanceCodeBlocks()` |
+| 52-80 | `renderMessages()` - full message render |
+| 82-130 | `renderMessageSlice()` - render message subset |
+| 132-155 | `loadMoreMessages()` - virtual scroll |
+| 157-210 | `appendDelta()`, `flushDelta()` - streaming render |
+| 212-260 | `finalizeMessage()` - complete streaming |
+| 262-320 | Reactions: `renderAllReactions()`, `renderReactionsForMessage()`, `toggleReaction()` |
+| 322-380 | TTS: `attachTTSHandlers()`, `toggleTTS()`, `resetTTSBtn()` |
+| 382-423 | `attachRegenHandlers()`, `attachMessageActions()` callback |
+
+#### `public/js/conversations.js` (~534 lines) - Conversation management
+
+| Lines | Section |
+|-------|---------|
+| 1-30 | Imports, DOM element references, initialization |
+| 32-80 | `loadConversations()`, `getConversation()` |
+| 82-150 | `createConversation()`, `deleteConversation()`, `archiveConversation()`, `renameConversation()` |
+| 152-190 | `forkConversation()`, `searchConversations()` |
+| 192-300 | `renderConversationList()` - render cards, scope grouping |
+| 302-360 | `setupSwipe()`, `resetSwipe()` - swipe gesture handling |
+| 362-410 | `setupLongPress()`, `showActionPopup()`, `hideActionPopup()` |
+| 412-480 | `setupActionPopupHandlers()`, search filters |
+| 482-534 | `openConversation()`, `showChatView()`, `showListView()` |
+
+#### `public/js/ui.js` (~1085 lines) - UI interactions
+
+| Lines | Section |
+|-------|---------|
+| 1-70 | Imports, DOM element references |
+| 72-120 | `initUI()` - element initialization |
+| 122-200 | `sendMessage()` - send with attachments |
+| 202-250 | `renderAttachmentPreview()`, `attachMessageActions()` |
+| 252-340 | `showMsgActionPopup()`, `hideMsgActionPopup()`, `startEditMessage()` |
+| 342-380 | `regenerateMessage()`, model/mode badges |
+| 382-430 | `updateContextBar()`, `switchModel()` |
+| 432-500 | Directory browser: `browseTo()` |
+| 502-560 | Voice input: `startRecording()`, `stopRecording()` |
+| 562-620 | Theme: `applyTheme()`, `cycleTheme()`, `updateThemeIcon()` |
+| 622-750 | Stats: `loadStats()`, `renderStats()` |
+| 752-780 | `populateFilterModels()` |
+| 782-1085 | `setupEventListeners()` - all event handlers |
+
+#### `public/js/markdown.js` (~66 lines) - Markdown parser
+
+| Lines | Section |
+|-------|---------|
+| 1-10 | `escapeHtml()` helper |
+| 12-66 | `renderMarkdown(text)` - full parser |
 
 ### `public/markdown.js` (~66 lines)
 
@@ -99,14 +155,14 @@ Fast-access reference for coding in this repository. Consult this before reading
 | 2171-2270 | Theme toggle, reconnect banner, queued messages, filter bar, filter chips, load-more button |
 | 2271-2327 | Scope grouping: headers, chevrons, counts, collapsible items |
 
-### `public/sw.js` (~71 lines)
+### `public/sw.js` (~78 lines)
 
 | Lines | Section |
 |-------|---------|
-| 1-13 | Cache name (`claude-chat-v13`), static asset list, cached API routes |
-| 16-21 | Install event (pre-cache) |
-| 24-31 | Activate event (clean old caches) |
-| 34-71 | Fetch event (cache-first for static, network-first for cacheable API, skip other API/WS) |
+| 1-21 | Cache name (`claude-chat-v15`), static asset list (including all JS modules), cached API routes |
+| 23-28 | Install event (pre-cache) |
+| 30-37 | Activate event (clean old caches) |
+| 39-78 | Fetch event (cache-first for static, network-first for cacheable API, skip other API/WS) |
 
 ### `public/index.html` (~191 lines)
 
@@ -186,26 +242,29 @@ Fast-access reference for coding in this repository. Consult this before reading
 ### Adding a new WebSocket event type
 
 1. **Server → Client**: Add to the WS dispatcher in `server.js` ~line 482. Send via `ws.send(JSON.stringify({ type: 'newtype', ... }))`
-2. **Client handler**: Add case to `ws.onmessage` handler in `app.js` ~line 130
+2. **Client handler**: Add case to `handleWSMessage()` in `public/js/websocket.js`
 
 ### Adding a new UI feature to chat view
 
 1. Add DOM elements to `#chat-view` in `index.html`
 2. Add styling in `style.css` (chat view section ~line 302)
-3. Add JS logic in `app.js` - reference element at top (~line 1-25), add handlers
-4. If it needs data from server, add a REST endpoint or WebSocket event
+3. Add DOM reference in `public/js/app.js`, pass to `initUI()`
+4. Add handler logic in `public/js/ui.js` - either in `initUI()` or `setupEventListeners()`
+5. If it needs shared state, add to `public/js/state.js`
+6. If it needs data from server, add a REST endpoint or WebSocket event
 
 ### Adding a conversation property
 
 1. Add to creation in `POST /api/conversations` in `server.js` ~line 199
 2. Add to `PATCH` handler in `server.js` ~line 270
 3. Add UI control in the new conversation modal (`index.html` ~line 116)
-4. Add to `openConversation()` in `app.js` ~line 262 to restore state
-5. Pass to Claude CLI args if needed in `spawnClaude()` ~line 615
+4. Add state variable in `public/js/state.js` if needed
+5. Add to `openConversation()` in `public/js/conversations.js` to restore state
+6. Pass to Claude CLI args if needed in `spawnClaude()` ~line 615
 
 ### Modifying the markdown renderer
 
-Edit `public/markdown.js`. The order of regex operations matters:
+Edit `public/js/markdown.js`. The order of regex operations matters:
 1. Code blocks extracted first (protected from all other transforms)
 2. Inline code next
 3. Bold before italic (both use asterisks)
@@ -214,7 +273,7 @@ Edit `public/markdown.js`. The order of regex operations matters:
 
 ### Updating the service worker cache
 
-Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v12`). Add new static assets to the `STATIC_ASSETS` array.
+Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claude-chat-v15`). Add new static assets to the `STATIC_ASSETS` array. All JS modules in `public/js/` should be listed.
 
 ---
 
@@ -233,35 +292,77 @@ Increment the version number in `CACHE_NAME` in `public/sw.js` (currently `claud
 | `handleRegenerate(ws, msg)` | Pop last assistant msg, re-send last user msg |
 | `handleEdit(ws, msg)` | Update message at index, truncate, re-send |
 
-### Frontend (`app.js`)
+### Frontend (ES Modules in `public/js/`)
+
+#### `utils.js`
+
+| Function | Purpose |
+|----------|---------|
+| `haptic(ms)` | Trigger vibration feedback |
+| `formatTime(ts)` | Format timestamp for display |
+| `formatTokens(count)` | Format token count (e.g., "10.5k") |
+| `showToast(message, opts)` | Show toast notification |
+| `showDialog(opts)` | Show custom dialog (alert/confirm/prompt) |
+
+#### `websocket.js`
 
 | Function | Purpose |
 |----------|---------|
 | `connectWS()` | Establish/reconnect WebSocket (exponential backoff) |
-| `loadConversations()` | Fetch + render conversation list |
-| `renderConversationList()` | Build conversation card DOM (grouped by cwd scope) |
-| `openConversation(id)` | Load + display conversation |
-| `showListView()` | Return to conversation list |
-| `sendMessage()` | Send user message (async, handles uploads) |
-| `cancelMessage()` | Cancel active Claude process |
-| `renderMessages()` | Full re-render of all messages |
+| `getWS()` | Get current WebSocket instance |
+
+#### `render.js`
+
+| Function | Purpose |
+|----------|---------|
+| `renderMessages(messages)` | Full re-render of all messages |
+| `renderMessageSlice(messages, startIndex)` | Render subset of messages |
 | `appendDelta(text)` | Buffer streaming text (RAF-throttled) |
 | `flushDelta()` | Apply buffered streaming text to DOM |
 | `finalizeMessage(data)` | Complete streaming message |
-| `renderMarkdown(text)` | Convert markdown to HTML |
-| `showDialog(opts)` | Show custom dialog (alert/confirm/prompt) |
-| `updateContextBar(conv)` | Update token usage display |
-| `showStats()` | Render stats dashboard |
-| `addAttachment(file)` | Queue file for upload |
-| `renderAttachmentPreviewUI()` | Render attachment thumbnails above input |
+| `enhanceCodeBlocks(container)` | Add copy buttons, syntax highlighting |
+| `attachTTSHandlers()` | Add TTS button handlers |
+| `attachRegenHandlers()` | Add regenerate button handlers |
+| `loadMoreMessages()` | Prepend older messages (virtual scroll) |
+
+#### `conversations.js`
+
+| Function | Purpose |
+|----------|---------|
+| `loadConversations()` | Fetch + render conversation list |
+| `renderConversationList(items)` | Build conversation card DOM (grouped by cwd scope) |
+| `openConversation(id)` | Load + display conversation |
+| `showListView()` | Return to conversation list |
+| `forkConversation(fromMessageIndex)` | Fork conversation from a message |
+| `triggerSearch()` | Run search with current query + filters |
+
+#### `ui.js`
+
+| Function | Purpose |
+|----------|---------|
+| `sendMessage(text)` | Send user message (async, handles uploads) |
+| `regenerateMessage()` | Re-generate last assistant response |
+| `updateContextBar(inputTokens, outputTokens, modelId)` | Update token usage display |
+| `renderAttachmentPreview()` | Render attachment thumbnails above input |
 | `attachMessageActions()` | Add long-press/right-click to message bubbles |
 | `startEditMessage(el, index)` | Inline edit a user message |
-| `regenerateMessage()` | Re-generate last assistant response |
-| `forkConversation(fromMessageIndex)` | Fork conversation from a message |
-| `savePendingMessages()` | Persist offline message queue to localStorage |
-| `applyTheme()` | Apply current theme (auto/light/dark) to DOM |
-| `loadMoreMessages()` | Prepend older messages (virtual scroll) |
-| `triggerSearch()` | Run search with current query + filters |
+| `setupEventListeners(createConversation)` | Initialize all event handlers |
+
+#### `state.js`
+
+| Function | Purpose |
+|----------|---------|
+| `setThinking(thinking)` | Update thinking state and UI |
+| `scrollToBottom(force)` | Scroll messages to bottom |
+| `addPendingMessage(msg)` | Persist offline message to localStorage |
+| `resetStreamingState()` | Reset all streaming-related state |
+
+#### `markdown.js`
+
+| Function | Purpose |
+|----------|---------|
+| `escapeHtml(text)` | Escape HTML special characters |
+| `renderMarkdown(text)` | Convert markdown to HTML |
 
 ---
 

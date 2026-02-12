@@ -27,11 +27,17 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 | File | Lines | Purpose |
 |------|-------|---------|
 | `server.js` | ~868 | Express + WebSocket backend, Claude CLI process management, file uploads |
-| `public/app.js` | ~2039 | Frontend SPA logic, state, all UI interactions |
-| `public/index.html` | ~191 | HTML structure, three views, modals |
+| `public/js/app.js` | ~222 | Main entry point, imports all modules, initialization |
+| `public/js/state.js` | ~433 | Shared state module, all mutable state variables and setters |
+| `public/js/utils.js` | ~142 | Helper functions: formatTime, haptic, showToast, showDialog |
+| `public/js/websocket.js` | ~108 | WebSocket connection management, reconnect logic |
+| `public/js/render.js` | ~423 | Rendering functions: messages, code blocks, TTS, reactions |
+| `public/js/conversations.js` | ~534 | Conversation management, list rendering, swipe/long-press |
+| `public/js/ui.js` | ~1085 | UI interactions, event handlers, modals, theme, stats |
+| `public/js/markdown.js` | ~66 | Hand-rolled markdown parser (ES module version) |
+| `public/index.html` | ~194 | HTML structure, three views, modals |
 | `public/style.css` | ~2327 | Dark/light theme, glass-morphism, animations, safe areas |
-| `public/markdown.js` | ~66 | Hand-rolled markdown parser |
-| `public/sw.js` | ~71 | Service worker (cache-first for assets, network-first for API) |
+| `public/sw.js` | ~78 | Service worker (cache-first for assets, network-first for API) |
 | `public/manifest.json` | — | PWA manifest |
 
 See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each file.
@@ -40,9 +46,9 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each 
 
 **Backend** (`server.js`): Express + WebSocket server. Spawns `claude` CLI as a child process per message, streams JSON output back to the client via WebSocket. Conversations stored as JSON files on disk.
 
-**Frontend** (`public/app.js`, `public/index.html`, `public/style.css`): Single-page app with three views — conversation list, chat view, and stats dashboard. No framework, no bundler. Markdown rendering is hand-rolled. Voice input uses SpeechRecognition API, voice output uses SpeechSynthesis API.
+**Frontend** (`public/js/*.js`, `public/index.html`, `public/style.css`): Single-page app with three views — conversation list, chat view, and stats dashboard. No framework, no bundler. Code is split into ES modules: `app.js` (entry), `state.js` (shared state), `utils.js` (helpers), `websocket.js` (WS connection), `render.js` (rendering), `conversations.js` (conversation management), `ui.js` (UI interactions), `markdown.js` (markdown parser). Voice input uses SpeechRecognition API, voice output uses SpeechSynthesis API.
 
-**Service Worker** (`public/sw.js`): Cache-first for static assets, network-first for conversation list API (offline support). Cache name `claude-chat-v13`.
+**Service Worker** (`public/sw.js`): Cache-first for static assets, network-first for conversation list API (offline support). Cache name `claude-chat-v15`.
 
 ### Data Flow
 

@@ -149,21 +149,35 @@ MODELS = [
 
 ---
 
-## Frontend (`public/app.js`)
+## Frontend (`public/js/`)
 
-### State Management
+The frontend is split into ES modules for maintainability:
 
-All state lives in module-level variables (no framework, no store):
+```
+public/js/
+  app.js           - Entry point, module imports, initialization
+  state.js         - Shared mutable state, getters/setters
+  utils.js         - Helper functions (formatTime, haptic, toast, dialog)
+  websocket.js     - WebSocket connection management
+  render.js        - Message rendering, code blocks, TTS, reactions
+  conversations.js - Conversation CRUD, list rendering, swipe/long-press
+  ui.js            - UI interactions, event handlers, modals, theme, stats
+  markdown.js      - Hand-rolled markdown parser
+```
+
+### State Management (`state.js`)
+
+All state lives in a dedicated module with getters/setters (no framework, no store):
 
 ```javascript
+// Exported state variables (via getters/setters)
 conversations[]           // Conversation list from API
 currentConversationId     // Active conversation UUID
-ws                        // WebSocket connection
+ws                        // WebSocket connection (in websocket.js)
 streamingMessageEl        // DOM element for in-progress message
 streamingText             // Accumulated streaming text
 pendingDelta              // Buffered streaming text (RAF-throttled)
 renderScheduled           // Whether a RAF flush is pending
-reconnectAttempt          // Exponential backoff counter for WS reconnect
 showingArchived           // Archive filter toggle
 models[]                  // Available models from API
 currentModel              // Selected model ID
@@ -176,6 +190,18 @@ pendingMessages[]         // Messages queued while WS disconnected (localStorage
 allMessages[]             // Full messages array for virtual scroll
 messagesOffset            // How many messages rendered from start
 collapsedScopes{}         // Which cwd scope groups are collapsed (localStorage-persisted)
+```
+
+### Module Dependencies
+
+```
+app.js (entry)
+  ├── utils.js (pure functions)
+  ├── state.js (shared state)
+  ├── websocket.js ──► state.js, render.js, conversations.js
+  ├── render.js ──► state.js, utils.js, markdown.js
+  ├── conversations.js ──► state.js, utils.js, render.js
+  └── ui.js ──► state.js, utils.js, websocket.js, render.js, conversations.js
 ```
 
 ### Three Views
@@ -200,7 +226,7 @@ Three phases handle different rendering needs:
 
 4. **`finalizeMessage(data)`** - Called on `result` event. Flushes any pending delta, replaces streaming element with final rendered message including metadata (cost, duration, tokens), TTS button, and regenerate button.
 
-### Markdown Renderer (`public/markdown.js`)
+### Markdown Renderer (`public/js/markdown.js`)
 
 Hand-rolled parser (no library). Processing order matters:
 
@@ -279,12 +305,13 @@ Fetches aggregated data from `/api/stats` and renders:
 **Strategy:** Cache-first for static assets, network-first for selected API routes (offline support), skip other API calls.
 
 **Cached assets:**
-- `/`, `/style.css`, `/markdown.js`, `/app.js`, `/manifest.json`, `/lib/highlight.min.js`
+- `/`, `/style.css`, `/manifest.json`, `/lib/highlight.min.js`
+- All ES modules in `/js/`: `app.js`, `state.js`, `utils.js`, `websocket.js`, `render.js`, `conversations.js`, `ui.js`, `markdown.js`
 
 **Cached API routes (network-first):**
 - `/api/conversations` — enables offline conversation list loading
 
-**Cache versioning:** `claude-chat-v13` - increment the version number to bust caches on deploy.
+**Cache versioning:** `claude-chat-v15` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets

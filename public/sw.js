@@ -1,10 +1,22 @@
-const CACHE_NAME = 'claude-chat-v13';
+const CACHE_NAME = 'claude-chat-v15';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
-  '/markdown.js',
-  '/app.js',
+  '/css/base.css',
+  '/css/layout.css',
+  '/css/components.css',
+  '/css/messages.css',
+  '/css/list.css',
+  '/css/themes.css',
+  '/js/app.js',
+  '/js/utils.js',
+  '/js/state.js',
+  '/js/websocket.js',
+  '/js/render.js',
+  '/js/markdown.js',
+  '/js/conversations.js',
+  '/js/ui.js',
   '/manifest.json',
   '/lib/highlight.min.js',
 ];
