@@ -53,6 +53,7 @@ export function enhanceCodeBlocks(container) {
 export function renderMessages(messages) {
   const messagesContainer = state.getMessagesContainer();
   const loadMoreBtn = state.getLoadMoreBtn();
+  const chatEmptyState = document.getElementById('chat-empty-state');
 
   state.setStreamingMessageEl(null);
   state.setStreamingText('');
@@ -61,6 +62,11 @@ export function renderMessages(messages) {
 
   state.setAllMessages(messages);
   const MESSAGES_PER_PAGE = state.MESSAGES_PER_PAGE;
+
+  // Show/hide empty state
+  if (chatEmptyState) {
+    chatEmptyState.classList.toggle('hidden', messages.length > 0);
+  }
 
   // If more messages than MESSAGES_PER_PAGE, show only the last page
   if (messages.length > MESSAGES_PER_PAGE) {

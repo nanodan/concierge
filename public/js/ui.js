@@ -184,7 +184,10 @@ export async function sendMessage(text) {
     ).join('') + '</div>';
   }
 
-  // Show message in UI
+  // Hide empty state and show message in UI
+  const chatEmptyState = document.getElementById('chat-empty-state');
+  if (chatEmptyState) chatEmptyState.classList.add('hidden');
+
   const el = document.createElement('div');
   el.className = 'message user animate-in';
   el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
@@ -210,6 +213,12 @@ export async function sendMessage(text) {
 // --- Attachments ---
 export function renderAttachmentPreview() {
   const pendingAttachments = state.getPendingAttachments();
+
+  // Update attach button state
+  if (attachBtn) {
+    attachBtn.classList.toggle('has-files', pendingAttachments.length > 0);
+  }
+
   if (pendingAttachments.length === 0) {
     attachmentPreview.classList.add('hidden');
     return;
@@ -551,10 +560,18 @@ function selectTheme(newTheme) {
 }
 
 function updateThemeIcon() {
-  if (!themeToggle) return;
-  const icons = { auto: '\u25D0', light: '\u2600', dark: '\u263E' };
   const currentTheme = state.getCurrentTheme();
-  themeToggle.textContent = icons[currentTheme] || '\u25D0';
+
+  // Update the toggle button SVG based on current theme
+  const themeIcon = document.getElementById('theme-icon');
+  if (themeIcon) {
+    const svgPaths = {
+      auto: '<circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 1 0 20"/>',
+      light: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+      dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+    };
+    themeIcon.innerHTML = svgPaths[currentTheme] || svgPaths.auto;
+  }
 
   // Update active state in dropdown
   if (themeDropdown) {
