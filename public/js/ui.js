@@ -64,6 +64,16 @@ let statsBackBtn = null;
 let statsContent = null;
 let listView = null;
 let chatView = null;
+let filesBtn = null;
+let fileBrowserModal = null;
+let fileBrowserClose = null;
+let fileBrowserUp = null;
+let fileBrowserCurrentPath = null;
+let fileBrowserList = null;
+
+// Current file browser state
+let currentFileBrowserPath = '';
+let currentFileBrowserConvId = null;
 
 export function initUI(elements) {
   messagesContainer = elements.messagesContainer;
@@ -123,6 +133,12 @@ export function initUI(elements) {
   statsContent = elements.statsContent;
   listView = elements.listView;
   chatView = elements.chatView;
+  filesBtn = elements.filesBtn;
+  fileBrowserModal = elements.fileBrowserModal;
+  fileBrowserClose = elements.fileBrowserClose;
+  fileBrowserUp = elements.fileBrowserUp;
+  fileBrowserCurrentPath = elements.fileBrowserCurrentPath;
+  fileBrowserList = elements.fileBrowserList;
 }
 
 // --- Auto resize input ---
@@ -463,6 +479,132 @@ async function browseTo(dirPath) {
     }
   } catch (err) {
     dirList.innerHTML = `<div class="dir-empty">Failed to browse</div>`;
+  }
+}
+
+// --- File Browser (download files from conversation cwd) ---
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getFileIcon(entry) {
+  if (entry.type === 'directory') {
+    return { class: 'directory', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' };
+  }
+
+  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'];
+  const codeExts = ['js', 'ts', 'tsx', 'jsx', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'css', 'html', 'json', 'xml', 'yaml', 'yml', 'sh', 'bash'];
+  const docExts = ['md', 'txt', 'pdf', 'doc', 'docx'];
+
+  if (imageExts.includes(entry.ext)) {
+    return { class: 'image', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' };
+  }
+  if (codeExts.includes(entry.ext)) {
+    return { class: 'code', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' };
+  }
+  if (docExts.includes(entry.ext)) {
+    return { class: 'document', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' };
+  }
+
+  return { class: '', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>' };
+}
+
+export function openFileBrowser() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  currentFileBrowserConvId = convId;
+  currentFileBrowserPath = '';
+  fileBrowserModal.classList.remove('hidden');
+  browseFiles('');
+}
+
+export function closeFileBrowser() {
+  fileBrowserModal.classList.add('hidden');
+  currentFileBrowserConvId = null;
+}
+
+async function browseFiles(subpath) {
+  if (!currentFileBrowserConvId) return;
+
+  currentFileBrowserPath = subpath;
+  fileBrowserCurrentPath.textContent = subpath || '.';
+  fileBrowserUp.disabled = !subpath;
+
+  fileBrowserList.innerHTML = '<div class="file-browser-empty">Loading...</div>';
+
+  try {
+    const qs = subpath ? `?path=${encodeURIComponent(subpath)}` : '';
+    const res = await fetch(`/api/conversations/${currentFileBrowserConvId}/files${qs}`);
+    const data = await res.json();
+
+    if (data.error) {
+      fileBrowserList.innerHTML = `<div class="file-browser-empty">${escapeHtml(data.error)}</div>`;
+      return;
+    }
+
+    if (data.entries.length === 0) {
+      fileBrowserList.innerHTML = `
+        <div class="file-browser-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <p>No files found</p>
+        </div>`;
+      return;
+    }
+
+    fileBrowserList.innerHTML = data.entries.map(entry => {
+      const icon = getFileIcon(entry);
+      const meta = entry.type === 'directory'
+        ? 'Folder'
+        : formatFileSize(entry.size);
+
+      return `
+        <div class="file-browser-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}">
+          <div class="file-browser-icon ${icon.class}">${icon.svg}</div>
+          <div class="file-browser-info">
+            <div class="file-browser-name">${escapeHtml(entry.name)}</div>
+            <div class="file-browser-meta">${meta}</div>
+          </div>
+          ${entry.type === 'file' ? '<button class="file-browser-action">Download</button>' : ''}
+        </div>`;
+    }).join('');
+
+    // Attach event handlers
+    fileBrowserList.querySelectorAll('.file-browser-item').forEach(item => {
+      const type = item.dataset.type;
+      const filePath = item.dataset.path;
+
+      if (type === 'directory') {
+        item.addEventListener('click', () => browseFiles(filePath));
+      } else {
+        // Clicking the item row opens inline (for previewable files)
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('file-browser-action')) return;
+          // Open in new tab for preview
+          const url = `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}&inline=true`;
+          window.open(url, '_blank');
+        });
+
+        // Download button forces download
+        const downloadBtn = item.querySelector('.file-browser-action');
+        if (downloadBtn) {
+          downloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filePath.split('/').pop();
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          });
+        }
+      }
+    });
+  } catch (err) {
+    fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
   }
 }
 
@@ -1002,6 +1144,33 @@ export function setupEventListeners(createConversation) {
       if (!currentConversationId) return;
       window.open(`/api/conversations/${currentConversationId}/export?format=markdown`);
       showToast('Exporting conversation');
+    });
+  }
+
+  // File browser
+  if (filesBtn) {
+    filesBtn.addEventListener('click', () => {
+      haptic(10);
+      openFileBrowser();
+    });
+  }
+
+  if (fileBrowserClose) {
+    fileBrowserClose.addEventListener('click', closeFileBrowser);
+  }
+
+  if (fileBrowserModal) {
+    fileBrowserModal.addEventListener('click', (e) => {
+      if (e.target === fileBrowserModal) closeFileBrowser();
+    });
+  }
+
+  if (fileBrowserUp) {
+    fileBrowserUp.addEventListener('click', () => {
+      if (currentFileBrowserPath) {
+        const parent = currentFileBrowserPath.split('/').slice(0, -1).join('/');
+        browseFiles(parent);
+      }
     });
   }
 

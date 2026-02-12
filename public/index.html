@@ -112,6 +112,9 @@
           <div id="model-dropdown" class="model-dropdown hidden"></div>
         </div>
       </div>
+      <button id="files-btn" class="files-btn" aria-label="Browse files">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      </button>
       <button id="export-btn" class="export-btn" aria-label="Export conversation">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
@@ -267,6 +270,23 @@
     <div class="theme-option" data-theme="dark">
       <svg class="theme-option-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       <span>Dark</span>
+    </div>
+  </div>
+
+  <!-- File Browser Modal -->
+  <div id="file-browser-modal" class="modal-overlay hidden">
+    <div class="modal file-browser-modal">
+      <div class="file-browser-header">
+        <h2>Files</h2>
+        <button id="file-browser-close" class="file-browser-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="file-browser-path">
+        <button id="file-browser-up" class="file-browser-up" aria-label="Parent directory">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span id="file-browser-current-path" class="file-browser-current-path">.</span>
+      </div>
+      <div id="file-browser-list" class="file-browser-list"></div>
     </div>
   </div>
 

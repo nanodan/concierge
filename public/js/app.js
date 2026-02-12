@@ -76,6 +76,12 @@ const convModelSelect = document.getElementById('conv-model');
 const jumpToBottomBtn = document.getElementById('jump-to-bottom');
 const toastContainer = document.getElementById('toast-container');
 const exportBtn = document.getElementById('export-btn');
+const filesBtn = document.getElementById('files-btn');
+const fileBrowserModal = document.getElementById('file-browser-modal');
+const fileBrowserClose = document.getElementById('file-browser-close');
+const fileBrowserUp = document.getElementById('file-browser-up');
+const fileBrowserCurrentPath = document.getElementById('file-browser-current-path');
+const fileBrowserList = document.getElementById('file-browser-list');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
 const themeToggle = document.getElementById('theme-toggle');
@@ -196,6 +202,12 @@ initUI({
   deleteBtn,
   newChatBtn,
   exportBtn,
+  filesBtn,
+  fileBrowserModal,
+  fileBrowserClose,
+  fileBrowserUp,
+  fileBrowserCurrentPath,
+  fileBrowserList,
   conversationList,
   pullIndicator,
   listHeader,
