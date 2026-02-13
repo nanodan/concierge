@@ -976,9 +976,9 @@
   color: var(--mode-autopilot-text);
 }
 
-.mode-badge.manual {
-  background: var(--mode-manual-bg);
-  color: var(--mode-manual-text);
+.mode-badge.readonly {
+  background: var(--mode-readonly-bg);
+  color: var(--mode-readonly-text);
 }
 
 .mode-badge:active {

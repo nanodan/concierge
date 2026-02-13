@@ -98,8 +98,8 @@
   /* === Component: Mode Badges === */
   --mode-autopilot-bg: var(--teal-alpha-25);
   --mode-autopilot-text: var(--nord7);
-  --mode-manual-bg: var(--accent-alpha-20);
-  --mode-manual-text: var(--nord8);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--nord8);
 
   /* === Component: Syntax Highlighting === */
   --syntax-keyword: var(--nord9);

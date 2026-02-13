@@ -493,9 +493,10 @@ export function regenerateMessage() {
 
 // --- Model & Mode & Context Bar ---
 export function updateModeBadge(isAutopilot) {
-  modeBadge.textContent = isAutopilot ? 'AP' : 'ASK';
+  modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
+  modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
   modeBadge.classList.toggle('autopilot', isAutopilot);
-  modeBadge.classList.toggle('manual', !isAutopilot);
+  modeBadge.classList.toggle('readonly', !isAutopilot);
 }
 
 export function updateModelBadge(modelId) {
