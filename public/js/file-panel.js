@@ -1,6 +1,6 @@
 // --- File Panel (Project Mode) ---
 import { escapeHtml } from './markdown.js';
-import { haptic, showToast } from './utils.js';
+import { haptic, showToast, showDialog } from './utils.js';
 import * as state from './state.js';
 
 // DOM elements
@@ -16,12 +16,30 @@ let fileViewerClose = null;
 let fileViewerContent = null;
 let chatView = null;
 
+// Tab elements
+let _filePanelTabs = null;
+let filesTab = null;
+let changesTab = null;
+let filesView = null;
+let changesView = null;
+let changesList = null;
+let commitForm = null;
+let commitMessage = null;
+let commitBtn = null;
+let branchSelector = null;
+let branchDropdown = null;
+let gitRefreshBtn = null;
+
 // Panel state
 let currentPath = '';
 let isOpen = false;
 let isDragging = false;
 let dragStartY = 0;
 let dragStartHeight = 0;
+let currentTab = 'files'; // 'files' | 'changes'
+let gitStatus = null;
+let branches = null;
+let _viewingDiff = null; // { path, staged }
 
 // Snap points for mobile (percentage of viewport height)
 const SNAP_POINTS = [30, 60, 90];
@@ -85,6 +103,20 @@ export function initFilePanel(elements) {
   fileViewerContent = elements.fileViewerContent;
   chatView = elements.chatView;
 
+  // Tab elements
+  _filePanelTabs = elements.filePanelTabs;
+  filesTab = elements.filesTab;
+  changesTab = elements.changesTab;
+  filesView = elements.filesView;
+  changesView = elements.changesView;
+  changesList = elements.changesList;
+  commitForm = elements.commitForm;
+  commitMessage = elements.commitMessage;
+  commitBtn = elements.commitBtn;
+  branchSelector = elements.branchSelector;
+  branchDropdown = elements.branchDropdown;
+  gitRefreshBtn = elements.gitRefreshBtn;
+
   setupEventListeners();
 }
 
@@ -123,15 +155,108 @@ function setupEventListeners() {
     });
   }
 
+  // Tab switching
+  if (filesTab) {
+    filesTab.addEventListener('click', () => switchTab('files'));
+  }
+  if (changesTab) {
+    changesTab.addEventListener('click', () => switchTab('changes'));
+  }
+
+  // Branch selector
+  if (branchSelector) {
+    branchSelector.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBranchDropdown();
+    });
+  }
+
+  // Close branch dropdown when clicking outside
+  document.addEventListener('click', () => {
+    if (branchDropdown && !branchDropdown.classList.contains('hidden')) {
+      branchDropdown.classList.add('hidden');
+    }
+  });
+
+  // Commit button
+  if (commitBtn) {
+    commitBtn.addEventListener('click', handleCommit);
+  }
+
+  // Refresh button
+  if (gitRefreshBtn) {
+    gitRefreshBtn.addEventListener('click', () => {
+      haptic(10);
+      loadGitStatus();
+      loadBranches();
+    });
+  }
+
   // Mobile drag gesture
   if (filePanel && isMobile()) {
     setupDragGesture();
+  }
+
+  // Desktop resize
+  if (filePanel && !isMobile()) {
+    setupDesktopResize();
   }
 
   // Handle resize
   window.addEventListener('resize', () => {
     if (isOpen && isMobile()) {
       setupDragGesture();
+    }
+  });
+
+  // Refresh on visibility change (cross-device sync)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && isOpen && currentTab === 'changes') {
+      loadGitStatus();
+      loadBranches();
+    }
+  });
+}
+
+// Desktop resize handle
+let resizeHandle = null;
+let isResizing = false;
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+
+function setupDesktopResize() {
+  // Create resize handle if it doesn't exist
+  if (!filePanel.querySelector('.file-panel-resize')) {
+    resizeHandle = document.createElement('div');
+    resizeHandle.className = 'file-panel-resize';
+    filePanel.insertBefore(resizeHandle, filePanel.firstChild);
+  } else {
+    resizeHandle = filePanel.querySelector('.file-panel-resize');
+  }
+
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    resizeStartX = e.clientX;
+    resizeStartWidth = filePanel.offsetWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const dx = resizeStartX - e.clientX;
+    const newWidth = Math.max(280, Math.min(800, resizeStartWidth + dx));
+    filePanel.style.width = newWidth + 'px';
+    // Update CSS variable for margin adjustments
+    document.documentElement.style.setProperty('--file-panel-width', newWidth + 'px');
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
   });
 }
@@ -194,6 +319,17 @@ export function openFilePanel() {
 
   isOpen = true;
   currentPath = '';
+
+  // Reset to files tab
+  currentTab = 'files';
+  if (filesTab) filesTab.classList.add('active');
+  if (changesTab) changesTab.classList.remove('active');
+  if (filesView) filesView.classList.remove('hidden');
+  if (changesView) changesView.classList.add('hidden');
+
+  // Reset git state
+  gitStatus = null;
+  branches = null;
 
   // Reset viewer state
   closeFileViewer();
@@ -411,10 +547,567 @@ export async function viewFile(filePath) {
 
 function closeFileViewer() {
   fileViewer.classList.remove('open');
+  _viewingDiff = null;
   setTimeout(() => {
     fileViewer.classList.add('hidden');
     fileViewerContent.innerHTML = '<code></code>';
   }, 300);
+}
+
+// === Tab Switching ===
+
+function switchTab(tab) {
+  if (tab === currentTab) return;
+  currentTab = tab;
+  haptic(5);
+
+  // Update tab buttons
+  if (filesTab) filesTab.classList.toggle('active', tab === 'files');
+  if (changesTab) changesTab.classList.toggle('active', tab === 'changes');
+
+  // Update views
+  if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
+  if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
+
+  // Load content
+  if (tab === 'files') {
+    loadFileTree(currentPath);
+  } else {
+    loadGitStatus();
+    loadBranches();
+  }
+}
+
+// === Git Status ===
+
+async function loadGitStatus() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  if (changesList) {
+    changesList.innerHTML = '<div class="changes-loading">Loading...</div>';
+  }
+  if (commitForm) {
+    commitForm.classList.add('hidden');
+  }
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/status`);
+    gitStatus = await res.json();
+
+    if (!gitStatus.isRepo) {
+      renderNotARepo();
+      return;
+    }
+
+    renderChangesView();
+  } catch (_err) {
+    if (changesList) {
+      changesList.innerHTML = '<div class="changes-empty">Failed to load git status</div>';
+    }
+  }
+}
+
+function renderNotARepo() {
+  if (changesList) {
+    changesList.innerHTML = `
+      <div class="changes-empty">
+        ${ICONS.error}
+        <p>Not a git repository</p>
+      </div>`;
+  }
+  if (branchSelector) {
+    branchSelector.classList.add('hidden');
+  }
+}
+
+function renderChangesView() {
+  if (!gitStatus || !changesList) return;
+
+  const { staged, unstaged, untracked, branch } = gitStatus;
+  const hasChanges = staged.length > 0 || unstaged.length > 0 || untracked.length > 0;
+
+  // Update branch selector
+  if (branchSelector) {
+    branchSelector.classList.remove('hidden');
+    branchSelector.querySelector('.branch-name').textContent = branch;
+  }
+
+  if (!hasChanges) {
+    changesList.innerHTML = `
+      <div class="changes-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <p>Working tree clean</p>
+      </div>`;
+    if (commitForm) commitForm.classList.add('hidden');
+    return;
+  }
+
+  let html = '';
+
+  // Staged section
+  if (staged.length > 0) {
+    html += `
+      <div class="changes-section">
+        <div class="changes-section-header">
+          <span class="changes-section-title">Staged Changes</span>
+          <span class="changes-section-count">${staged.length}</span>
+          <button class="changes-section-btn" data-action="unstage-all" title="Unstage All">− All</button>
+        </div>
+        ${staged.map(f => renderChangeItem(f, 'staged')).join('')}
+      </div>`;
+  }
+
+  // Unstaged section
+  if (unstaged.length > 0) {
+    html += `
+      <div class="changes-section">
+        <div class="changes-section-header">
+          <span class="changes-section-title">Changes</span>
+          <span class="changes-section-count">${unstaged.length}</span>
+          <button class="changes-section-btn" data-action="stage-all-unstaged" title="Stage All">+ All</button>
+        </div>
+        ${unstaged.map(f => renderChangeItem(f, 'unstaged')).join('')}
+      </div>`;
+  }
+
+  // Untracked section
+  if (untracked.length > 0) {
+    html += `
+      <div class="changes-section">
+        <div class="changes-section-header">
+          <span class="changes-section-title">Untracked Files</span>
+          <span class="changes-section-count">${untracked.length}</span>
+          <button class="changes-section-btn" data-action="stage-all-untracked" title="Stage All">+ All</button>
+        </div>
+        ${untracked.map(f => renderChangeItem({ ...f, status: '?' }, 'untracked')).join('')}
+      </div>`;
+  }
+
+  changesList.innerHTML = html;
+  attachChangeItemListeners();
+
+  // Show commit form if there are staged changes
+  if (commitForm) {
+    commitForm.classList.toggle('hidden', staged.length === 0);
+  }
+}
+
+function renderChangeItem(file, type) {
+  const statusLabels = {
+    'M': 'modified',
+    'A': 'added',
+    'D': 'deleted',
+    'R': 'renamed',
+    'C': 'copied',
+    '?': 'untracked'
+  };
+  const statusLabel = statusLabels[file.status] || file.status;
+  const filename = file.path.split('/').pop();
+
+  return `
+    <div class="changes-item" data-path="${escapeHtml(file.path)}" data-type="${type}">
+      <span class="status-badge status-${file.status.toLowerCase()}" title="${statusLabel}">${file.status}</span>
+      <span class="changes-item-name" title="${escapeHtml(file.path)}">${escapeHtml(filename)}</span>
+      <span class="changes-item-path">${escapeHtml(file.path)}</span>
+      <div class="changes-item-actions">
+        ${type === 'staged' ? `<button class="changes-action-btn" data-action="unstage" title="Unstage">−</button>` : ''}
+        ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+        ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">×</button>` : ''}
+        ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function attachChangeItemListeners() {
+  if (!changesList) return;
+
+  // Click on item to view diff
+  changesList.querySelectorAll('.changes-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.changes-action-btn')) return;
+      const filePath = item.dataset.path;
+      const type = item.dataset.type;
+      if (type !== 'untracked') {
+        viewDiff(filePath, type === 'staged');
+      }
+    });
+  });
+
+  // Action buttons - handle both click and touchend for mobile reliability
+  changesList.querySelectorAll('.changes-action-btn').forEach(btn => {
+    const handleAction = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Prevent double-firing from both touch and click
+      if (btn.dataset.processing === 'true') return;
+      btn.dataset.processing = 'true';
+      setTimeout(() => { btn.dataset.processing = 'false'; }, 300);
+
+      const item = btn.closest('.changes-item');
+      const filePath = item.dataset.path;
+      const action = btn.dataset.action;
+      haptic(10);
+
+      if (action === 'stage') {
+        await stageFiles([filePath]);
+      } else if (action === 'unstage') {
+        await unstageFiles([filePath]);
+      } else if (action === 'discard') {
+        const confirmed = await showDialog('Discard changes?', `Discard all changes to ${filePath}?`, true);
+        if (confirmed) {
+          await discardChanges([filePath]);
+        }
+      }
+    };
+
+    btn.addEventListener('click', handleAction);
+    btn.addEventListener('touchend', handleAction);
+  });
+
+  // Section buttons (Stage All / Unstage All)
+  changesList.querySelectorAll('.changes-section-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      haptic(10);
+
+      const action = btn.dataset.action;
+      if (action === 'unstage-all' && gitStatus?.staged) {
+        const paths = gitStatus.staged.map(f => f.path);
+        await unstageFiles(paths);
+      } else if (action === 'stage-all-unstaged' && gitStatus?.unstaged) {
+        const paths = gitStatus.unstaged.map(f => f.path);
+        await stageFiles(paths);
+      } else if (action === 'stage-all-untracked' && gitStatus?.untracked) {
+        const paths = gitStatus.untracked.map(f => f.path);
+        await stageFiles(paths);
+      }
+    });
+  });
+}
+
+// === Diff Viewer ===
+
+async function viewDiff(filePath, staged) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const filename = filePath.split('/').pop();
+  fileViewerName.textContent = filename;
+  fileViewerContent.innerHTML = '<code>Loading diff...</code>';
+  _viewingDiff = { path: filePath, staged };
+
+  // Show viewer
+  fileViewer.classList.remove('hidden');
+  setTimeout(() => fileViewer.classList.add('open'), 10);
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/diff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: filePath, staged })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
+      return;
+    }
+
+    if (!data.raw || data.raw.trim() === '') {
+      fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>No changes to display</p></div>`;
+      return;
+    }
+
+    renderDiff(data);
+  } catch (_err) {
+    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>Failed to load diff</p></div>`;
+  }
+}
+
+function renderDiff(data) {
+  const lines = data.raw.split('\n');
+  let html = '';
+
+  for (const line of lines) {
+    let className = 'diff-context';
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      className = 'diff-add';
+    } else if (line.startsWith('-') && !line.startsWith('---')) {
+      className = 'diff-del';
+    } else if (line.startsWith('@@')) {
+      className = 'diff-hunk-header';
+    } else if (line.startsWith('diff ') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++')) {
+      className = 'diff-meta';
+    }
+
+    html += `<div class="${className}">${escapeHtml(line)}</div>`;
+  }
+
+  fileViewerContent.innerHTML = `<code class="diff-view">${html}</code>`;
+}
+
+// === Git Operations ===
+
+async function stageFiles(paths) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/stage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast('Staged');
+    loadGitStatus();
+  } catch (_err) {
+    showToast('Failed to stage files');
+  }
+}
+
+async function unstageFiles(paths) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/unstage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast('Unstaged');
+    loadGitStatus();
+  } catch (_err) {
+    showToast('Failed to unstage files');
+  }
+}
+
+async function discardChanges(paths) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/discard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast('Changes discarded');
+    loadGitStatus();
+  } catch (_err) {
+    showToast('Failed to discard changes');
+  }
+}
+
+async function handleCommit() {
+  const convId = state.getCurrentConversationId();
+  if (!convId || !commitMessage) return;
+
+  const message = commitMessage.value.trim();
+  if (!message) {
+    showToast('Enter a commit message');
+    return;
+  }
+
+  commitBtn.disabled = true;
+  haptic(15);
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/commit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast(`Committed ${data.hash}`);
+    commitMessage.value = '';
+    loadGitStatus();
+  } catch (_err) {
+    showToast('Commit failed');
+  } finally {
+    commitBtn.disabled = false;
+  }
+}
+
+// === Branch Management ===
+
+async function loadBranches() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/branches`);
+    branches = await res.json();
+
+    if (branches.error) {
+      branches = null;
+      return;
+    }
+  } catch (_err) {
+    branches = null;
+  }
+}
+
+async function toggleBranchDropdown() {
+  if (!branchDropdown) return;
+  haptic(5);
+
+  const isHidden = branchDropdown.classList.contains('hidden');
+  if (isHidden) {
+    // Load branches if not already loaded
+    if (!branches) {
+      branchDropdown.innerHTML = '<div class="branch-item">Loading...</div>';
+      branchDropdown.classList.remove('hidden');
+      await loadBranches();
+      if (!branches) {
+        branchDropdown.innerHTML = '<div class="branch-item">Failed to load branches</div>';
+        return;
+      }
+    }
+    renderBranchDropdown();
+    branchDropdown.classList.remove('hidden');
+  } else {
+    branchDropdown.classList.add('hidden');
+  }
+}
+
+function renderBranchDropdown() {
+  if (!branchDropdown || !branches) return;
+
+  let html = '';
+
+  // Local branches
+  for (const branch of branches.local) {
+    const isCurrent = branch === branches.current;
+    html += `
+      <div class="branch-item ${isCurrent ? 'current' : ''}" data-branch="${escapeHtml(branch)}">
+        ${isCurrent ? '<span class="branch-check">✓</span>' : ''}
+        <span class="branch-name">${escapeHtml(branch)}</span>
+      </div>`;
+  }
+
+  // Remote branches (excluding those that match local)
+  const remoteOnly = branches.remote.filter(r => {
+    const shortName = r.split('/').slice(1).join('/');
+    return !branches.local.includes(shortName);
+  });
+
+  if (remoteOnly.length > 0) {
+    html += '<div class="branch-divider"></div>';
+    for (const branch of remoteOnly) {
+      html += `
+        <div class="branch-item remote" data-branch="${escapeHtml(branch)}">
+          <span class="branch-name">${escapeHtml(branch)}</span>
+        </div>`;
+    }
+  }
+
+  // New branch option
+  html += `
+    <div class="branch-divider"></div>
+    <div class="branch-item new-branch" data-action="new">
+      <span class="branch-name">+ New branch</span>
+    </div>`;
+
+  branchDropdown.innerHTML = html;
+
+  // Attach listeners
+  branchDropdown.querySelectorAll('.branch-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      branchDropdown.classList.add('hidden');
+
+      if (item.dataset.action === 'new') {
+        const name = await showDialog('New branch', 'Branch name:', true, true);
+        if (name) {
+          await createBranch(name, true);
+        }
+      } else if (!item.classList.contains('current')) {
+        const branch = item.dataset.branch;
+        await checkoutBranch(branch);
+      }
+    });
+  });
+}
+
+async function createBranch(name, checkout) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/branch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, checkout })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast(`Created ${name}`);
+    loadGitStatus();
+    loadBranches();
+  } catch (_err) {
+    showToast('Failed to create branch');
+  }
+}
+
+async function checkoutBranch(branch) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  try {
+    const res = await fetch(`/api/conversations/${convId}/git/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ branch })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast(data.error);
+      return;
+    }
+
+    showToast(`Switched to ${branch}`);
+    loadGitStatus();
+    loadBranches();
+  } catch (_err) {
+    showToast('Failed to checkout branch');
+  }
 }
 
 export function isFilePanelOpen() {

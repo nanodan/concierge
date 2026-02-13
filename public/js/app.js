@@ -100,6 +100,18 @@ const filePanelViewer = document.getElementById('file-viewer');
 const fileViewerName = document.getElementById('file-viewer-name');
 const fileViewerClose = document.getElementById('file-viewer-close');
 const fileViewerContent = document.getElementById('file-viewer-content');
+const filePanelTabs = document.getElementById('file-panel-tabs');
+const filesTab = document.getElementById('files-tab');
+const changesTab = document.getElementById('changes-tab');
+const filesView = document.getElementById('files-view');
+const changesView = document.getElementById('changes-view');
+const changesList = document.getElementById('changes-list');
+const commitForm = document.getElementById('commit-form');
+const commitMessage = document.getElementById('commit-message');
+const commitBtn = document.getElementById('commit-btn');
+const branchSelector = document.getElementById('branch-selector');
+const branchDropdown = document.getElementById('branch-dropdown');
+const gitRefreshBtn = document.getElementById('git-refresh-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -264,7 +276,19 @@ initFilePanel({
   fileViewerName,
   fileViewerClose,
   fileViewerContent,
-  chatView
+  chatView,
+  filePanelTabs,
+  filesTab,
+  changesTab,
+  filesView,
+  changesView,
+  changesList,
+  commitForm,
+  commitMessage,
+  commitBtn,
+  branchSelector,
+  branchDropdown,
+  gitRefreshBtn
 });
 
 // Setup action popup handlers

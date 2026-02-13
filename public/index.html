@@ -183,16 +183,42 @@
     <div id="file-panel" class="file-panel hidden">
       <div class="file-panel-header">
         <div class="file-panel-drag-handle"></div>
-        <span class="file-panel-title">Files</span>
+        <div id="file-panel-tabs" class="file-panel-tabs">
+          <button id="files-tab" class="file-panel-tab active" data-tab="files">Files</button>
+          <button id="changes-tab" class="file-panel-tab" data-tab="changes">Changes</button>
+        </div>
         <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
       </div>
-      <div class="file-panel-nav">
-        <button id="file-panel-up" class="file-panel-up" disabled aria-label="Parent directory">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <span id="file-panel-path" class="file-panel-path">.</span>
+      <!-- Files View -->
+      <div id="files-view" class="files-view">
+        <div class="file-panel-nav">
+          <button id="file-panel-up" class="file-panel-up" disabled aria-label="Parent directory">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span id="file-panel-path" class="file-panel-path">.</span>
+        </div>
+        <div id="file-tree" class="file-tree"></div>
       </div>
-      <div id="file-tree" class="file-tree"></div>
+      <!-- Changes View (Git) -->
+      <div id="changes-view" class="changes-view hidden">
+        <div class="file-panel-nav changes-nav">
+          <button id="branch-selector" class="branch-selector hidden">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="branch-name">main</span>
+            <svg class="branch-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="branch-dropdown" class="branch-dropdown hidden"></div>
+          <button id="git-refresh-btn" class="git-refresh-btn" aria-label="Refresh" title="Refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+        <div id="changes-list" class="changes-list"></div>
+        <div id="commit-form" class="commit-form hidden">
+          <textarea id="commit-message" class="commit-message" placeholder="Commit message..." rows="2"></textarea>
+          <button id="commit-btn" class="commit-btn">Commit</button>
+        </div>
+      </div>
+      <!-- File Viewer (shared) -->
       <div id="file-viewer" class="file-viewer hidden">
         <div class="file-viewer-header">
           <span id="file-viewer-name" class="file-viewer-name"></span>
