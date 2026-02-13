@@ -755,7 +755,12 @@ function attachChangeItemListeners() {
       } else if (action === 'unstage') {
         await unstageFiles([filePath]);
       } else if (action === 'discard') {
-        const confirmed = await showDialog('Discard changes?', `Discard all changes to ${filePath}?`, true);
+        const confirmed = await showDialog({
+          title: 'Discard changes?',
+          message: `Discard all changes to ${filePath}?`,
+          danger: true,
+          confirmLabel: 'Discard'
+        });
         if (confirmed) {
           await discardChanges([filePath]);
         }
@@ -1048,7 +1053,12 @@ function renderBranchDropdown() {
       branchDropdown.classList.add('hidden');
 
       if (item.dataset.action === 'new') {
-        const name = await showDialog('New branch', 'Branch name:', true, true);
+        const name = await showDialog({
+          title: 'New branch',
+          message: 'Enter branch name:',
+          input: true,
+          placeholder: 'feature/my-branch'
+        });
         if (name) {
           await createBranch(name, true);
         }
