@@ -12,6 +12,13 @@ function escapeHtml(text) {
 function renderMarkdown(text) {
   if (!text) return '';
 
+  // Extract trace blocks (tool calls) before escaping - they become collapsible
+  const traceBlocks = [];
+  text = text.replace(/:::trace\n([\s\S]*?)\n:::/g, (_, content) => {
+    traceBlocks.push(content);
+    return `\x00TRACE${traceBlocks.length - 1}\x00`;
+  });
+
   let html = escapeHtml(text);
 
   // Extract code blocks into placeholders to protect from subsequent regexes
@@ -59,6 +66,12 @@ function renderMarkdown(text) {
 
   // Restore code blocks
   html = html.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[i]);
+
+  // Restore trace blocks as collapsible details
+  html = html.replace(/\x00TRACE(\d+)\x00/g, (_, i) => {
+    const traceContent = renderMarkdown(traceBlocks[i]);
+    return `<details class="tool-trace"><summary>Show tool calls</summary><div class="trace-content">${traceContent}</div></details>`;
+  });
 
   return html;
 }

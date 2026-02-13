@@ -104,5 +104,23 @@ function handleWSMessage(data) {
 
     case 'stderr':
       break;
+
+    case 'thinking':
+      if (data.conversationId === currentConversationId) {
+        state.updateThinkingText(data.text);
+      }
+      break;
+
+    case 'tool_start':
+      if (data.conversationId === currentConversationId) {
+        state.updateToolStatus(data.tool);
+      }
+      break;
+
+    case 'tool_result':
+      if (data.conversationId === currentConversationId) {
+        state.clearToolStatus();
+      }
+      break;
   }
 }

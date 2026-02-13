@@ -746,15 +746,21 @@ function closeMoreMenuOnOutsideClick(e) {
 function toggleThemeDropdown() {
   if (!themeDropdown) return;
   const isHidden = themeDropdown.classList.contains('hidden');
+
+  // Get position before closing more menu
+  let top = 60;
+  let right = 12;
+  if (moreMenuBtn) {
+    const rect = moreMenuBtn.getBoundingClientRect();
+    top = rect.bottom + 4;
+    right = window.innerWidth - rect.right;
+  }
+
   closeMoreMenu();
   if (isHidden) {
     closeColorThemeDropdown();
-    // Position below the more menu
-    if (moreMenuDropdown) {
-      const rect = moreMenuDropdown.getBoundingClientRect();
-      themeDropdown.style.top = `${rect.top}px`;
-      themeDropdown.style.right = `${window.innerWidth - rect.right}px`;
-    }
+    themeDropdown.style.top = `${top}px`;
+    themeDropdown.style.right = `${right}px`;
     themeDropdown.classList.remove('hidden');
     setTimeout(() => {
       document.addEventListener('click', closeThemeDropdownOnOutsideClick);
@@ -844,15 +850,21 @@ function applyColorTheme(animate = false) {
 function toggleColorThemeDropdown() {
   if (!colorThemeDropdown) return;
   const isHidden = colorThemeDropdown.classList.contains('hidden');
+
+  // Get position before closing more menu
+  let top = 60;
+  let right = 12;
+  if (moreMenuBtn) {
+    const rect = moreMenuBtn.getBoundingClientRect();
+    top = rect.bottom + 4;
+    right = window.innerWidth - rect.right;
+  }
+
   closeMoreMenu();
   if (isHidden) {
     closeThemeDropdown();
-    // Position below the more menu
-    if (moreMenuDropdown) {
-      const rect = moreMenuDropdown.getBoundingClientRect();
-      colorThemeDropdown.style.top = `${rect.top}px`;
-      colorThemeDropdown.style.right = `${window.innerWidth - rect.right}px`;
-    }
+    colorThemeDropdown.style.top = `${top}px`;
+    colorThemeDropdown.style.right = `${right}px`;
     colorThemeDropdown.classList.remove('hidden');
     setTimeout(() => {
       document.addEventListener('click', closeColorThemeDropdownOnOutsideClick);

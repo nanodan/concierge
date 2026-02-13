@@ -362,6 +362,9 @@
 .typing-indicator {
   padding: 8px 16px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .typing-indicator.hidden {
@@ -372,6 +375,22 @@
   display: flex;
   gap: 4px;
   align-items: center;
+  flex-shrink: 0;
+}
+
+.typing-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .typing-dots span {
@@ -526,6 +545,63 @@
   padding: 4px 10px;
   border-radius: 8px;
   border: 1px solid var(--glass-border);
+}
+
+/* Tool trace (collapsible) */
+.tool-trace {
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.tool-trace summary {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-trace summary::before {
+  content: '▶';
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.tool-trace[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.tool-trace summary:hover {
+  background: var(--bg-secondary);
+}
+
+.trace-content {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.trace-content p {
+  margin: 4px 0;
+}
+
+.trace-content pre {
+  font-size: 12px;
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  overflow-x: auto;
 }
 
 /* Error message */

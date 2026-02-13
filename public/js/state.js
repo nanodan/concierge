@@ -424,7 +424,14 @@ export function getLoadMoreBtn() {
 }
 
 export function setThinking(thinking) {
-  if (typingIndicator) typingIndicator.classList.toggle('hidden', !thinking);
+  if (typingIndicator) {
+    typingIndicator.classList.toggle('hidden', !thinking);
+    // Reset status text when stopping
+    if (!thinking) {
+      const statusEl = typingIndicator.querySelector('.typing-status');
+      if (statusEl) statusEl.textContent = '';
+    }
+  }
   if (sendBtn) {
     sendBtn.disabled = thinking;
     sendBtn.classList.toggle('hidden', thinking);
@@ -433,6 +440,48 @@ export function setThinking(thinking) {
   if (thinking && messagesContainer) {
     scrollToBottom();
   }
+}
+
+export function updateToolStatus(toolName) {
+  if (!typingIndicator) return;
+  let statusEl = typingIndicator.querySelector('.typing-status');
+  if (!statusEl) {
+    statusEl = document.createElement('span');
+    statusEl.className = 'typing-status';
+    typingIndicator.appendChild(statusEl);
+  }
+  // Format tool name nicely
+  const toolLabels = {
+    'Read': 'Reading file...',
+    'Write': 'Writing file...',
+    'Edit': 'Editing file...',
+    'Bash': 'Running command...',
+    'Glob': 'Searching files...',
+    'Grep': 'Searching code...',
+    'WebFetch': 'Fetching URL...',
+    'WebSearch': 'Searching web...',
+    'Task': 'Running task...',
+  };
+  statusEl.textContent = toolLabels[toolName] || `Using ${toolName}...`;
+}
+
+export function updateThinkingText(text) {
+  if (!typingIndicator) return;
+  let statusEl = typingIndicator.querySelector('.typing-status');
+  if (!statusEl) {
+    statusEl = document.createElement('span');
+    statusEl.className = 'typing-status';
+    typingIndicator.appendChild(statusEl);
+  }
+  // Show truncated thinking text
+  const truncated = text.length > 50 ? text.slice(-50) + '...' : text;
+  statusEl.textContent = truncated;
+}
+
+export function clearToolStatus() {
+  if (!typingIndicator) return;
+  const statusEl = typingIndicator.querySelector('.typing-status');
+  if (statusEl) statusEl.textContent = '';
 }
 
 export function updateStatus(conversationId, status) {
