@@ -36,6 +36,13 @@ export let currentTheme = localStorage.getItem('theme') || 'auto';
 // Color theme (darjeeling, claude, etc.)
 export let currentColorTheme = localStorage.getItem('colorTheme') || 'darjeeling';
 
+// Notifications preference (true by default)
+export let notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
+
+// Original document title (for restoration)
+let originalTitle = document.title;
+let titleModified = false;
+
 // Message queue for offline resilience
 export let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages') || '[]');
 
@@ -233,6 +240,60 @@ export function setCurrentColorTheme(theme) {
 
 export function getCurrentColorTheme() {
   return currentColorTheme;
+}
+
+export function setNotificationsEnabled(enabled) {
+  notificationsEnabled = enabled;
+  localStorage.setItem('notificationsEnabled', enabled ? 'true' : 'false');
+}
+
+export function getNotificationsEnabled() {
+  return notificationsEnabled;
+}
+
+// Request notification permission
+export async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+// Show completion notification when tab is hidden
+export function notifyCompletion(conversationName) {
+  if (!notificationsEnabled) return;
+
+  // Always update title when tab is hidden (works even when notifications are blocked)
+  if (document.hidden && !titleModified) {
+    originalTitle = document.title;
+    document.title = '✓ ' + originalTitle;
+    titleModified = true;
+  }
+
+  // Try native notification (works even when tab is visible, will queue)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const notification = new Notification('Response complete', {
+        body: conversationName ? `"${conversationName}" finished` : 'Claude has responded',
+        tag: 'claude-response',
+      });
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    } catch (err) {
+      console.warn('Notification failed:', err);
+    }
+  }
+}
+
+// Restore title when tab becomes visible
+export function clearTitleNotification() {
+  if (titleModified) {
+    document.title = originalTitle;
+    titleModified = false;
+  }
 }
 
 export function getPendingMessages() {

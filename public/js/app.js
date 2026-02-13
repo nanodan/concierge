@@ -95,6 +95,8 @@ const moreColorTheme = document.getElementById('more-color-theme');
 const moreThemeToggle = document.getElementById('more-theme-toggle');
 const moreThemeIcon = document.getElementById('more-theme-icon');
 const moreThemeLabel = document.getElementById('more-theme-label');
+const moreNotificationsToggle = document.getElementById('more-notifications-toggle');
+const moreNotificationsLabel = document.getElementById('more-notifications-label');
 const filterToggle = document.getElementById('filter-toggle');
 const filterRow = document.getElementById('filter-row');
 const filterModelSelect = document.getElementById('filter-model');
@@ -206,6 +208,8 @@ initUI({
   moreThemeToggle,
   moreThemeIcon,
   moreThemeLabel,
+  moreNotificationsToggle,
+  moreNotificationsLabel,
   filterToggle,
   filterRow,
   filterModelSelect,
@@ -263,6 +267,21 @@ loadConversations();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+
+// Clear title notification when tab becomes visible
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    state.clearTitleNotification();
+  }
+});
+
+// Request notification permission on first interaction if enabled
+document.addEventListener('click', async function requestNotifOnce() {
+  if (state.getNotificationsEnabled() && 'Notification' in window && Notification.permission === 'default') {
+    await state.requestNotificationPermission();
+  }
+  document.removeEventListener('click', requestNotifOnce);
+}, { once: true });
 
 // --- Bulk selection handlers ---
 if (selectModeBtn) {

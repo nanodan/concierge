@@ -51,6 +51,8 @@ let moreColorTheme = null;
 let moreThemeToggle = null;
 let moreThemeIcon = null;
 let moreThemeLabel = null;
+let moreNotificationsToggle = null;
+let moreNotificationsLabel = null;
 let colorThemeLink = null;
 let filterToggle = null;
 let filterRow = null;
@@ -128,7 +130,11 @@ export function initUI(elements) {
   moreThemeToggle = elements.moreThemeToggle;
   moreThemeIcon = elements.moreThemeIcon;
   moreThemeLabel = elements.moreThemeLabel;
+  moreNotificationsToggle = elements.moreNotificationsToggle;
+  moreNotificationsLabel = elements.moreNotificationsLabel;
   colorThemeLink = document.getElementById('color-theme-link');
+  // Initialize notifications label
+  updateNotificationsLabel();
   filterToggle = elements.filterToggle;
   filterRow = elements.filterRow;
   filterModelSelect = elements.filterModelSelect;
@@ -871,6 +877,13 @@ function updateThemeIcon() {
   }
 }
 
+function updateNotificationsLabel() {
+  if (moreNotificationsLabel) {
+    const enabled = state.getNotificationsEnabled();
+    moreNotificationsLabel.textContent = `Notifications: ${enabled ? 'On' : 'Off'}`;
+  }
+}
+
 // --- Color Theme ---
 const COLOR_THEMES = {
   darjeeling: { name: 'Darjeeling', icon: '\u{1F3DC}' },
@@ -1512,6 +1525,24 @@ export function setupEventListeners(createConversation) {
     moreThemeToggle.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleThemeDropdown();
+    });
+  }
+
+  if (moreNotificationsToggle) {
+    moreNotificationsToggle.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const enabled = state.getNotificationsEnabled();
+      if (!enabled) {
+        // Turning on - request permission
+        const granted = await state.requestNotificationPermission();
+        if (!granted && 'Notification' in window && Notification.permission === 'denied') {
+          showToast('Notifications blocked - check browser settings');
+        }
+      }
+      state.setNotificationsEnabled(!enabled);
+      updateNotificationsLabel();
+      closeMoreMenu();
+      haptic(10);
     });
   }
 

@@ -77,8 +77,14 @@ function handleWSMessage(data) {
     case 'result':
       if (data.conversationId === currentConversationId) {
         finalizeMessage(data);
+        // Notify if tab is hidden
+        const conv = state.conversations.find(c => c.id === data.conversationId);
+        state.notifyCompletion(conv?.name);
       } else if (data.conversationId) {
         state.addUnread(data.conversationId);
+        // Notify for background conversations too
+        const conv = state.conversations.find(c => c.id === data.conversationId);
+        state.notifyCompletion(conv?.name);
       }
       // Update conversation list in background
       loadConversations();
