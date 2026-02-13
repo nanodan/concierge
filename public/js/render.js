@@ -114,20 +114,21 @@ export function renderMessageSlice(messages, startIndex) {
     }
     const isLastAssistant = cls === 'assistant' && globalIndex === allMessages.length - 1;
     const regenBtn = isLastAssistant
-      ? '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>'
+      ? '<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>'
       : '';
     const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
-      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      ? '<button class="msg-action-btn tts-btn" aria-label="Read aloud"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>'
       : '';
+    const actionBtns = (ttsBtn || regenBtn) ? `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>` : '';
 
     // Wrap assistant messages with avatar
     if (cls === 'assistant') {
       return `<div class="message-wrapper assistant">
         <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
-        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>
+        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}</div>${actionBtns}</div>
       </div>`;
     }
-    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}${ttsBtn}${regenBtn}</div></div>`;
+    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}</div>${actionBtns}</div>`;
   }).join('');
 }
 
@@ -227,10 +228,11 @@ export function finalizeMessage(data) {
       meta += ` &middot; ${formatTokens(data.inputTokens)} in / ${formatTokens(data.outputTokens)} out`;
     }
     const ttsBtn = window.speechSynthesis
-      ? '<button class="tts-btn" aria-label="Read aloud">&#x1F50A;</button>'
+      ? '<button class="msg-action-btn tts-btn" aria-label="Read aloud"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>'
       : '';
-    const regenBtn = '<button class="regen-btn" aria-label="Regenerate" title="Regenerate">&#x21BB;</button>';
-    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}${ttsBtn}${regenBtn}</div>`;
+    const regenBtn = '<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>';
+    const actionBtns = `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>`;
+    streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>${actionBtns}`;
     enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
     attachRegenHandlers();

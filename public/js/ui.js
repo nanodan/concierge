@@ -452,10 +452,14 @@ export function regenerateMessage() {
   const ws = getWS();
   if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
 
-  // Remove last assistant message from DOM
-  const lastMsg = messagesContainer.querySelector('.message:last-child');
-  if (lastMsg?.classList.contains('assistant')) {
-    lastMsg.remove();
+  // Remove last assistant message from DOM (including wrapper if present)
+  const lastWrapper = messagesContainer.querySelector('.message-wrapper.assistant:last-child');
+  if (lastWrapper) {
+    lastWrapper.remove();
+  } else {
+    // Fallback for messages without wrapper
+    const lastMsg = messagesContainer.querySelector('.message.assistant:last-child');
+    if (lastMsg) lastMsg.remove();
   }
 
   state.setThinking(true);
@@ -1551,6 +1555,8 @@ export function setupEventListeners(createConversation) {
     if (e.key === 'Escape') {
       if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
+      } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
+        closeFileBrowser();
       } else if (!modalOverlay.classList.contains('hidden')) {
         modalOverlay.classList.add('hidden');
       } else if (chatView.classList.contains('slide-in')) {

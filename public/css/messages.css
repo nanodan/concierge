@@ -414,50 +414,63 @@
   30% { opacity: 1; transform: scale(1); }
 }
 
-/* TTS Button */
-.tts-btn {
-  background: none;
-  border: none;
+/* Message action buttons container */
+.msg-action-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Shared message action button style */
+.msg-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 2px 4px;
-  margin-left: 6px;
-  font-size: 13px;
-  opacity: 0.7;
-  transition: opacity 0.15s, color 0.15s;
-  vertical-align: middle;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.tts-btn:hover {
-  opacity: 1;
+.msg-action-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
+.msg-action-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text);
+  border-color: var(--accent-alpha-30);
+}
+
+.msg-action-btn:active {
+  transform: scale(0.92);
+  background: var(--accent-alpha-15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* TTS Button active state */
 .tts-btn.speaking {
-  color: var(--accent-light);
-  opacity: 1;
+  background: var(--accent-alpha-15);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
-/* Regenerate button */
-.regen-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 2px 4px;
-  margin-left: 6px;
-  font-size: 14px;
-  opacity: 0.7;
-  transition: opacity 0.15s, color 0.15s;
-  vertical-align: middle;
+.tts-btn.speaking svg {
+  animation: pulse 1s ease-in-out infinite;
 }
 
-.regen-btn:hover {
-  opacity: 1;
-}
-
-.regen-btn:active {
-  color: var(--accent-light);
-  opacity: 1;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Attachment Preview Strip */
