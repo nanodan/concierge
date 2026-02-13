@@ -35,18 +35,14 @@ Many fetch calls silently fail. No consistent pattern for showing errors to the 
 
 ---
 
-## WebSocket reconnect jitter
+## ~~WebSocket reconnect jitter~~ ✅ DONE
 **Priority:** Medium
 **Effort:** Low
 
-Exponential backoff has no jitter. If server restarts, all clients reconnect at the same intervals (thundering herd problem).
+~~Exponential backoff has no jitter.~~ **IMPLEMENTED**
 
-**Approach:**
-- Add random jitter to reconnect delay: `delay * (0.5 + Math.random())`
-- Keep the existing max of 30 seconds
-- Consider adding a reconnect attempt limit with a "reconnect now" button after max attempts
-
-**Files:** `public/app.js` (WebSocket reconnect logic)
+- Added random jitter: `baseDelay * (0.5 + Math.random())` gives 50-150% of base delay
+- Prevents thundering herd on server restart
 
 ---
 

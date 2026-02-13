@@ -114,6 +114,12 @@
           <button id="model-btn" class="model-badge-btn">Sonnet 4.5</button>
           <div id="model-dropdown" class="model-dropdown hidden"></div>
         </div>
+        <div id="conv-stats-selector" class="conv-stats-selector">
+          <button id="conv-stats-btn" class="conv-stats-btn" aria-label="Conversation stats" title="Stats">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          </button>
+          <div id="conv-stats-dropdown" class="conv-stats-dropdown hidden"></div>
+        </div>
       </div>
       <button id="new-chat-here-btn" class="header-icon-btn" aria-label="New chat in this folder" title="New chat in this folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -297,6 +303,15 @@
       <svg id="more-notifications-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span id="more-notifications-label">Notifications: On</span>
     </div>
+  </div>
+
+  <!-- Image Lightbox -->
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <img id="lightbox-img" class="lightbox-img" src="" alt="">
+    <a id="lightbox-download" class="lightbox-download" download aria-label="Download">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
   </div>
 
   <!-- File Browser Modal -->

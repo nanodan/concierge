@@ -37,6 +37,8 @@ let attachmentPreview = null;
 let modeBadge = null;
 let modelBtn = null;
 let modelDropdown = null;
+let convStatsBtn = null;
+let convStatsDropdown = null;
 let contextBar = null;
 let contextBarFill = null;
 let contextBarLabel = null;
@@ -116,6 +118,8 @@ export function initUI(elements) {
   modeBadge = elements.modeBadge;
   modelBtn = elements.modelBtn;
   modelDropdown = elements.modelDropdown;
+  convStatsBtn = elements.convStatsBtn;
+  convStatsDropdown = elements.convStatsDropdown;
   contextBar = elements.contextBar;
   contextBarFill = elements.contextBarFill;
   contextBarLabel = elements.contextBarLabel;
@@ -274,6 +278,12 @@ export async function sendMessage(text) {
   messagesContainer.appendChild(el);
   state.setUserHasScrolledUp(false);
   state.scrollToBottom(true);
+
+  // Attach handlers for any images in the newly added message
+  if (attachments.length > 0) {
+    const { attachImageHandlers } = await import('./render.js');
+    attachImageHandlers();
+  }
 
   ws.send(JSON.stringify({
     type: 'message',
@@ -1407,7 +1417,39 @@ export function setupEventListeners(createConversation) {
 
   document.addEventListener('click', () => {
     modelDropdown.classList.add('hidden');
+    if (convStatsDropdown) convStatsDropdown.classList.add('hidden');
   });
+
+  // Conversation stats dropdown handler
+  if (convStatsBtn) {
+    convStatsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !convStatsDropdown.classList.contains('hidden');
+      if (isOpen) {
+        convStatsDropdown.classList.add('hidden');
+        return;
+      }
+      // Calculate stats from current conversation
+      const currentId = state.getCurrentConversationId();
+      const conv = state.conversations.find(c => c.id === currentId);
+      if (!conv) return;
+
+      const messages = state.getAllMessages();
+      const userMsgs = messages.filter(m => m.role === 'user').length;
+      const assistantMsgs = messages.filter(m => m.role === 'assistant').length;
+      const totalCost = messages.reduce((sum, m) => sum + (m.cost || 0), 0);
+      const totalInput = messages.reduce((sum, m) => sum + (m.inputTokens || 0), 0);
+      const totalOutput = messages.reduce((sum, m) => sum + (m.outputTokens || 0), 0);
+
+      convStatsDropdown.innerHTML = `
+        <div class="conv-stats-row"><span class="conv-stats-label">Messages</span><span class="conv-stats-value">${userMsgs} / ${assistantMsgs}</span></div>
+        <div class="conv-stats-row"><span class="conv-stats-label">Tokens in</span><span class="conv-stats-value">${formatTokens(totalInput)}</span></div>
+        <div class="conv-stats-row"><span class="conv-stats-label">Tokens out</span><span class="conv-stats-value">${formatTokens(totalOutput)}</span></div>
+        <div class="conv-stats-row"><span class="conv-stats-label">Total cost</span><span class="conv-stats-value">$${totalCost.toFixed(4)}</span></div>
+      `;
+      convStatsDropdown.classList.remove('hidden');
+    });
+  }
 
   // Mode badge click handler
   modeBadge.addEventListener('click', async () => {
@@ -1584,7 +1626,10 @@ export function setupEventListeners(createConversation) {
 
     // Escape always works
     if (e.key === 'Escape') {
-      if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
+      const lightbox = document.getElementById('lightbox');
+      if (lightbox && !lightbox.classList.contains('hidden')) {
+        lightbox.classList.add('hidden');
+      } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
       } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
         closeFileBrowser();

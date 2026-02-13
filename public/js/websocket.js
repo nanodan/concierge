@@ -52,9 +52,10 @@ export function connectWS() {
   };
 
   ws.onclose = () => {
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+    const jitter = baseDelay * (0.5 + Math.random()); // 50-150% of base delay
     reconnectAttempt++;
-    reconnectTimer = setTimeout(connectWS, delay);
+    reconnectTimer = setTimeout(connectWS, jitter);
     // Show reconnect banner after first failed attempt
     if (wsHasConnected && reconnectBanner) reconnectBanner.classList.remove('hidden');
   };

@@ -82,6 +82,8 @@ export function renderMessages(messages) {
 
   enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
+  attachTimestampHandlers();
+  attachImageHandlers();
   attachRegenHandlers();
   attachMessageActions();
   renderAllReactions();
@@ -94,7 +96,8 @@ export function renderMessageSlice(messages, startIndex) {
     const globalIndex = startIndex + i;
     const cls = m.role === 'user' ? 'user' : 'assistant';
     const content = m.role === 'assistant' ? renderMarkdown(m.text) : escapeHtml(m.text);
-    let meta = formatTime(m.timestamp);
+    const timestamp = m.timestamp || Date.now();
+    let meta = formatTime(timestamp);
     if (m.cost != null) {
       meta += ` &middot; $${m.cost.toFixed(4)}`;
     }
@@ -125,10 +128,10 @@ export function renderMessageSlice(messages, startIndex) {
     if (cls === 'assistant') {
       return `<div class="message-wrapper assistant">
         <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
-        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}</div>${actionBtns}</div>
+        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>
       </div>`;
     }
-    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta">${meta}</div>${actionBtns}</div>`;
+    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>`;
   }).join('');
 }
 
@@ -147,6 +150,8 @@ export function loadMoreMessages() {
   messagesContainer.insertAdjacentHTML('afterbegin', html);
   enhanceCodeBlocks(messagesContainer);
   attachTTSHandlers();
+  attachTimestampHandlers();
+  attachImageHandlers();
   attachMessageActions();
   state.setMessagesOffset(newOffset);
   // Preserve scroll position
@@ -235,6 +240,8 @@ export function finalizeMessage(data) {
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>${actionBtns}`;
     enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
+  attachTimestampHandlers();
+  attachImageHandlers();
     attachRegenHandlers();
     state.setStreamingMessageEl(null);
     state.setStreamingText('');
@@ -355,6 +362,85 @@ export function attachTTSHandlers() {
     if (btn.dataset.ttsAttached) return;
     btn.dataset.ttsAttached = 'true';
     btn.addEventListener('click', () => toggleTTS(btn));
+  });
+}
+
+export function attachTimestampHandlers() {
+  const messagesContainer = state.getMessagesContainer();
+  messagesContainer.querySelectorAll('.meta[data-ts]').forEach(meta => {
+    if (meta.dataset.tsAttached) return;
+    meta.dataset.tsAttached = 'true';
+    meta.style.cursor = 'pointer';
+    meta.addEventListener('click', () => {
+      const ts = parseInt(meta.dataset.ts, 10);
+      if (!ts) return;
+      const date = new Date(ts);
+      const full = date.toLocaleString(undefined, {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      // Toggle between relative and full timestamp
+      if (meta.dataset.expanded === 'true') {
+        meta.innerHTML = meta.dataset.original;
+        meta.dataset.expanded = 'false';
+      } else {
+        meta.dataset.original = meta.innerHTML;
+        meta.innerHTML = full;
+        meta.dataset.expanded = 'true';
+      }
+    });
+  });
+}
+
+// Lightbox elements (lazy initialized)
+let lightbox = null;
+let lightboxImg = null;
+let lightboxClose = null;
+let lightboxDownload = null;
+
+function initLightbox() {
+  if (lightbox) return;
+  lightbox = document.getElementById('lightbox');
+  lightboxImg = document.getElementById('lightbox-img');
+  lightboxClose = document.getElementById('lightbox-close');
+  lightboxDownload = document.getElementById('lightbox-download');
+
+  if (!lightbox) return;
+
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+}
+
+export function openLightbox(src) {
+  initLightbox();
+  if (!lightbox) return;
+  lightboxImg.src = src;
+  lightboxDownload.href = src;
+  lightbox.classList.remove('hidden');
+  haptic(10);
+}
+
+export function closeLightbox() {
+  if (lightbox) {
+    lightbox.classList.add('hidden');
+    lightboxImg.src = '';
+  }
+}
+
+export function attachImageHandlers() {
+  const messagesContainer = state.getMessagesContainer();
+  messagesContainer.querySelectorAll('.msg-attachment-img').forEach(img => {
+    if (img.dataset.lightboxAttached) return;
+    img.dataset.lightboxAttached = 'true';
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', () => openLightbox(img.src));
   });
 }
 

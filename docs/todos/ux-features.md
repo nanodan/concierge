@@ -1,18 +1,16 @@
 # UX Feature TODOs
 
-## Tab-unfocused completion notification
+## ~~Tab-unfocused completion notification~~ ✅ DONE
 **Priority:** High
 **Effort:** Low
 
-No way to know when a response finishes if the tab is backgrounded.
+~~No way to know when a response finishes if the tab is backgrounded.~~ **IMPLEMENTED**
 
-**Approach:**
-- Use `Notification API` when response completes and `document.hidden === true`
-- Request permission on first use
-- Fallback: update `document.title` with a prefix like "(done)" and revert on focus
-- Respect a user preference toggle
-
-**Files:** `public/app.js` (finalizeMessage, handleResult)
+- Native browser notification when response completes
+- Title prefix "✓ " when tab is hidden, clears on focus
+- Permission requested on first interaction
+- User toggle in more menu (Notifications: On/Off)
+- Preference persisted to localStorage
 
 ---
 
@@ -116,18 +114,15 @@ Search could be much more useful with filtering and better result display.
 
 ---
 
-## Dynamic token limits per model
+## ~~Dynamic token limits per model~~ ✅ DONE
 **Priority:** Medium
 **Effort:** Low
 
-Context bar hardcodes `200000` tokens. Should reflect actual model limits.
+~~Context bar hardcodes `200000` tokens.~~ **IMPLEMENTED**
 
-**Approach:**
-- `/api/models` endpoint already exists — add `context_window` to each model's data
-- Frontend reads the limit for the active model
-- Update context bar percentage calculation accordingly
-
-**Files:** `server.js` (GET /api/models), `public/app.js` (context bar update logic)
+- Models array already includes `context` field
+- `updateContextBar()` reads the active model's context limit
+- Context bar shows accurate percentage for each model
 
 ---
 
@@ -194,18 +189,15 @@ Compare two conversations or responses to the same prompt across models.
 
 ---
 
-## Message timestamps
+## ~~Message timestamps~~ ✅ DONE
 **Priority:** Medium
 **Effort:** Low
 
-Show exact timestamp when tapping/hovering on messages.
+~~Show exact timestamp when tapping/hovering on messages.~~ **IMPLEMENTED**
 
-**Approach:**
-- Add timestamp tooltip or expandable detail on tap
-- Show relative time ("2 hours ago") or absolute time based on preference
-- Could also show token count, cost for that message
-
-**Files:** `public/js/render.js`, `public/css/messages.css`
+- Tap meta info to toggle between relative and full timestamp
+- Full timestamp shows: "Wed, Feb 12, 2026, 8:04:32 PM"
+- Toggles back to relative on second tap
 
 ---
 
@@ -225,34 +217,29 @@ Cmd+F style search in current chat to find specific messages.
 
 ---
 
-## Per-conversation stats
+## ~~Per-conversation stats~~ ✅ DONE
 **Priority:** Low
 **Effort:** Low
 
-Show token usage, message count, and cost for each conversation.
+~~Show token usage, message count, and cost for each conversation.~~ **IMPLEMENTED**
 
-**Approach:**
-- Add stats section to conversation detail view (maybe in header dropdown)
-- Calculate totals from messages array
-- Show input/output token breakdown
-
-**Files:** `public/js/ui.js`, `public/css/components.css`
+- Stats button (bar chart icon) in chat header
+- Dropdown shows: message count, tokens in/out, total cost
+- Calculated from messages array on demand
 
 ---
 
-## Image lightbox
+## ~~Image lightbox~~ ✅ DONE
 **Priority:** Low
 **Effort:** Low
 
-Full-screen preview when tapping image attachments.
+~~Full-screen preview when tapping image attachments.~~ **IMPLEMENTED**
 
-**Approach:**
-- Modal overlay with zoomed image
-- Pinch-to-zoom on mobile
-- Download button
-- Swipe to dismiss
-
-**Files:** `public/js/render.js`, `public/index.html`, `public/css/components.css`
+- Tap any image attachment to open fullscreen lightbox
+- Dark overlay with centered image
+- Download button to save original
+- Click overlay or X to close
+- Escape key closes lightbox
 
 ---
 

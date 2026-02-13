@@ -70,6 +70,8 @@ const dialogOk = document.getElementById('dialog-ok');
 const modeBadge = document.getElementById('mode-badge');
 const modelBtn = document.getElementById('model-btn');
 const modelDropdown = document.getElementById('model-dropdown');
+const convStatsBtn = document.getElementById('conv-stats-btn');
+const convStatsDropdown = document.getElementById('conv-stats-dropdown');
 const contextBar = document.getElementById('context-bar');
 const contextBarFill = document.getElementById('context-bar-fill');
 const contextBarLabel = document.getElementById('context-bar-label');
@@ -194,6 +196,8 @@ initUI({
   modeBadge,
   modelBtn,
   modelDropdown,
+  convStatsBtn,
+  convStatsDropdown,
   contextBar,
   contextBarFill,
   contextBarLabel,
