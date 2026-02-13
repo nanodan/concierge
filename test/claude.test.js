@@ -25,19 +25,17 @@ describe('MODELS', () => {
 describe('processStreamEvent - tool calls', () => {
   let sent;
   let fakeWs;
-  let onSaveCalled;
   let broadcastCalled;
 
   beforeEach(() => {
     sent = [];
-    onSaveCalled = false;
     broadcastCalled = [];
     fakeWs = {
       send(data) { sent.push(JSON.parse(data)); },
     };
   });
 
-  const onSave = () => { onSaveCalled = true; };
+  const onSave = () => {};
   const broadcastStatus = (id, status) => { broadcastCalled.push({ id, status }); };
 
   it('handles tool_use in assistant message content', () => {

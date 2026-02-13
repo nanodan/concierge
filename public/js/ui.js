@@ -1,16 +1,16 @@
 // --- UI interactions ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, setLoading, getDialogOverlay, getDialogCancel } from './utils.js';
+import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel } from './utils.js';
 import { getWS } from './websocket.js';
-import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup } from './conversations.js';
-import { renderMessages, enhanceCodeBlocks, attachTTSHandlers, attachRegenHandlers, showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
+import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
+import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
 
 // DOM elements (set by init)
 let messagesContainer = null;
 let messageInput = null;
 let inputForm = null;
-let sendBtn = null;
+let _sendBtn = null;
 let cancelBtn = null;
 let modalOverlay = null;
 let newConvForm = null;
@@ -91,7 +91,7 @@ export function initUI(elements) {
   messagesContainer = elements.messagesContainer;
   messageInput = elements.messageInput;
   inputForm = elements.inputForm;
-  sendBtn = elements.sendBtn;
+  _sendBtn = elements.sendBtn;
   cancelBtn = elements.cancelBtn;
   modalOverlay = elements.modalOverlay;
   newConvForm = elements.newConvForm;
@@ -564,7 +564,7 @@ async function browseTo(dirPath) {
         });
       });
     }
-  } catch (err) {
+  } catch (_err) {
     dirList.innerHTML = `<div class="dir-empty">Failed to browse</div>`;
   }
 }
@@ -645,7 +645,7 @@ async function browseFiles(subpath) {
     renderFileBrowserEntries(data.entries, (filePath) => {
       return `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}`;
     }, browseFiles);
-  } catch (err) {
+  } catch (_err) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
   }
 }
@@ -675,7 +675,7 @@ async function browseFilesGeneral(targetPath) {
     renderFileBrowserEntries(data.entries, (filePath) => {
       return `/api/files/download?path=${encodeURIComponent(filePath)}`;
     }, browseFilesGeneral);
-  } catch (err) {
+  } catch (_err) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
   }
 }
@@ -1027,7 +1027,6 @@ function renderStats(s) {
   const maxDaily = Math.max(...s.dailyActivity.map(d => d.count), 1);
   const barsHtml = s.dailyActivity.map(d => {
     const pct = (d.count / maxDaily) * 100;
-    const label = d.date.slice(5); // MM-DD
     return `<div class="bar-col" title="${d.date}: ${d.count} messages">` +
       `<div class="bar" style="height:${pct}%"></div>` +
       `</div>`;
@@ -1532,8 +1531,6 @@ export function setupEventListeners(createConversation) {
   }, { passive: true });
 
   // Scroll-linked compact header
-  let lastScrollTop = 0;
-
   conversationList.addEventListener('scroll', () => {
     const scrollTop = conversationList.scrollTop;
     if (scrollTop > 50 && !listHeader.classList.contains('compact')) {
@@ -1762,7 +1759,7 @@ export function setupEventListeners(createConversation) {
     }
   }, { passive: true });
 
-  chatView.addEventListener('touchend', (e) => {
+  chatView.addEventListener('touchend', (_e) => {
     if (!swipeBackActive) return;
     swipeBackActive = false;
 

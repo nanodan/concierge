@@ -19,10 +19,28 @@ A mobile-first PWA that wraps the Claude CLI, providing a chat interface with re
 
 ```bash
 npm start          # Start server (port 3577, or PORT env var)
+npm test           # Run unit tests (Node.js built-in test runner)
 npm install        # Install dependencies (express, ws, uuid)
 ```
 
-No build step, no tests, no linting. The frontend is vanilla JS served as static files.
+No build step. The frontend is vanilla JS served as static files.
+
+## Testing & Linting
+
+**Run tests and lint after notable changes.**
+
+```bash
+npm test           # Run all unit tests
+npm run lint       # Run ESLint
+
+Test files:
+- `test/server.test.js` — `convMeta`, `atomicWrite`, `processStreamEvent`
+- `test/claude.test.js` — Stream event handling, tool calls, thinking, tokens
+- `test/data.test.js` — Data layer, stats cache
+- `test/markdown.test.js` — Markdown rendering, XSS prevention
+- `test/utils.test.js` — `formatTime`, `formatTokens`, `truncate`
+
+Test helpers in `test/helpers/*.cjs` provide CommonJS wrappers for ES modules.
 
 ## File Map (quick reference)
 
@@ -62,6 +80,16 @@ No build step, no tests, no linting. The frontend is vanilla JS served as static
 | `public/index.html` | ~276 | HTML structure, three views, modals |
 | `public/sw.js` | ~86 | Service worker (cache-first for assets, network-first for API) |
 | `public/manifest.json` | — | PWA manifest |
+
+### Tests (`test/`)
+| File | Purpose |
+|------|---------|
+| `server.test.js` | Core server functions: convMeta, atomicWrite, processStreamEvent |
+| `claude.test.js` | Stream event handling: tool calls, thinking, tokens |
+| `data.test.js` | Data layer: convMeta edge cases, stats cache |
+| `markdown.test.js` | Markdown rendering, XSS prevention |
+| `utils.test.js` | Utility functions: formatTime, formatTokens, truncate |
+| `helpers/*.cjs` | CommonJS wrappers for ES modules (for testing) |
 
 See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each file.
 
