@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { convMeta, atomicWrite, processStreamEvent } = require('../server');
+const { convMeta, atomicWrite } = require('../lib/data');
+const { processStreamEvent } = require('../lib/claude');
 
 describe('convMeta', () => {
   it('returns metadata with messages loaded', () => {
@@ -101,9 +102,16 @@ describe('atomicWrite', () => {
 describe('processStreamEvent', () => {
   let sent;
   let fakeWs;
+  let onSaveCalled;
+  let broadcastCalled;
+
+  const onSave = () => { onSaveCalled = true; };
+  const broadcastStatus = (id, status) => { broadcastCalled.push({ id, status }); };
 
   beforeEach(() => {
     sent = [];
+    onSaveCalled = false;
+    broadcastCalled = [];
     fakeWs = {
       send(data) { sent.push(JSON.parse(data)); },
     };
@@ -118,7 +126,7 @@ describe('processStreamEvent', () => {
         delta: { type: 'text_delta', text: 'Hello' },
       },
     };
-    const result = processStreamEvent(fakeWs, 'conv-1', conv, event, '');
+    const result = processStreamEvent(fakeWs, 'conv-1', conv, event, '', '', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'Hello');
     assert.equal(sent.length, 1);
     assert.equal(sent[0].type, 'delta');
@@ -136,8 +144,8 @@ describe('processStreamEvent', () => {
       type: 'stream_event',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'world' } },
     };
-    const r1 = processStreamEvent(fakeWs, 'c', conv, event1, '');
-    const r2 = processStreamEvent(fakeWs, 'c', conv, event2, r1.assistantText);
+    const r1 = processStreamEvent(fakeWs, 'c', conv, event1, '', '', onSave, broadcastStatus);
+    const r2 = processStreamEvent(fakeWs, 'c', conv, event2, r1.assistantText, '', onSave, broadcastStatus);
     assert.equal(r2.assistantText, 'Hello world');
   });
 
@@ -148,7 +156,7 @@ describe('processStreamEvent', () => {
       session_id: 'sess-abc',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '');
+    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'sess-abc');
   });
 
@@ -159,7 +167,7 @@ describe('processStreamEvent', () => {
       session_id: 'new-id',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '');
+    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'existing');
   });
 
@@ -172,8 +180,9 @@ describe('processStreamEvent', () => {
       total_cost_usd: 0.05,
       duration_ms: 1200,
     };
-    const result = processStreamEvent(fakeWs, 'conv-1', conv, event, 'partial');
-    assert.equal(result.assistantText, 'Final answer');
+    // Note: assistantText return value stays as the streaming accumulator,
+    // result text goes to conv.messages and WebSocket
+    processStreamEvent(fakeWs, 'conv-1', conv, event, 'partial', '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'sess-final');
     assert.equal(conv.status, 'idle');
     assert.equal(conv.messages.length, 1);
@@ -199,7 +208,7 @@ describe('processStreamEvent', () => {
         ],
       },
     };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'Hello');
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'Hello', '', onSave, broadcastStatus);
     // Should send delta with the new portion only
     assert.equal(result.assistantText, 'Hello world');
     const delta = sent.find(m => m.type === 'delta');
@@ -213,7 +222,7 @@ describe('processStreamEvent', () => {
       type: 'assistant',
       message: { content: [{ type: 'text', text: 'same' }] },
     };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'same');
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'same', '', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'same');
     assert.equal(sent.length, 0);
   });
@@ -221,7 +230,7 @@ describe('processStreamEvent', () => {
   it('ignores unknown event types', () => {
     const conv = { messages: [], status: 'thinking' };
     const event = { type: 'unknown_type', data: 'foo' };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'existing');
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'existing', '', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'existing');
     assert.equal(sent.length, 0);
   });

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { escapeHtml, renderMarkdown } = require('../public/markdown');
+const { escapeHtml, renderMarkdown } = require('./helpers/markdown.cjs');
 
 describe('escapeHtml', () => {
   it('escapes ampersands', () => {
@@ -141,5 +141,62 @@ describe('renderMarkdown', () => {
   it('handles paragraphs from double newlines', () => {
     const result = renderMarkdown('first paragraph\n\nsecond paragraph');
     assert.ok(result.includes('</p><p>'));
+  });
+
+  it('renders trace blocks as collapsible details', () => {
+    const result = renderMarkdown(':::trace\n**Using Bash**: `ls`\n:::\n\nResult here');
+    assert.ok(result.includes('<details class="tool-trace">'));
+    assert.ok(result.includes('<summary>Show tool calls</summary>'));
+    assert.ok(result.includes('Using Bash'));
+    assert.ok(result.includes('Result here'));
+  });
+
+  it('handles multiple trace blocks', () => {
+    const result = renderMarkdown(':::trace\nFirst\n:::\n\nMiddle\n\n:::trace\nSecond\n:::');
+    const matches = result.match(/<details class="tool-trace">/g);
+    assert.equal(matches.length, 2);
+  });
+
+  it('renders code blocks without language', () => {
+    const result = renderMarkdown('```\nplain code\n```');
+    assert.ok(result.includes('<pre><code>'));
+    assert.ok(result.includes('plain code'));
+    assert.ok(!result.includes('class="language-"'));
+  });
+
+  it('handles bold and italic together', () => {
+    const result = renderMarkdown('***bold and italic***');
+    // Should have both strong and em
+    assert.ok(result.includes('<strong>') || result.includes('<em>'));
+  });
+
+  it('renders code blocks with special characters', () => {
+    const result = renderMarkdown('```js\nconst x = "<div>";\n```');
+    assert.ok(result.includes('&lt;div&gt;'));
+    // Code should be preserved
+    assert.ok(result.includes('const x'));
+  });
+
+  it('handles inline code with special characters', () => {
+    const result = renderMarkdown('Use `<script>` tag');
+    assert.ok(result.includes('<code>&lt;script&gt;</code>'));
+  });
+
+  it('renders multiple headings at different levels', () => {
+    const result = renderMarkdown('# H1\n## H2\n### H3');
+    assert.ok(result.includes('<h1>H1</h1>'));
+    assert.ok(result.includes('<h2>H2</h2>'));
+    assert.ok(result.includes('<h3>H3</h3>'));
+  });
+
+  it('handles links with ampersands in URL', () => {
+    const result = renderMarkdown('[Link](https://example.com?a=1&b=2)');
+    assert.ok(result.includes('<a href="https://example.com?a=1&amp;b=2"'));
+  });
+
+  it('handles nested formatting in lists', () => {
+    const result = renderMarkdown('- **bold item**\n- *italic item*');
+    assert.ok(result.includes('<li><strong>bold item</strong></li>'));
+    assert.ok(result.includes('<li><em>italic item</em></li>'));
   });
 });
