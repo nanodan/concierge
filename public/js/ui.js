@@ -5,7 +5,7 @@ import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
-import { toggleFilePanel, closeFilePanel, isFilePanelOpen } from './file-panel.js';
+import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
 
 // DOM elements (set by init)
 let messagesContainer = null;
@@ -704,15 +704,27 @@ function renderFileBrowserEntries(entries, getDownloadUrl, navigateFn) {
     return;
   }
 
+  const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'];
+
   fileBrowserList.innerHTML = entries.map(entry => {
     const icon = getFileIcon(entry);
     const meta = entry.type === 'directory'
       ? 'Folder'
       : formatFileSize(entry.size);
+    const isImage = imageExts.includes(entry.ext);
+
+    // For images, show actual thumbnail instead of icon
+    let iconHtml;
+    if (isImage) {
+      const thumbUrl = getDownloadUrl(entry.path) + '&inline=true';
+      iconHtml = `<div class="file-browser-icon thumbnail"><img src="${thumbUrl}" alt="" loading="lazy" /></div>`;
+    } else {
+      iconHtml = `<div class="file-browser-icon ${icon.class}">${icon.svg}</div>`;
+    }
 
     return `
       <div class="file-browser-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}">
-        <div class="file-browser-icon ${icon.class}">${icon.svg}</div>
+        ${iconHtml}
         <div class="file-browser-info">
           <div class="file-browser-name">${escapeHtml(entry.name)}</div>
           <div class="file-browser-meta">${meta}</div>
@@ -1760,6 +1772,8 @@ export function setupEventListeners(createConversation) {
         lightbox.classList.add('hidden');
       } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
+      } else if (isFileViewerOpen()) {
+        closeFileViewer();
       } else if (isFilePanelOpen()) {
         closeFilePanel();
       } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
