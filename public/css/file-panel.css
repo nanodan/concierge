@@ -555,6 +555,7 @@
 /* === Branch Selector === */
 .changes-nav {
   justify-content: flex-start;
+  position: relative;
 }
 
 .branch-selector {
@@ -626,7 +627,7 @@
 .branch-dropdown {
   position: absolute;
   top: calc(100% + 4px);
-  left: 12px;
+  left: 0;
   min-width: 200px;
   max-width: 280px;
   max-height: 300px;
@@ -635,7 +636,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.2));
-  z-index: 10;
+  z-index: 100;
 }
 
 .branch-dropdown.hidden {
@@ -650,24 +651,39 @@
   font-size: 13px;
   color: var(--text);
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  border-left: 3px solid transparent;
 }
 
 .branch-item:hover {
-  background: var(--hover-bg);
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.1));
+  border-left-color: var(--accent);
+  color: var(--accent);
 }
 
 .branch-item.current {
   color: var(--accent);
   font-weight: 500;
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.05));
 }
 
 .branch-item.remote {
   color: var(--text-secondary);
 }
 
+.branch-item.remote:hover {
+  color: var(--accent);
+}
+
 .branch-item.new-branch {
   color: var(--accent);
+  font-weight: 500;
+}
+
+.branch-item.new-branch:hover {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border-left-color: var(--accent);
 }
 
 .branch-item .branch-name {
@@ -762,11 +778,13 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  border-left: 3px solid transparent;
 }
 
 .changes-item:hover {
-  background: var(--hover-bg);
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.1));
+  border-left-color: var(--accent);
 }
 
 .changes-item-name {

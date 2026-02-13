@@ -166,6 +166,7 @@ function setupEventListeners() {
   // Branch selector
   if (branchSelector) {
     branchSelector.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       toggleBranchDropdown();
     });

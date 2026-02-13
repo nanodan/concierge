@@ -1238,6 +1238,69 @@
   flex-shrink: 0;
 }
 
+/* Mobile-only menu items (hidden on desktop) */
+.more-menu-item.mobile-only {
+  display: none;
+}
+
+.more-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.more-menu-divider.mobile-only {
+  display: none;
+}
+
+/* Danger menu item */
+.more-menu-item.danger {
+  color: var(--error, #e53935);
+}
+
+.more-menu-item.danger svg {
+  color: var(--error, #e53935);
+}
+
+.more-menu-item.danger:hover {
+  background: var(--error, #e53935);
+  color: #fff;
+}
+
+.more-menu-item.danger:hover svg {
+  color: #fff;
+}
+
+/* Mobile visibility helpers */
+.show-mobile {
+  display: none !important;
+}
+
+@media (max-width: 480px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    display: flex !important;
+  }
+
+  .more-menu-item.mobile-only {
+    display: flex;
+  }
+
+  .more-menu-divider.mobile-only {
+    display: block;
+  }
+
+  /* Hide these buttons on mobile - they're in the more menu */
+  #stats-btn,
+  #general-files-btn,
+  #archive-toggle {
+    display: none !important;
+  }
+}
+
 /* Export button */
 .export-btn {
   background: none;
