@@ -292,6 +292,15 @@ export async function sendMessage(text) {
     attachments: attachments.length > 0 ? attachments : undefined,
   }));
 
+  // Add user message to allMessages so stats are up-to-date
+  const allMessages = state.getAllMessages();
+  allMessages.push({
+    role: 'user',
+    text,
+    attachments: attachments.length > 0 ? attachments : undefined,
+    timestamp: Date.now(),
+  });
+
   // Clean up
   state.clearPendingAttachments();
   renderAttachmentPreview();

@@ -252,6 +252,18 @@ export function finalizeMessage(data) {
     }
   }
 
+  // Add the finalized message to allMessages so stats are up-to-date
+  const allMessages = state.getAllMessages();
+  allMessages.push({
+    role: 'assistant',
+    text: data.text || state.getStreamingText(),
+    timestamp: Date.now(),
+    cost: data.cost,
+    duration: data.duration,
+    inputTokens: data.inputTokens,
+    outputTokens: data.outputTokens,
+  });
+
   if (data.inputTokens != null) {
     // Import dynamically to avoid circular dependency
     import('./ui.js').then(ui => {
