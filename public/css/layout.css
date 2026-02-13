@@ -265,6 +265,24 @@
   outline-offset: 2px;
 }
 
+/* Mobile: smaller header icons to prevent overlap */
+@media (max-width: 480px) {
+  .header-actions {
+    gap: 0;
+  }
+
+  .header-icon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+  }
+
+  .header-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .stats-btn {
   background: none;
   border: none;

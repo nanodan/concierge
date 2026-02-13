@@ -85,8 +85,8 @@
   /* === Component: Mode Badges === */
   --mode-autopilot-bg: var(--teal-alpha-25);
   --mode-autopilot-text: #E8D080;
-  --mode-manual-bg: var(--accent-alpha-20);
-  --mode-manual-text: #D4838F;
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: #D4838F;
 
   /* === Component: Syntax Highlighting === */
   --syntax-keyword: #D4838F;

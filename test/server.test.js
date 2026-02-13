@@ -102,15 +102,13 @@ describe('atomicWrite', () => {
 describe('processStreamEvent', () => {
   let sent;
   let fakeWs;
-  let onSaveCalled;
   let broadcastCalled;
 
-  const onSave = () => { onSaveCalled = true; };
+  const onSave = () => {};
   const broadcastStatus = (id, status) => { broadcastCalled.push({ id, status }); };
 
   beforeEach(() => {
     sent = [];
-    onSaveCalled = false;
     broadcastCalled = [];
     fakeWs = {
       send(data) { sent.push(JSON.parse(data)); },

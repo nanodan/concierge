@@ -1,16 +1,17 @@
 // --- UI interactions ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, setLoading, getDialogOverlay, getDialogCancel } from './utils.js';
+import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel } from './utils.js';
 import { getWS } from './websocket.js';
-import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup } from './conversations.js';
-import { renderMessages, enhanceCodeBlocks, attachTTSHandlers, attachRegenHandlers, showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
+import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
+import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
+import { toggleFilePanel, closeFilePanel, isFilePanelOpen } from './file-panel.js';
 
 // DOM elements (set by init)
 let messagesContainer = null;
 let messageInput = null;
 let inputForm = null;
-let sendBtn = null;
+let _sendBtn = null;
 let cancelBtn = null;
 let modalOverlay = null;
 let newConvForm = null;
@@ -55,6 +56,10 @@ let moreThemeIcon = null;
 let moreThemeLabel = null;
 let moreNotificationsToggle = null;
 let moreNotificationsLabel = null;
+let moreStats = null;
+let moreFiles = null;
+let moreArchive = null;
+let moreArchiveLabel = null;
 let colorThemeLink = null;
 let filterToggle = null;
 let filterRow = null;
@@ -64,6 +69,8 @@ let backBtn = null;
 let deleteBtn = null;
 let newChatBtn = null;
 let exportBtn = null;
+let chatMoreBtn = null;
+let chatMoreDropdown = null;
 let conversationList = null;
 let pullIndicator = null;
 let listHeader = null;
@@ -91,7 +98,7 @@ export function initUI(elements) {
   messagesContainer = elements.messagesContainer;
   messageInput = elements.messageInput;
   inputForm = elements.inputForm;
-  sendBtn = elements.sendBtn;
+  _sendBtn = elements.sendBtn;
   cancelBtn = elements.cancelBtn;
   modalOverlay = elements.modalOverlay;
   newConvForm = elements.newConvForm;
@@ -136,6 +143,12 @@ export function initUI(elements) {
   moreThemeLabel = elements.moreThemeLabel;
   moreNotificationsToggle = elements.moreNotificationsToggle;
   moreNotificationsLabel = elements.moreNotificationsLabel;
+  moreStats = document.getElementById('more-stats');
+  moreFiles = document.getElementById('more-files');
+  moreArchive = document.getElementById('more-archive');
+  moreArchiveLabel = document.getElementById('more-archive-label');
+  chatMoreBtn = document.getElementById('chat-more-btn');
+  chatMoreDropdown = document.getElementById('chat-more-dropdown');
   colorThemeLink = document.getElementById('color-theme-link');
   // Initialize notifications label
   updateNotificationsLabel();
@@ -493,9 +506,10 @@ export function regenerateMessage() {
 
 // --- Model & Mode & Context Bar ---
 export function updateModeBadge(isAutopilot) {
-  modeBadge.textContent = isAutopilot ? 'AP' : 'ASK';
+  modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
+  modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
   modeBadge.classList.toggle('autopilot', isAutopilot);
-  modeBadge.classList.toggle('manual', !isAutopilot);
+  modeBadge.classList.toggle('readonly', !isAutopilot);
 }
 
 export function updateModelBadge(modelId) {
@@ -564,7 +578,7 @@ async function browseTo(dirPath) {
         });
       });
     }
-  } catch (err) {
+  } catch (_err) {
     dirList.innerHTML = `<div class="dir-empty">Failed to browse</div>`;
   }
 }
@@ -645,7 +659,7 @@ async function browseFiles(subpath) {
     renderFileBrowserEntries(data.entries, (filePath) => {
       return `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}`;
     }, browseFiles);
-  } catch (err) {
+  } catch (_err) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
   }
 }
@@ -675,7 +689,7 @@ async function browseFilesGeneral(targetPath) {
     renderFileBrowserEntries(data.entries, (filePath) => {
       return `/api/files/download?path=${encodeURIComponent(filePath)}`;
     }, browseFilesGeneral);
-  } catch (err) {
+  } catch (_err) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
   }
 }
@@ -821,6 +835,29 @@ function closeMoreMenuOnOutsideClick(e) {
   }
 }
 
+function toggleChatMoreMenu() {
+  if (!chatMoreDropdown) return;
+  const isHidden = chatMoreDropdown.classList.contains('hidden');
+
+  if (isHidden) {
+    // Position the dropdown near the button
+    const rect = chatMoreBtn.getBoundingClientRect();
+    chatMoreDropdown.style.position = 'fixed';
+    chatMoreDropdown.style.top = `${rect.bottom + 4}px`;
+    chatMoreDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    chatMoreDropdown.style.left = 'auto';
+    chatMoreDropdown.classList.remove('hidden');
+  } else {
+    chatMoreDropdown.classList.add('hidden');
+  }
+}
+
+function closeChatMoreMenu() {
+  if (chatMoreDropdown) {
+    chatMoreDropdown.classList.add('hidden');
+  }
+}
+
 function toggleThemeDropdown() {
   if (!themeDropdown) return;
   const isHidden = themeDropdown.classList.contains('hidden');
@@ -900,6 +937,13 @@ function updateNotificationsLabel() {
   if (moreNotificationsLabel) {
     const enabled = state.getNotificationsEnabled();
     moreNotificationsLabel.textContent = `Notifications: ${enabled ? 'On' : 'Off'}`;
+  }
+}
+
+function updateMoreArchiveLabel() {
+  if (moreArchiveLabel) {
+    const showing = state.getShowingArchived();
+    moreArchiveLabel.textContent = showing ? 'Show Active' : 'Show Archived';
   }
 }
 
@@ -1027,7 +1071,6 @@ function renderStats(s) {
   const maxDaily = Math.max(...s.dailyActivity.map(d => d.count), 1);
   const barsHtml = s.dailyActivity.map(d => {
     const pct = (d.count / maxDaily) * 100;
-    const label = d.date.slice(5); // MM-DD
     return `<div class="bar-col" title="${d.date}: ${d.count} messages">` +
       `<div class="bar" style="height:${pct}%"></div>` +
       `</div>`;
@@ -1354,11 +1397,10 @@ export function setupEventListeners(createConversation) {
     });
   }
 
-  // File browser
+  // File panel (Project Mode)
   if (filesBtn) {
     filesBtn.addEventListener('click', () => {
-      haptic(10);
-      openFileBrowser();
+      toggleFilePanel();
     });
   }
 
@@ -1532,8 +1574,6 @@ export function setupEventListeners(createConversation) {
   }, { passive: true });
 
   // Scroll-linked compact header
-  let lastScrollTop = 0;
-
   conversationList.addEventListener('scroll', () => {
     const scrollTop = conversationList.scrollTop;
     if (scrollTop > 50 && !listHeader.classList.contains('compact')) {
@@ -1597,6 +1637,81 @@ export function setupEventListeners(createConversation) {
     });
   }
 
+  // Mobile more menu items
+  if (moreStats) {
+    moreStats.addEventListener('click', () => {
+      closeMoreMenu();
+      haptic(10);
+      listView.classList.add('slide-out');
+      statsView.classList.add('slide-in');
+      loadStats();
+    });
+  }
+
+  if (moreFiles) {
+    moreFiles.addEventListener('click', () => {
+      closeMoreMenu();
+      haptic(10);
+      openFileBrowser('general');
+    });
+  }
+
+  if (moreArchive) {
+    moreArchive.addEventListener('click', () => {
+      closeMoreMenu();
+      haptic(10);
+      const newShowing = !state.getShowingArchived();
+      state.setShowingArchived(newShowing);
+      if (archiveToggle) archiveToggle.classList.toggle('active', newShowing);
+      updateMoreArchiveLabel();
+      searchInput.value = '';
+      loadConversations();
+    });
+  }
+
+  // Chat more menu (mobile)
+  if (chatMoreBtn) {
+    chatMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleChatMoreMenu();
+    });
+  }
+
+  const chatMoreNew = document.getElementById('chat-more-new');
+  const chatMoreExport = document.getElementById('chat-more-export');
+  const chatMoreDelete = document.getElementById('chat-more-delete');
+
+  if (chatMoreNew) {
+    chatMoreNew.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      if (newChatHereBtn) newChatHereBtn.click();
+    });
+  }
+
+  if (chatMoreExport) {
+    chatMoreExport.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      if (exportBtn) exportBtn.click();
+    });
+  }
+
+  if (chatMoreDelete) {
+    chatMoreDelete.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      if (deleteBtn) deleteBtn.click();
+    });
+  }
+
+  // Close chat more menu on outside click
+  document.addEventListener('click', () => {
+    if (chatMoreDropdown && !chatMoreDropdown.classList.contains('hidden')) {
+      chatMoreDropdown.classList.add('hidden');
+    }
+  });
+
   // Theme dropdown (light/dark/auto)
   if (themeDropdown) {
     themeDropdown.addEventListener('click', (e) => {
@@ -1645,6 +1760,8 @@ export function setupEventListeners(createConversation) {
         lightbox.classList.add('hidden');
       } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
+      } else if (isFilePanelOpen()) {
+        closeFilePanel();
       } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
         closeFileBrowser();
       } else if (!modalOverlay.classList.contains('hidden')) {
@@ -1762,7 +1879,7 @@ export function setupEventListeners(createConversation) {
     }
   }, { passive: true });
 
-  chatView.addEventListener('touchend', (e) => {
+  chatView.addEventListener('touchend', (_e) => {
     if (!swipeBackActive) return;
     swipeBackActive = false;
 

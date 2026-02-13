@@ -21,6 +21,7 @@ import {
   hideMsgActionPopup,
   populateFilterModels
 } from './ui.js';
+import { initFilePanel } from './file-panel.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -89,6 +90,28 @@ const fileBrowserList = document.getElementById('file-browser-list');
 const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
+const filePanel = document.getElementById('file-panel');
+const filePanelBackdrop = document.getElementById('file-panel-backdrop');
+const filePanelClose = document.getElementById('file-panel-close');
+const filePanelUp = document.getElementById('file-panel-up');
+const filePanelPath = document.getElementById('file-panel-path');
+const filePanelTree = document.getElementById('file-tree');
+const filePanelViewer = document.getElementById('file-viewer');
+const fileViewerName = document.getElementById('file-viewer-name');
+const fileViewerClose = document.getElementById('file-viewer-close');
+const fileViewerContent = document.getElementById('file-viewer-content');
+const filePanelTabs = document.getElementById('file-panel-tabs');
+const filesTab = document.getElementById('files-tab');
+const changesTab = document.getElementById('changes-tab');
+const filesView = document.getElementById('files-view');
+const changesView = document.getElementById('changes-view');
+const changesList = document.getElementById('changes-list');
+const commitForm = document.getElementById('commit-form');
+const commitMessage = document.getElementById('commit-message');
+const commitBtn = document.getElementById('commit-btn');
+const branchSelector = document.getElementById('branch-selector');
+const branchDropdown = document.getElementById('branch-dropdown');
+const gitRefreshBtn = document.getElementById('git-refresh-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -110,7 +133,7 @@ const statsBackBtn = document.getElementById('stats-back-btn');
 const statsContent = document.getElementById('stats-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
-const bulkActionBar = document.getElementById('bulk-action-bar');
+const _bulkActionBar = document.getElementById('bulk-action-bar');
 const bulkCancelBtn = document.getElementById('bulk-cancel-btn');
 const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
 const bulkArchiveBtn = document.getElementById('bulk-archive-btn');
@@ -239,6 +262,33 @@ initUI({
   statsContent,
   listView,
   chatView
+});
+
+// Initialize file panel
+initFilePanel({
+  filePanel,
+  filePanelBackdrop,
+  filePanelClose,
+  filePanelUp,
+  filePanelPath,
+  fileTree: filePanelTree,
+  fileViewer: filePanelViewer,
+  fileViewerName,
+  fileViewerClose,
+  fileViewerContent,
+  chatView,
+  filePanelTabs,
+  filesTab,
+  changesTab,
+  filesView,
+  changesView,
+  changesList,
+  commitForm,
+  commitMessage,
+  commitBtn,
+  branchSelector,
+  branchDropdown,
+  gitRefreshBtn
 });
 
 // Setup action popup handlers

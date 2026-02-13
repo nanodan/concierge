@@ -182,7 +182,7 @@ export async function forkConversation(fromMessageIndex) {
     showToast('Forked conversation');
     await loadConversations();
     openConversation(conv.id);
-  } catch (err) {
+  } catch (_err) {
     showToast('Fork failed', { variant: 'error' });
   }
 }
@@ -346,7 +346,7 @@ export function renderConversationList(items) {
       e.preventDefault();
       showActionPopup(e.clientX, e.clientY, id);
     });
-    card.addEventListener('click', (e) => {
+    card.addEventListener('click', (_e) => {
       // Don't navigate if card is swiped open
       if (Math.abs(parseFloat(card.style.transform?.replace(/[^0-9.-]/g, '') || 0)) > 10) return;
 

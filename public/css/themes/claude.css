@@ -95,8 +95,8 @@
   /* === Component: Mode Badges === */
   --mode-autopilot-bg: var(--teal-alpha-25);
   --mode-autopilot-text: var(--palette-teal);
-  --mode-manual-bg: var(--accent-alpha-20);
-  --mode-manual-text: var(--palette-purple-light);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-purple-light);
 
   /* === Component: Syntax Highlighting === */
   --syntax-keyword: var(--palette-purple);

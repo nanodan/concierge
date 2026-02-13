@@ -24,6 +24,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/css/file-panel.css">
 </head>
 <body>
   <div class="views-container">
@@ -121,18 +122,21 @@
           <div id="conv-stats-dropdown" class="conv-stats-dropdown hidden"></div>
         </div>
       </div>
-      <button id="new-chat-here-btn" class="header-icon-btn" aria-label="New chat in this folder" title="New chat in this folder">
+      <button id="new-chat-here-btn" class="header-icon-btn hide-mobile" aria-label="New chat in this folder" title="New chat in this folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
       <button id="files-btn" class="files-btn" aria-label="Browse files">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
-      <button id="export-btn" class="export-btn" aria-label="Export conversation">
+      <button id="export-btn" class="export-btn hide-mobile" aria-label="Export conversation">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
-      <button id="delete-btn" class="delete-btn" aria-label="Delete conversation">
+      <button id="delete-btn" class="delete-btn hide-mobile" aria-label="Delete conversation">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
+      <button id="chat-more-btn" class="header-icon-btn show-mobile" aria-label="More options">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+      </button>
     </header>
     <div id="context-bar" class="context-bar hidden">
       <div class="context-bar-track"><div id="context-bar-fill" class="context-bar-fill"></div></div>
@@ -177,6 +181,55 @@
       <button type="submit" id="send-btn" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
       <button type="button" id="cancel-btn" class="cancel-btn hidden" aria-label="Cancel"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
     </form>
+    <!-- File Panel (Project Mode) -->
+    <div id="file-panel-backdrop" class="file-panel-backdrop"></div>
+    <div id="file-panel" class="file-panel hidden">
+      <div class="file-panel-header">
+        <div class="file-panel-drag-handle"></div>
+        <div id="file-panel-tabs" class="file-panel-tabs">
+          <button id="files-tab" class="file-panel-tab active" data-tab="files">Files</button>
+          <button id="changes-tab" class="file-panel-tab" data-tab="changes">Changes</button>
+        </div>
+        <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
+      </div>
+      <!-- Files View -->
+      <div id="files-view" class="files-view">
+        <div class="file-panel-nav">
+          <button id="file-panel-up" class="file-panel-up" disabled aria-label="Parent directory">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <span id="file-panel-path" class="file-panel-path">.</span>
+        </div>
+        <div id="file-tree" class="file-tree"></div>
+      </div>
+      <!-- Changes View (Git) -->
+      <div id="changes-view" class="changes-view hidden">
+        <div class="file-panel-nav changes-nav">
+          <button id="branch-selector" class="branch-selector hidden">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+            <span class="branch-name">main</span>
+            <svg class="branch-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="branch-dropdown" class="branch-dropdown hidden"></div>
+          <button id="git-refresh-btn" class="git-refresh-btn" aria-label="Refresh" title="Refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </div>
+        <div id="changes-list" class="changes-list"></div>
+        <div id="commit-form" class="commit-form hidden">
+          <textarea id="commit-message" class="commit-message" placeholder="Commit message..." rows="2"></textarea>
+          <button id="commit-btn" class="commit-btn">Commit</button>
+        </div>
+      </div>
+      <!-- File Viewer (shared) -->
+      <div id="file-viewer" class="file-viewer hidden">
+        <div class="file-viewer-header">
+          <span id="file-viewer-name" class="file-viewer-name"></span>
+          <button id="file-viewer-close" class="file-viewer-close">Back</button>
+        </div>
+        <pre id="file-viewer-content" class="file-viewer-content"><code></code></pre>
+      </div>
+    </div>
   </div>
 
   <!-- Stats View -->
@@ -221,7 +274,7 @@
         <div class="toggle-row">
           <div class="toggle-label">
             <label for="conv-autopilot">Autopilot</label>
-            <span class="toggle-hint">Run tools without asking</span>
+            <span class="toggle-hint">Full access (off = read-only)</span>
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="conv-autopilot" checked>
@@ -291,6 +344,19 @@
 
   <!-- More menu dropdown -->
   <div id="more-menu-dropdown" class="more-menu-dropdown hidden">
+    <div class="more-menu-item mobile-only" id="more-stats">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="2" width="4" height="19"/></svg>
+      <span>Stats</span>
+    </div>
+    <div class="more-menu-item mobile-only" id="more-files">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span>Browse Files</span>
+    </div>
+    <div class="more-menu-item mobile-only" id="more-archive">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+      <span id="more-archive-label">Show Archived</span>
+    </div>
+    <div class="more-menu-divider mobile-only"></div>
     <div class="more-menu-item" id="more-color-theme">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.82.486 3.53 1.337 5.003.577 1 .163 2.527-.663 3.497l-.09.1C4.033 21.616 7.838 22 12 22z"/></svg>
       <span>Color Theme</span>
@@ -302,6 +368,22 @@
     <div class="more-menu-item" id="more-notifications-toggle">
       <svg id="more-notifications-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span id="more-notifications-label">Notifications: On</span>
+    </div>
+  </div>
+
+  <!-- Chat More Menu (mobile) -->
+  <div id="chat-more-dropdown" class="more-menu-dropdown hidden">
+    <div class="more-menu-item" id="chat-more-new">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>New Chat Here</span>
+    </div>
+    <div class="more-menu-item" id="chat-more-export">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Export</span>
+    </div>
+    <div class="more-menu-item danger" id="chat-more-delete">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <span>Delete</span>
     </div>
   </div>
 

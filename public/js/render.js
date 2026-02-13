@@ -476,10 +476,12 @@ export function toggleTTS(btn) {
   const messageEl = btn.closest('.message');
   if (!messageEl) return;
 
-  // Clone, remove the meta div, then get text content
+  // Clone, remove meta and tool trace sections, then get text content
   const clone = messageEl.cloneNode(true);
   const metaEl = clone.querySelector('.meta');
   if (metaEl) metaEl.remove();
+  // Remove tool call traces (user doesn't want these read aloud)
+  clone.querySelectorAll('.tool-trace').forEach(el => el.remove());
   const plainText = clone.textContent.trim();
 
   if (!plainText) return;
@@ -492,7 +494,9 @@ export function toggleTTS(btn) {
   utterance.onerror = () => resetTTSBtn(btn);
 
   btn.classList.add('speaking');
-  btn.innerHTML = '&#x23F9;'; // stop icon
+  // Store original icon and show stop icon
+  btn.dataset.originalIcon = btn.innerHTML;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
   state.setCurrentTTSBtn(btn);
 
   speechSynthesis.speak(utterance);
@@ -500,7 +504,11 @@ export function toggleTTS(btn) {
 
 function resetTTSBtn(btn) {
   btn.classList.remove('speaking');
-  btn.innerHTML = '&#x1F50A;'; // speaker icon
+  // Restore original SVG icon
+  if (btn.dataset.originalIcon) {
+    btn.innerHTML = btn.dataset.originalIcon;
+    delete btn.dataset.originalIcon;
+  }
   if (state.getCurrentTTSBtn() === btn) state.setCurrentTTSBtn(null);
 }
 
