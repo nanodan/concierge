@@ -24,6 +24,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/css/file-panel.css">
 </head>
 <body>
   <div class="views-container">
@@ -177,6 +178,29 @@
       <button type="submit" id="send-btn" aria-label="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
       <button type="button" id="cancel-btn" class="cancel-btn hidden" aria-label="Cancel"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
     </form>
+    <!-- File Panel (Project Mode) -->
+    <div id="file-panel-backdrop" class="file-panel-backdrop"></div>
+    <div id="file-panel" class="file-panel hidden">
+      <div class="file-panel-header">
+        <div class="file-panel-drag-handle"></div>
+        <span class="file-panel-title">Files</span>
+        <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="file-panel-nav">
+        <button id="file-panel-up" class="file-panel-up" disabled aria-label="Parent directory">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span id="file-panel-path" class="file-panel-path">.</span>
+      </div>
+      <div id="file-tree" class="file-tree"></div>
+      <div id="file-viewer" class="file-viewer hidden">
+        <div class="file-viewer-header">
+          <span id="file-viewer-name" class="file-viewer-name"></span>
+          <button id="file-viewer-close" class="file-viewer-close">Back</button>
+        </div>
+        <pre id="file-viewer-content" class="file-viewer-content"><code></code></pre>
+      </div>
+    </div>
   </div>
 
   <!-- Stats View -->

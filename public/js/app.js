@@ -21,6 +21,7 @@ import {
   hideMsgActionPopup,
   populateFilterModels
 } from './ui.js';
+import { initFilePanel } from './file-panel.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -89,6 +90,16 @@ const fileBrowserList = document.getElementById('file-browser-list');
 const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
+const filePanel = document.getElementById('file-panel');
+const filePanelBackdrop = document.getElementById('file-panel-backdrop');
+const filePanelClose = document.getElementById('file-panel-close');
+const filePanelUp = document.getElementById('file-panel-up');
+const filePanelPath = document.getElementById('file-panel-path');
+const filePanelTree = document.getElementById('file-tree');
+const filePanelViewer = document.getElementById('file-viewer');
+const fileViewerName = document.getElementById('file-viewer-name');
+const fileViewerClose = document.getElementById('file-viewer-close');
+const fileViewerContent = document.getElementById('file-viewer-content');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -238,6 +249,21 @@ initUI({
   statsBackBtn,
   statsContent,
   listView,
+  chatView
+});
+
+// Initialize file panel
+initFilePanel({
+  filePanel,
+  filePanelBackdrop,
+  filePanelClose,
+  filePanelUp,
+  filePanelPath,
+  fileTree: filePanelTree,
+  fileViewer: filePanelViewer,
+  fileViewerName,
+  fileViewerClose,
+  fileViewerContent,
   chatView
 });
 

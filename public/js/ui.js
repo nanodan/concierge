@@ -5,6 +5,7 @@ import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
+import { toggleFilePanel, closeFilePanel, isFilePanelOpen } from './file-panel.js';
 
 // DOM elements (set by init)
 let messagesContainer = null;
@@ -1354,11 +1355,10 @@ export function setupEventListeners(createConversation) {
     });
   }
 
-  // File browser
+  // File panel (Project Mode)
   if (filesBtn) {
     filesBtn.addEventListener('click', () => {
-      haptic(10);
-      openFileBrowser();
+      toggleFilePanel();
     });
   }
 
@@ -1643,6 +1643,8 @@ export function setupEventListeners(createConversation) {
         lightbox.classList.add('hidden');
       } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
+      } else if (isFilePanelOpen()) {
+        closeFilePanel();
       } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
         closeFileBrowser();
       } else if (!modalOverlay.classList.contains('hidden')) {
