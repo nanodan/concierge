@@ -22,6 +22,7 @@ import {
   populateFilterModels
 } from './ui.js';
 import { initFilePanel } from './file-panel.js';
+import { initBranches, openBranchesFromChat } from './branches.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -131,6 +132,10 @@ const statsBtn = document.getElementById('stats-btn');
 const statsView = document.getElementById('stats-view');
 const statsBackBtn = document.getElementById('stats-back-btn');
 const statsContent = document.getElementById('stats-content');
+const branchesBtn = document.getElementById('branches-btn');
+const branchesView = document.getElementById('branches-view');
+const branchesBackBtn = document.getElementById('branches-back-btn');
+const branchesContent = document.getElementById('branches-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
 const _bulkActionBar = document.getElementById('bulk-action-bar');
@@ -291,6 +296,15 @@ initFilePanel({
   gitRefreshBtn
 });
 
+// Initialize branches view
+initBranches({
+  branchesView,
+  branchesBackBtn,
+  branchesContent,
+  listView,
+  chatView
+});
+
 // Setup action popup handlers
 setupActionPopupHandlers(hideMsgActionPopup);
 
@@ -362,4 +376,11 @@ if (bulkArchiveBtn) {
 
 if (bulkDeleteBtn) {
   bulkDeleteBtn.addEventListener('click', () => bulkDelete());
+}
+
+// Branches button handler
+if (branchesBtn) {
+  branchesBtn.addEventListener('click', () => {
+    openBranchesFromChat();
+  });
 }

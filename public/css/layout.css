@@ -362,6 +362,17 @@
   pointer-events: auto;
 }
 
+#branches-view {
+  transform: translateX(100%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+#branches-view.slide-in {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
 /* Stats page */
 .stats-content {
   flex: 1;
