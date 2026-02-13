@@ -865,7 +865,7 @@ function selectTheme(newTheme) {
   state.setCurrentTheme(newTheme);
   applyTheme(true); // animate the transition
   updateThemeIcon();
-  closeThemeDropdown();
+  // Don't close dropdown - let user compare themes by clicking through
   const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
   showToast(`Theme: ${labels[newTheme]}`);
 }
@@ -976,7 +976,7 @@ function selectColorTheme(newTheme) {
   state.setCurrentColorTheme(newTheme);
   applyColorTheme(true);
   updateColorThemeIcon();
-  closeColorThemeDropdown();
+  // Don't close dropdown - let user compare themes by clicking through
   const info = COLOR_THEMES[newTheme] || { name: newTheme };
   showToast(`Color theme: ${info.name}`);
 }
@@ -1636,7 +1636,12 @@ export function setupEventListeners(createConversation) {
     // Escape always works
     if (e.key === 'Escape') {
       const lightbox = document.getElementById('lightbox');
-      if (lightbox && !lightbox.classList.contains('hidden')) {
+      // Close theme dropdowns first
+      if (themeDropdown && !themeDropdown.classList.contains('hidden')) {
+        closeThemeDropdown();
+      } else if (colorThemeDropdown && !colorThemeDropdown.classList.contains('hidden')) {
+        closeColorThemeDropdown();
+      } else if (lightbox && !lightbox.classList.contains('hidden')) {
         lightbox.classList.add('hidden');
       } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {
         dialogCancel?.click();
