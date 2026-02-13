@@ -416,6 +416,56 @@
   min-width: 0;
 }
 
+/* Recent directories */
+.recent-dirs {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.recent-dirs.hidden {
+  display: none;
+}
+
+.recent-dirs-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.recent-dirs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recent-dir-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-dir-chip:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-alpha-30);
+}
+
+.recent-dir-chip:active {
+  background: var(--accent-alpha-15);
+  border-color: var(--accent);
+}
+
 /* Directory browser */
 .dir-browser {
   margin-top: 8px;

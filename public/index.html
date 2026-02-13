@@ -115,6 +115,9 @@
           <div id="model-dropdown" class="model-dropdown hidden"></div>
         </div>
       </div>
+      <button id="new-chat-here-btn" class="header-icon-btn" aria-label="New chat in this folder" title="New chat in this folder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
       <button id="files-btn" class="files-btn" aria-label="Browse files">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       </button>
@@ -193,6 +196,10 @@
         <div class="cwd-input-row">
           <input type="text" id="conv-cwd" placeholder="e.g. /Users/djlewis/project">
           <button type="button" id="browse-btn" class="btn-icon" aria-label="Browse">&#x1F4C2;</button>
+        </div>
+        <div id="recent-dirs" class="recent-dirs hidden">
+          <span class="recent-dirs-label">Recent:</span>
+          <div id="recent-dirs-list" class="recent-dirs-list"></div>
         </div>
         <div id="dir-browser" class="dir-browser hidden">
           <div class="dir-browser-header">

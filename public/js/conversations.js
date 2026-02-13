@@ -1,6 +1,7 @@
 // --- Conversation management ---
 import { escapeHtml } from './markdown.js';
 import { formatTime, setLoading, showToast, showDialog, haptic } from './utils.js';
+import { openNewChatModal } from './ui.js';
 import { renderMessages } from './render.js';
 import * as state from './state.js';
 
@@ -296,11 +297,14 @@ export function renderConversationList(items) {
       const collapsed = collapsedScopes[scope];
       return `
         <div class="scope-group" data-scope="${escapeHtml(scope)}">
-          <button class="scope-header${collapsed ? ' collapsed' : ''}">
-            <span class="scope-chevron">${collapsed ? '&#x25B6;' : '&#x25BC;'}</span>
-            <span class="scope-path">${escapeHtml(shortPath(scope))}</span>
-            <span class="scope-count">${convs.length}</span>
-          </button>
+          <div class="scope-header-row">
+            <button class="scope-header${collapsed ? ' collapsed' : ''}">
+              <span class="scope-chevron">${collapsed ? '&#x25B6;' : '&#x25BC;'}</span>
+              <span class="scope-path">${escapeHtml(shortPath(scope))}</span>
+              <span class="scope-count">${convs.length}</span>
+            </button>
+            <button class="scope-add-btn" data-scope="${escapeHtml(scope)}" aria-label="New chat in this folder">+</button>
+          </div>
           <div class="scope-items${collapsed ? ' hidden' : ''}">
             ${convs.map(renderCard).join('')}
           </div>
@@ -318,6 +322,15 @@ export function renderConversationList(items) {
         header.classList.toggle('collapsed', isCollapsed);
         header.querySelector('.scope-chevron').innerHTML = isCollapsed ? '&#x25B6;' : '&#x25BC;';
         state.toggleCollapsedScope(scope, isCollapsed);
+      });
+    });
+
+    // Scope add button handlers
+    conversationList.querySelectorAll('.scope-add-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const scope = btn.dataset.scope;
+        openNewChatModal(scope);
       });
     });
   }

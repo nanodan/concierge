@@ -380,15 +380,43 @@
   margin-bottom: 4px;
 }
 
+.scope-header-row {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.scope-add-btn {
+  padding: 0 14px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.scope-add-btn:hover {
+  background: var(--accent-alpha-10);
+}
+
+.scope-add-btn:active {
+  background: var(--accent-alpha-20);
+}
+
 .scope-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 10px 16px;
-  background: var(--bg-secondary);
+  background: none;
   border: none;
-  border-bottom: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;

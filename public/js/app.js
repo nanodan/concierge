@@ -41,6 +41,8 @@ const newConvForm = document.getElementById('new-conv-form');
 const modalCancel = document.getElementById('modal-cancel');
 const convNameInput = document.getElementById('conv-name');
 const convCwdInput = document.getElementById('conv-cwd');
+const recentDirs = document.getElementById('recent-dirs');
+const recentDirsList = document.getElementById('recent-dirs-list');
 const archiveToggle = document.getElementById('archive-toggle');
 const searchInput = document.getElementById('search-input');
 const actionPopup = document.getElementById('action-popup');
@@ -76,6 +78,7 @@ const jumpToBottomBtn = document.getElementById('jump-to-bottom');
 const toastContainer = document.getElementById('toast-container');
 const exportBtn = document.getElementById('export-btn');
 const filesBtn = document.getElementById('files-btn');
+const newChatHereBtn = document.getElementById('new-chat-here-btn');
 const fileBrowserModal = document.getElementById('file-browser-modal');
 const fileBrowserClose = document.getElementById('file-browser-close');
 const fileBrowserUp = document.getElementById('file-browser-up');
@@ -169,6 +172,8 @@ initUI({
   modalCancel,
   convNameInput,
   convCwdInput,
+  recentDirs,
+  recentDirsList,
   convAutopilot,
   convModelSelect,
   archiveToggle,
@@ -210,6 +215,7 @@ initUI({
   newChatBtn,
   exportBtn,
   filesBtn,
+  newChatHereBtn,
   fileBrowserModal,
   fileBrowserClose,
   fileBrowserUp,

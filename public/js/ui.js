@@ -17,6 +17,8 @@ let newConvForm = null;
 let modalCancel = null;
 let convNameInput = null;
 let convCwdInput = null;
+let recentDirs = null;
+let recentDirsList = null;
 let convAutopilot = null;
 let convModelSelect = null;
 let archiveToggle = null;
@@ -68,6 +70,7 @@ let statsContent = null;
 let listView = null;
 let chatView = null;
 let filesBtn = null;
+let newChatHereBtn = null;
 let fileBrowserModal = null;
 let fileBrowserClose = null;
 let fileBrowserUp = null;
@@ -91,6 +94,8 @@ export function initUI(elements) {
   modalCancel = elements.modalCancel;
   convNameInput = elements.convNameInput;
   convCwdInput = elements.convCwdInput;
+  recentDirs = elements.recentDirs;
+  recentDirsList = elements.recentDirsList;
   convAutopilot = elements.convAutopilot;
   convModelSelect = elements.convModelSelect;
   archiveToggle = elements.archiveToggle;
@@ -142,6 +147,7 @@ export function initUI(elements) {
   listView = elements.listView;
   chatView = elements.chatView;
   filesBtn = elements.filesBtn;
+  newChatHereBtn = elements.newChatHereBtn;
   fileBrowserModal = elements.fileBrowserModal;
   fileBrowserClose = elements.fileBrowserClose;
   fileBrowserUp = elements.fileBrowserUp;
@@ -154,6 +160,49 @@ export function initUI(elements) {
 export function autoResizeInput() {
   messageInput.style.height = 'auto';
   messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+}
+
+// --- Populate recent directories ---
+function populateRecentDirs() {
+  if (!recentDirs || !recentDirsList) return;
+
+  // Get unique directories from conversations, sorted by most recent
+  const dirs = state.conversations
+    .filter(c => c.cwd && !c.archived)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .map(c => c.cwd)
+    .filter((dir, i, arr) => arr.indexOf(dir) === i) // unique
+    .slice(0, 5); // limit to 5
+
+  if (dirs.length === 0) {
+    recentDirs.classList.add('hidden');
+    return;
+  }
+
+  recentDirs.classList.remove('hidden');
+  recentDirsList.innerHTML = dirs.map(dir => {
+    const shortName = dir.split('/').pop() || dir;
+    return `<button type="button" class="recent-dir-chip" data-dir="${dir}" title="${dir}">${shortName}</button>`;
+  }).join('');
+
+  // Add click handlers
+  recentDirsList.querySelectorAll('.recent-dir-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      convCwdInput.value = chip.dataset.dir;
+      haptic(10);
+    });
+  });
+}
+
+// --- Open new chat modal with optional pre-filled directory ---
+export function openNewChatModal(cwd = '') {
+  convNameInput.value = '';
+  convCwdInput.value = cwd;
+  dirBrowser.classList.add('hidden');
+  populateRecentDirs();
+  modalOverlay.classList.remove('hidden');
+  convNameInput.focus();
+  haptic(15);
 }
 
 // --- Send message ---
@@ -1097,6 +1146,7 @@ export function setupEventListeners(createConversation) {
     convNameInput.value = '';
     convCwdInput.value = '';
     dirBrowser.classList.add('hidden');
+    populateRecentDirs();
     modalOverlay.classList.remove('hidden');
     convNameInput.focus();
   });
@@ -1246,6 +1296,25 @@ export function setupEventListeners(createConversation) {
       if (!currentConversationId) return;
       window.open(`/api/conversations/${currentConversationId}/export?format=markdown`);
       showToast('Exporting conversation');
+    });
+  }
+
+  // New chat in same folder
+  if (newChatHereBtn) {
+    newChatHereBtn.addEventListener('click', () => {
+      haptic(10);
+      const currentId = state.getCurrentConversationId();
+      const conv = state.conversations.find(c => c.id === currentId);
+      if (conv && conv.cwd) {
+        // Pre-fill the new conversation modal with the same cwd
+        convCwdInput.value = conv.cwd;
+        convNameInput.value = '';
+        convNameInput.focus();
+        modalOverlay.classList.remove('hidden');
+        showToast('Creating chat in ' + conv.cwd.split('/').pop());
+      } else {
+        showToast('No working directory set');
+      }
     });
   }
 
