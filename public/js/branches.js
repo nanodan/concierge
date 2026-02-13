@@ -320,6 +320,10 @@ export function closeBranchesView() {
   }
 }
 
+export function isBranchesViewOpen() {
+  return branchesView && branchesView.classList.contains('slide-in');
+}
+
 export function openBranchesFromChat() {
   const currentId = state.getCurrentConversationId();
   if (!currentId) return;

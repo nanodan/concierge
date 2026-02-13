@@ -6,6 +6,7 @@ import { loadConversations, deleteConversation, forkConversation, showListView, 
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
 import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
+import { isBranchesViewOpen, closeBranchesView } from './branches.js';
 
 // DOM elements (set by init)
 let messagesContainer = null;
@@ -1780,6 +1781,8 @@ export function setupEventListeners(createConversation) {
         closeFileBrowser();
       } else if (!modalOverlay.classList.contains('hidden')) {
         modalOverlay.classList.add('hidden');
+      } else if (isBranchesViewOpen()) {
+        closeBranchesView();
       } else if (chatView.classList.contains('slide-in')) {
         showListView();
       } else if (statsView.classList.contains('slide-in')) {
