@@ -26,12 +26,12 @@
 ### Commit History
 - [x] View recent commits (hash, message, author, date)
 - [x] Click commit to view its diff
-- [ ] Show commit count since last push
+- [x] Show commit count since last push
 
 ### File Search
-- [ ] Search/grep across project files
-- [ ] Show results with file path and line number
-- [ ] Click result to open file at that line
+- [x] Search/grep across project files
+- [x] Show results with file path and line number
+- [x] Click result to open file at that line
 
 ---
 

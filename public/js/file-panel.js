@@ -39,6 +39,7 @@ let historyTab = null;
 let historyView = null;
 let historyList = null;
 let commits = null;
+let unpushedCount = 0;
 
 // Panel state
 let currentPath = '';
@@ -1091,21 +1092,35 @@ async function loadCommits() {
     historyList.innerHTML = '<div class="history-loading">Loading...</div>';
   }
 
-  const res = await apiFetch(`/api/conversations/${convId}/git/commits`, { silent: true });
-  if (!res) {
+  // Fetch commits and status in parallel
+  const [commitsRes, statusRes] = await Promise.all([
+    apiFetch(`/api/conversations/${convId}/git/commits`, { silent: true }),
+    apiFetch(`/api/conversations/${convId}/git/status`, { silent: true })
+  ]);
+
+  if (!commitsRes) {
     if (historyList) {
       historyList.innerHTML = '<div class="history-empty">Failed to load commits</div>';
     }
     return;
   }
 
-  const data = await res.json();
+  const data = await commitsRes.json();
 
   if (data.error) {
     if (historyList) {
       historyList.innerHTML = `<div class="history-empty">${escapeHtml(data.error)}</div>`;
     }
     return;
+  }
+
+  // Get unpushed count from status
+  unpushedCount = 0;
+  if (statusRes) {
+    const statusData = await statusRes.json();
+    if (statusData.isRepo && statusData.hasUpstream) {
+      unpushedCount = statusData.ahead || 0;
+    }
   }
 
   commits = data.commits;
@@ -1120,16 +1135,33 @@ function renderHistoryView() {
     return;
   }
 
-  historyList.innerHTML = commits.map(c => `
-    <div class="commit-item" data-hash="${c.hash}">
+  let html = '';
+
+  // Show unpushed commits header if there are any
+  if (unpushedCount > 0) {
+    html += `
+      <div class="unpushed-header">
+        <span class="unpushed-icon">↑</span>
+        <span>${unpushedCount} unpushed commit${unpushedCount > 1 ? 's' : ''}</span>
+      </div>`;
+  }
+
+  // Render commits, marking unpushed ones
+  html += commits.map((c, i) => {
+    const isUnpushed = i < unpushedCount;
+    return `
+    <div class="commit-item${isUnpushed ? ' unpushed' : ''}" data-hash="${c.hash}">
       <div class="commit-header">
         <span class="commit-hash">${c.hash.slice(0, 7)}</span>
+        ${isUnpushed ? '<span class="unpushed-badge">unpushed</span>' : ''}
         <span class="commit-time">${escapeHtml(c.time)}</span>
       </div>
       <div class="commit-message">${escapeHtml(c.message)}</div>
       <div class="commit-author">${escapeHtml(c.author)}</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  historyList.innerHTML = html;
 
   // Attach click handlers
   historyList.querySelectorAll('.commit-item').forEach(item => {
