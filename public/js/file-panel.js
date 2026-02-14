@@ -32,6 +32,7 @@ let branchDropdown = null;
 let gitRefreshBtn = null;
 let pushBtn = null;
 let pullBtn = null;
+let stashBtn = null;
 let aheadBehindBadge = null;
 
 // History tab elements
@@ -50,6 +51,7 @@ let dragStartHeight = 0;
 let currentTab = 'files'; // 'files' | 'changes' | 'history'
 let gitStatus = null;
 let branches = null;
+let stashes = null;
 let _viewingDiff = null; // { path, staged }
 
 // Search state
@@ -135,6 +137,7 @@ export function initFilePanel(elements) {
   gitRefreshBtn = elements.gitRefreshBtn;
   pushBtn = elements.pushBtn;
   pullBtn = elements.pullBtn;
+  stashBtn = elements.stashBtn;
   aheadBehindBadge = elements.aheadBehindBadge;
 
   // History tab elements
@@ -229,6 +232,11 @@ function setupEventListeners() {
   // Pull button
   if (pullBtn) {
     pullBtn.addEventListener('click', handlePull);
+  }
+
+  // Stash button
+  if (stashBtn) {
+    stashBtn.addEventListener('click', handleStash);
   }
 
   // File search input
@@ -796,7 +804,27 @@ async function loadGitStatus() {
     return;
   }
 
+  // Load stashes in parallel with rendering
+  loadStashes();
   renderChangesView();
+}
+
+async function loadStashes() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/stash`, { silent: true });
+  if (!res) {
+    stashes = [];
+    return;
+  }
+  const data = await res.json();
+  stashes = data.stashes || [];
+
+  // Re-render to show stashes
+  if (gitStatus && gitStatus.isRepo) {
+    renderChangesView();
+  }
 }
 
 function renderNotARepo() {
@@ -809,6 +837,15 @@ function renderNotARepo() {
   }
   if (branchSelector) {
     branchSelector.classList.add('hidden');
+  }
+  if (stashBtn) {
+    stashBtn.disabled = true;
+  }
+  if (pushBtn) {
+    pushBtn.disabled = true;
+  }
+  if (pullBtn) {
+    pullBtn.disabled = true;
   }
 }
 
@@ -860,12 +897,24 @@ function renderChangesView() {
     pullBtn.title = behind > 0 ? `Pull ${behind} commit${behind > 1 ? 's' : ''} from remote` : 'Pull from remote';
   }
 
+  // Update stash button - enabled if there are changes to stash
+  if (stashBtn) {
+    stashBtn.disabled = !hasChanges;
+    stashBtn.title = hasChanges ? 'Stash changes' : 'No changes to stash';
+  }
+
   if (!hasChanges) {
-    changesList.innerHTML = `
+    let cleanHtml = `
       <div class="changes-empty">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <p>Working tree clean</p>
       </div>`;
+    // Still show stashes even when working tree is clean
+    if (stashes && stashes.length > 0) {
+      cleanHtml += renderStashSection();
+    }
+    changesList.innerHTML = cleanHtml;
+    attachStashListeners();
     if (commitForm) commitForm.classList.add('hidden');
     return;
   }
@@ -911,8 +960,14 @@ function renderChangesView() {
       </div>`;
   }
 
+  // Stash section
+  if (stashes && stashes.length > 0) {
+    html += renderStashSection();
+  }
+
   changesList.innerHTML = html;
   attachChangeItemListeners();
+  attachStashListeners();
 
   // Show commit form if there are staged changes
   if (commitForm) {
@@ -1018,6 +1073,176 @@ function attachChangeItemListeners() {
       }
     });
   });
+}
+
+// === Stash Functions ===
+
+function renderStashSection() {
+  if (!stashes || stashes.length === 0) return '';
+
+  return `
+    <div class="stash-section">
+      <div class="stash-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 15h6"/></svg>
+        <span class="stash-section-title">Stashes</span>
+        <span class="stash-section-count">${stashes.length}</span>
+      </div>
+      <div class="stash-list">
+        ${stashes.map(s => `
+          <div class="stash-item" data-index="${s.index}">
+            <span class="stash-message">${escapeHtml(s.message)}</span>
+            <span class="stash-time">${escapeHtml(s.time)}</span>
+            <div class="stash-actions">
+              <button class="stash-action-btn" data-action="pop" title="Pop (apply and remove)">↑</button>
+              <button class="stash-action-btn" data-action="apply" title="Apply (keep stash)">✓</button>
+              <button class="stash-action-btn danger" data-action="drop" title="Drop">×</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function attachStashListeners() {
+  if (!changesList) return;
+
+  changesList.querySelectorAll('.stash-action-btn').forEach(btn => {
+    const handleAction = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Prevent double-firing from both touch and click
+      if (btn.dataset.processing === 'true') return;
+      btn.dataset.processing = 'true';
+      setTimeout(() => { btn.dataset.processing = 'false'; }, 300);
+
+      const item = btn.closest('.stash-item');
+      const index = parseInt(item.dataset.index, 10);
+      const action = btn.dataset.action;
+      haptic(10);
+
+      if (action === 'pop') {
+        await handleStashPop(index);
+      } else if (action === 'apply') {
+        await handleStashApply(index);
+      } else if (action === 'drop') {
+        const confirmed = await showDialog({
+          title: 'Drop stash?',
+          message: 'This will permanently delete the stash. This cannot be undone.',
+          danger: true,
+          confirmLabel: 'Drop'
+        });
+        if (confirmed) {
+          await handleStashDrop(index);
+        }
+      }
+    };
+
+    btn.addEventListener('click', handleAction);
+    btn.addEventListener('touchend', handleAction);
+  });
+}
+
+async function handleStash() {
+  haptic(10);
+
+  const message = await showDialog({
+    title: 'Stash changes',
+    message: 'Enter an optional message for this stash:',
+    input: true,
+    inputPlaceholder: 'Stash message (optional)',
+    confirmLabel: 'Stash'
+  });
+
+  // User cancelled
+  if (message === false) return;
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const body = message ? { message } : {};
+  const res = await apiFetch(`/api/conversations/${convId}/git/stash`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Changes stashed', 'success');
+  loadGitStatus();
+}
+
+async function handleStashPop(index) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/stash/pop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Stash applied and removed', 'success');
+  loadGitStatus();
+}
+
+async function handleStashApply(index) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/stash/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Stash applied', 'success');
+  loadGitStatus();
+}
+
+async function handleStashDrop(index) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/stash/drop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Stash dropped', 'success');
+  loadGitStatus();
 }
 
 // === Diff Viewer ===

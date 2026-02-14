@@ -116,6 +116,7 @@ const branchDropdown = document.getElementById('branch-dropdown');
 const gitRefreshBtn = document.getElementById('git-refresh-btn');
 const pushBtn = document.getElementById('push-btn');
 const pullBtn = document.getElementById('pull-btn');
+const stashBtn = document.getElementById('stash-btn');
 const aheadBehindBadge = document.getElementById('ahead-behind-badge');
 const historyTab = document.getElementById('history-tab');
 const historyView = document.getElementById('history-view');
@@ -304,6 +305,7 @@ initFilePanel({
   gitRefreshBtn,
   pushBtn,
   pullBtn,
+  stashBtn,
   aheadBehindBadge,
   historyTab,
   historyView,
