@@ -1245,6 +1245,207 @@ async function handleStashDrop(index) {
   loadGitStatus();
 }
 
+// === Commit Actions ===
+
+function attachCommitActionListeners() {
+  if (!historyList) return;
+
+  historyList.querySelectorAll('.commit-action-btn').forEach(btn => {
+    const handleAction = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Prevent double-firing from both touch and click
+      if (btn.dataset.processing === 'true') return;
+      btn.dataset.processing = 'true';
+      setTimeout(() => { btn.dataset.processing = 'false'; }, 300);
+
+      const item = btn.closest('.commit-item');
+      const hash = item.dataset.hash;
+      const action = btn.dataset.action;
+      haptic(10);
+
+      if (action === 'undo') {
+        await handleUndoCommit();
+      } else if (action === 'revert') {
+        await handleRevert(hash);
+      } else if (action === 'reset') {
+        await handleReset(hash);
+      }
+    };
+
+    btn.addEventListener('click', handleAction);
+    btn.addEventListener('touchend', handleAction);
+  });
+}
+
+async function handleUndoCommit() {
+  const confirmed = await showDialog({
+    title: 'Undo last commit?',
+    message: 'The commit will be removed but changes will remain staged.',
+    confirmLabel: 'Undo',
+    danger: true
+  });
+
+  if (!confirmed) return;
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/undo-commit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Commit undone', 'success');
+  loadGitStatus();
+  loadCommits();
+}
+
+async function handleRevert(hash) {
+  const confirmed = await showDialog({
+    title: 'Revert commit?',
+    message: `This will create a new commit that undoes the changes from ${hash.slice(0, 7)}.`,
+    confirmLabel: 'Revert',
+    danger: true
+  });
+
+  if (!confirmed) return;
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/revert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hash })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Commit reverted', 'success');
+  loadCommits();
+}
+
+async function handleReset(hash) {
+  // Show reset mode selection dialog
+  const mode = await showResetModeDialog(hash);
+  if (!mode) return;
+
+  // Extra confirmation for hard reset
+  if (mode === 'hard') {
+    const confirmed = await showDialog({
+      title: 'Hard reset?',
+      message: 'This will PERMANENTLY DELETE all uncommitted changes. This cannot be undone.',
+      danger: true,
+      confirmLabel: 'Delete changes and reset'
+    });
+    if (!confirmed) return;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hash, mode })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast(`Reset to ${hash.slice(0, 7)} (${mode})`, 'success');
+  loadGitStatus();
+  loadCommits();
+}
+
+function showResetModeDialog(hash) {
+  return new Promise((resolve) => {
+    // Create dialog overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog">
+        <div class="dialog-title">Reset to ${hash.slice(0, 7)}?</div>
+        <div class="dialog-body">
+          <div class="reset-mode-options">
+            <label class="reset-mode-option">
+              <input type="radio" name="reset-mode" value="soft" checked>
+              <div class="reset-mode-info">
+                <span class="reset-mode-name">Soft</span>
+                <span class="reset-mode-desc">Keep changes staged</span>
+              </div>
+            </label>
+            <label class="reset-mode-option">
+              <input type="radio" name="reset-mode" value="mixed">
+              <div class="reset-mode-info">
+                <span class="reset-mode-name">Mixed</span>
+                <span class="reset-mode-desc">Keep changes unstaged</span>
+              </div>
+            </label>
+            <label class="reset-mode-option">
+              <input type="radio" name="reset-mode" value="hard">
+              <div class="reset-mode-info">
+                <span class="reset-mode-name">Hard</span>
+                <span class="reset-mode-desc danger-text">Discard all changes</span>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn-secondary dialog-cancel">Cancel</button>
+          <button class="btn-primary dialog-ok">Reset</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const cleanup = () => {
+      overlay.remove();
+    };
+
+    overlay.querySelector('.dialog-cancel').addEventListener('click', () => {
+      cleanup();
+      resolve(null);
+    });
+
+    overlay.querySelector('.dialog-ok').addEventListener('click', () => {
+      const selected = overlay.querySelector('input[name="reset-mode"]:checked');
+      const mode = selected ? selected.value : 'soft';
+      cleanup();
+      resolve(mode);
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        cleanup();
+        resolve(null);
+      }
+    });
+  });
+}
+
 // === Diff Viewer ===
 
 async function viewDiff(filePath, staged) {
@@ -1382,16 +1583,30 @@ function renderHistoryView() {
         <span class="commit-time">${escapeHtml(c.time)}</span>
       </div>
       <div class="commit-message">${escapeHtml(c.message)}</div>
-      <div class="commit-author">${escapeHtml(c.author)}</div>
+      <div class="commit-footer">
+        <span class="commit-author">${escapeHtml(c.author)}</span>
+        <div class="commit-actions">
+          ${i === 0 ? '<button class="commit-action-btn" data-action="undo" title="Undo last commit (soft reset)">↶</button>' : ''}
+          <button class="commit-action-btn" data-action="revert" title="Revert this commit">↩</button>
+          <button class="commit-action-btn danger" data-action="reset" title="Reset to this commit">⟲</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
 
   historyList.innerHTML = html;
 
-  // Attach click handlers
+  // Attach click handlers for viewing diffs
   historyList.querySelectorAll('.commit-item').forEach(item => {
-    item.addEventListener('click', () => viewCommitDiff(item.dataset.hash));
+    item.addEventListener('click', (e) => {
+      // Don't trigger if clicking action buttons
+      if (e.target.closest('.commit-actions')) return;
+      viewCommitDiff(item.dataset.hash);
+    });
   });
+
+  // Attach commit action listeners
+  attachCommitActionListeners();
 }
 
 async function viewCommitDiff(hash) {

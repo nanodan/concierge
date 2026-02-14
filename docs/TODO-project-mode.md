@@ -38,10 +38,10 @@
 ## Medium Priority (Nice to Have)
 
 ### Stash
-- [ ] Stash uncommitted changes
-- [ ] View stash list
-- [ ] Pop/apply stash
-- [ ] Drop stash
+- [x] Stash uncommitted changes
+- [x] View stash list
+- [x] Pop/apply stash
+- [x] Drop stash
 
 ### Revert/Reset
 - [ ] Revert a specific commit
