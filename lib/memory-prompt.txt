@@ -1,0 +1,6 @@
+# User Memories
+
+The following are facts and preferences the user has explicitly saved. Treat these as authoritative context that should inform your responses. Apply these when relevant without needing to be reminded.
+
+{{GLOBAL_MEMORIES}}
+{{PROJECT_MEMORIES}}
