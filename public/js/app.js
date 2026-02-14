@@ -113,6 +113,9 @@ const commitBtn = document.getElementById('commit-btn');
 const branchSelector = document.getElementById('branch-selector');
 const branchDropdown = document.getElementById('branch-dropdown');
 const gitRefreshBtn = document.getElementById('git-refresh-btn');
+const pushBtn = document.getElementById('push-btn');
+const pullBtn = document.getElementById('pull-btn');
+const aheadBehindBadge = document.getElementById('ahead-behind-badge');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -293,7 +296,10 @@ initFilePanel({
   commitBtn,
   branchSelector,
   branchDropdown,
-  gitRefreshBtn
+  gitRefreshBtn,
+  pushBtn,
+  pullBtn,
+  aheadBehindBadge
 });
 
 // Initialize branches view

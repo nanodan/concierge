@@ -29,6 +29,9 @@ let commitBtn = null;
 let branchSelector = null;
 let branchDropdown = null;
 let gitRefreshBtn = null;
+let pushBtn = null;
+let pullBtn = null;
+let aheadBehindBadge = null;
 
 // Panel state
 let currentPath = '';
@@ -116,6 +119,9 @@ export function initFilePanel(elements) {
   branchSelector = elements.branchSelector;
   branchDropdown = elements.branchDropdown;
   gitRefreshBtn = elements.gitRefreshBtn;
+  pushBtn = elements.pushBtn;
+  pullBtn = elements.pullBtn;
+  aheadBehindBadge = elements.aheadBehindBadge;
 
   setupEventListeners();
 }
@@ -191,6 +197,16 @@ function setupEventListeners() {
       loadGitStatus();
       loadBranches();
     });
+  }
+
+  // Push button
+  if (pushBtn) {
+    pushBtn.addEventListener('click', handlePush);
+  }
+
+  // Pull button
+  if (pullBtn) {
+    pullBtn.addEventListener('click', handlePull);
   }
 
   // Mobile drag gesture
@@ -636,13 +652,49 @@ function renderNotARepo() {
 function renderChangesView() {
   if (!gitStatus || !changesList) return;
 
-  const { staged, unstaged, untracked, branch } = gitStatus;
+  const { staged, unstaged, untracked, branch, ahead, behind, hasOrigin, hasUpstream } = gitStatus;
   const hasChanges = staged.length > 0 || unstaged.length > 0 || untracked.length > 0;
 
   // Update branch selector
   if (branchSelector) {
     branchSelector.classList.remove('hidden');
     branchSelector.querySelector('.branch-name').textContent = branch;
+  }
+
+  // Update ahead/behind badge
+  if (aheadBehindBadge) {
+    if (hasUpstream && (ahead > 0 || behind > 0)) {
+      let badgeHtml = '';
+      if (ahead > 0) {
+        badgeHtml += `<span class="ahead">↑${ahead}</span>`;
+      }
+      if (behind > 0) {
+        badgeHtml += `<span class="behind">↓${behind}</span>`;
+      }
+      aheadBehindBadge.innerHTML = badgeHtml;
+      aheadBehindBadge.classList.remove('hidden');
+    } else {
+      aheadBehindBadge.classList.add('hidden');
+    }
+  }
+
+  // Update push/pull buttons
+  // Push: enabled if origin exists AND (no upstream yet OR ahead > 0)
+  // Pull: enabled if upstream exists AND behind > 0
+  if (pushBtn) {
+    const canPush = hasOrigin && (!hasUpstream || ahead > 0);
+    pushBtn.disabled = !canPush;
+    if (!hasUpstream && hasOrigin) {
+      pushBtn.title = 'Push and set upstream';
+    } else if (ahead > 0) {
+      pushBtn.title = `Push ${ahead} commit${ahead > 1 ? 's' : ''} to remote`;
+    } else {
+      pushBtn.title = 'Push to remote';
+    }
+  }
+  if (pullBtn) {
+    pullBtn.disabled = !hasUpstream || behind === 0;
+    pullBtn.title = behind > 0 ? `Pull ${behind} commit${behind > 1 ? 's' : ''} from remote` : 'Pull from remote';
   }
 
   if (!hasChanges) {
@@ -961,6 +1013,66 @@ async function handleCommit() {
 
   showToast(`Committed ${data.hash}`);
   commitMessage.value = '';
+  loadGitStatus();
+}
+
+// === Push/Pull Operations ===
+
+async function handlePush() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  haptic(15);
+  pushBtn.disabled = true;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/push`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res) {
+    pushBtn.disabled = false;
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    pushBtn.disabled = false;
+    return;
+  }
+
+  showToast('Pushed successfully');
+  loadGitStatus();
+}
+
+async function handlePull() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  haptic(15);
+  pullBtn.disabled = true;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/pull`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res) {
+    pullBtn.disabled = false;
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    pullBtn.disabled = false;
+    return;
+  }
+
+  showToast('Pulled successfully');
   loadGitStatus();
 }
 

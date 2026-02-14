@@ -600,6 +600,63 @@
   display: none;
 }
 
+/* Ahead/Behind Badge */
+.ahead-behind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.ahead-behind-badge.hidden {
+  display: none;
+}
+
+.ahead-behind-badge .ahead {
+  color: var(--syntax-string, #98c379);
+}
+
+.ahead-behind-badge .behind {
+  color: var(--syntax-keyword, #61afef);
+}
+
+/* Git action buttons (push/pull) */
+.git-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.git-action-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.git-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.git-action-btn:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Refresh button */
 .git-refresh-btn {
   display: flex;
