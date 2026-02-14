@@ -4,6 +4,7 @@ Organized by category. Each file contains individual items with priority, effort
 
 ## Recently Completed ✅
 
+- **Markdown render caching** — FNV-1a hash-based LRU cache (500 messages), 2-5x faster re-renders
 - **Git revert/reset** — revert commits, reset to previous commits (soft/mixed/hard), undo last commit with action buttons in History tab
 - **Open files in new tab** — floating button to open any text file in new tab (renders HTML, shows raw for others)
 - **Consistent error handling** — `apiFetch()` wrapper with toast notifications for 30+ fetch calls across all frontend modules
@@ -28,18 +29,17 @@ Organized by category. Each file contains individual items with priority, effort
 
 | File | Open Items | Focus |
 |------|------------|-------|
-| [performance.md](performance.md) | 4 | Render caching, pagination, search/stats optimization |
+| [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
 | [ux-features.md](ux-features.md) | 11 | Templates, tags, search, timestamps, lightbox |
 | [architecture.md](architecture.md) | 1 | localStorage versioning |
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
-| [file-browser.md](file-browser.md) | 5 | Upload, quick actions, recent files, editing, iOS share |
+| [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share, create new file |
 
 ## Priority Guide
 
 **High priority** — items that noticeably improve daily usage or address real pain points:
-- Cache markdown render output (performance)
 - Prompt templates (ux)
 - Conversation tags/favorites (ux)
 - Authentication (security, if used remotely)

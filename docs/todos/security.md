@@ -13,7 +13,7 @@ No auth at all. Anyone with network access can read/write all conversations.
 - Display the token in server startup logs for the user to copy
 - Optional: password-based login page that issues a session cookie
 
-**Files:** `server.js` (middleware), `public/app.js` (include token in requests)
+**Files:** `server.js` (middleware), `public/js/utils.js` (apiFetch wrapper)
 
 **Note:** Only needed for remote/multi-user. Local-only usage behind a firewall is fine without.
 
@@ -48,7 +48,7 @@ User message text is accepted as-is. Very long messages or malformed data could 
 - Validate conversation IDs are valid UUIDs before using in file paths
 - Validate all JSON payloads against expected shapes
 
-**Files:** `server.js` (message handler, upload endpoint, all API endpoints)
+**Files:** `lib/routes.js` (API endpoints), `lib/claude.js` (message handler)
 
 ---
 
@@ -64,7 +64,7 @@ Hand-rolled markdown parser uses `escapeHtml()` everywhere, but complex edge cas
 - Consider using DOMPurify as a final sanitization pass on rendered HTML
 - Or switch to a battle-tested markdown library (adds dependency)
 
-**Files:** `public/markdown.js`, `public/app.js` (renderMarkdown calls)
+**Files:** `public/js/markdown.js`, `public/js/render.js` (renderMarkdown calls)
 
 ---
 
@@ -78,7 +78,7 @@ Search endpoint returns results from all conversations. If multi-user auth is ad
 - Once auth exists, add user context to search
 - Filter conversation list by owner before searching messages
 
-**Files:** `server.js` (search endpoint)
+**Files:** `lib/routes.js` (search endpoint)
 
 ---
 
@@ -94,4 +94,4 @@ REST endpoints have no CSRF tokens. Not exploitable in single-user local mode, b
 - Validate server-side on state-changing endpoints (POST, PATCH, DELETE)
 - Or use `SameSite=Strict` cookies if switching to cookie-based auth
 
-**Files:** `server.js` (middleware), `public/app.js` (fetch wrapper), `public/index.html` (meta tag)
+**Files:** `server.js` (middleware), `public/js/utils.js` (apiFetch wrapper), `public/index.html` (meta tag)

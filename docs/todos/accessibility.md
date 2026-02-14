@@ -50,7 +50,7 @@ Status changes (connecting, thinking, response complete) aren't announced to scr
 - Announce: "Connecting...", "Claude is thinking...", "Response complete", "Error: ..."
 - Announce toast messages via the live region instead of only visually
 
-**Files:** `public/index.html` (live region element), `public/app.js` (status changes)
+**Files:** `public/index.html` (live region element), `public/js/websocket.js` (status changes)
 
 ---
 
@@ -66,4 +66,4 @@ Some UI elements may not meet WCAG AA contrast ratios, especially in light theme
 - Ensure the accent color (`#7c6cf0`) has sufficient contrast on both dark and light backgrounds
 - Add a high-contrast theme option
 
-**Files:** `public/style.css`
+**Files:** `public/css/base.css`, `public/css/themes/*.css`

@@ -80,4 +80,4 @@ Offline messages, unread convs, theme, collapsed scopes all stored in localStora
 - Write migration functions for each version bump
 - Clear stale keys that are no longer used
 
-**Files:** `public/app.js` (initialization)
+**Files:** `public/js/app.js` (initialization)

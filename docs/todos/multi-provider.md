@@ -13,14 +13,14 @@ The app is currently hardcoded to the Claude CLI. Supporting OpenAI, Google, and
 
 | What | Where | Anthropic-specific |
 |------|-------|--------------------|
-| CLI spawn | `server.js` `spawnClaude()` | `spawn('claude', args)` with Claude-only flags |
-| Stream parsing | `server.js` `processStreamEvent()` | Claude's `stream_event`, `content_block_delta`, `text_delta` format |
-| Session resume | `server.js` line ~676 | `--resume <sessionId>` — Claude CLI only |
-| Autopilot mode | `server.js` line ~672 | `--dangerously-skip-permissions` — Claude CLI only |
-| Model list | `server.js` `MODELS` constant | Hardcoded Anthropic models |
-| Cost tracking | `server.js` line ~839 | `total_cost_usd` from Claude result events |
-| Token tracking | `server.js` line ~842-843 | `total_input_tokens`, `total_output_tokens` from Claude |
-| Working directory | `server.js` line ~680 | `--add-dir` — Claude CLI concept, not relevant to API-only providers |
+| CLI spawn | `lib/claude.js` `spawnClaude()` | `spawn('claude', args)` with Claude-only flags |
+| Stream parsing | `lib/claude.js` `processStreamEvent()` | Claude's `stream_event`, `content_block_delta`, `text_delta` format |
+| Session resume | `lib/claude.js` | `--resume <sessionId>` — Claude CLI only |
+| Autopilot mode | `lib/claude.js` | `--dangerously-skip-permissions` — Claude CLI only |
+| Model list | `lib/routes.js` `MODELS` constant | Hardcoded Anthropic models |
+| Cost tracking | `lib/claude.js` | `total_cost_usd` from Claude result events |
+| Token tracking | `lib/claude.js` | `total_input_tokens`, `total_output_tokens` from Claude |
+| Working directory | `lib/claude.js` | `--add-dir` — Claude CLI concept, not relevant to API-only providers |
 
 ---
 
@@ -185,11 +185,12 @@ const history = conv.messages.map(m => ({
 
 | File | Changes |
 |------|---------|
-| `server.js` | Replace `spawnClaude`/`processStreamEvent` with provider dispatch, update MODELS, add provider to conversation model |
+| `lib/claude.js` | Replace `spawnClaude`/`processStreamEvent` with provider dispatch |
+| `lib/routes.js` | Update MODELS, add provider to conversation model |
 | `providers/base.js` | New — provider interface |
-| `providers/claude.js` | New — extracted from current server.js |
+| `providers/claude.js` | New — extracted from current lib/claude.js |
 | `providers/openai.js` | New |
 | `providers/google.js` | New |
-| `public/app.js` | Model picker grouped by provider, capability-aware UI |
-| `public/style.css` | Provider group headers in model dropdown |
+| `public/js/ui.js` | Model picker grouped by provider, capability-aware UI |
+| `public/css/components.css` | Provider group headers in model dropdown |
 | `package.json` | New dependencies (`openai`, `@google/generative-ai`) |

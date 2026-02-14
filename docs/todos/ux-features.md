@@ -26,7 +26,7 @@ Save and reuse frequently-used prompts. Big time-saver for repetitive workflows.
 - Support variables/placeholders (e.g. `{{filename}}`) that prompt before sending
 - Allow creating templates from sent messages (long-press → "Save as template")
 
-**Files:** `public/app.js` (new UI), `public/index.html` (modal), `public/style.css`, optionally `server.js` (if server-stored)
+**Files:** `public/js/ui.js` (new UI), `public/index.html` (modal), `public/css/components.css`, optionally `server.js` (if server-stored)
 
 ---
 
@@ -42,7 +42,7 @@ Star or tag conversations for quick access. Scope-based grouping alone isn't eno
 - UI: star icon on conversation cards, tag editor in long-press menu
 - Add tag filter chips above the conversation list
 
-**Files:** `server.js` (conversation model, PATCH endpoint), `public/app.js` (renderConversationList, filters), `public/style.css`
+**Files:** `lib/routes.js` (conversation model, PATCH endpoint), `public/js/conversations.js` (renderConversationList, filters), `public/css/list.css`
 
 ---
 
@@ -110,7 +110,7 @@ Search could be much more useful with filtering and better result display.
 - Regex support (toggle)
 - Loading spinner during search API call
 
-**Files:** `server.js` (search endpoint params), `public/app.js` (search UI, result rendering)
+**Files:** `lib/routes.js` (search endpoint params), `public/js/conversations.js` (search UI, result rendering)
 
 ---
 
@@ -138,7 +138,7 @@ Only purple (`#7c6cf0`) right now. Users may want to personalize.
 - Override `--accent` CSS variable at runtime
 - Derive related colors (hover, muted) programmatically from the chosen accent
 
-**Files:** `public/app.js` (settings UI), `public/style.css` (ensure all accent usage goes through variable)
+**Files:** `public/js/ui.js` (settings UI), `public/css/base.css` (ensure all accent usage goes through variable)
 
 ---
 
@@ -153,7 +153,7 @@ Only markdown and JSON export currently. HTML with styling and PDF would be more
 - PDF: use a headless browser or a library like `jspdf` (adds dependency)
 - Include conversation metadata (model, cost, date) in export header
 
-**Files:** `server.js` (export endpoint), new template files for HTML export
+**Files:** `lib/routes.js` (export endpoint), new template files for HTML export
 
 ---
 
@@ -169,7 +169,7 @@ Auto-generate a summary of long conversations for quick reference.
 - Show summary on conversation card hover or in detail view
 - Could also extract key decisions/action items
 
-**Files:** `server.js` (new summarize endpoint or hook into result handler), `public/app.js` (display)
+**Files:** `lib/routes.js` (new summarize endpoint), `lib/claude.js` (hook into result handler), `public/js/conversations.js` (display)
 
 ---
 
@@ -185,7 +185,7 @@ Compare two conversations or responses to the same prompt across models.
 - Optional diff highlighting for similar messages
 - Useful for model comparison workflows
 
-**Files:** `public/app.js` (new view), `public/index.html` (view markup), `public/style.css`
+**Files:** `public/js/ui.js` (new view), `public/index.html` (view markup), `public/css/layout.css`
 
 ---
 
@@ -255,7 +255,7 @@ Bookmark important messages within conversations for quick reference.
 - Persist in message metadata
 - Jump-to-starred navigation
 
-**Files:** `server.js` (message metadata), `public/js/render.js`, `public/css/messages.css`
+**Files:** `lib/data.js` (message metadata), `public/js/render.js`, `public/css/messages.css`
 
 ---
 
