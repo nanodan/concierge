@@ -10,6 +10,8 @@ let filePanelClose = null;
 let filePanelUp = null;
 let filePanelPath = null;
 let fileSearchInput = null;
+let filePanelUploadBtn = null;
+let filePanelFileInput = null;
 let fileTree = null;
 let fileViewer = null;
 let fileViewerName = null;
@@ -115,6 +117,8 @@ export function initFilePanel(elements) {
   filePanelUp = elements.filePanelUp;
   filePanelPath = elements.filePanelPath;
   fileSearchInput = elements.fileSearchInput;
+  filePanelUploadBtn = elements.filePanelUploadBtn;
+  filePanelFileInput = elements.filePanelFileInput;
   fileTree = elements.fileTree;
   fileViewer = elements.fileViewer;
   fileViewerName = elements.fileViewerName;
@@ -247,6 +251,42 @@ function setupEventListeners() {
         fileSearchInput.value = '';
         exitSearchMode();
         fileSearchInput.blur();
+      }
+    });
+  }
+
+  // Upload button
+  if (filePanelUploadBtn) {
+    filePanelUploadBtn.addEventListener('click', () => {
+      if (filePanelFileInput) filePanelFileInput.click();
+    });
+  }
+
+  if (filePanelFileInput) {
+    filePanelFileInput.addEventListener('change', () => {
+      if (filePanelFileInput.files.length) {
+        uploadToFilePanel(filePanelFileInput.files);
+        filePanelFileInput.value = '';
+      }
+    });
+  }
+
+  // Drag-and-drop for file panel
+  if (filesView) {
+    filesView.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      filesView.classList.add('drag-over');
+    });
+    filesView.addEventListener('dragleave', (e) => {
+      if (!filesView.contains(e.relatedTarget)) {
+        filesView.classList.remove('drag-over');
+      }
+    });
+    filesView.addEventListener('drop', (e) => {
+      e.preventDefault();
+      filesView.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) {
+        uploadToFilePanel(e.dataTransfer.files);
       }
     });
   }
@@ -479,6 +519,22 @@ export async function loadFileTree(subpath) {
   }
 
   renderFileTree(data.entries);
+}
+
+// Upload files to conversation attachments
+async function uploadToFilePanel(files) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  for (const file of files) {
+    const url = `/api/conversations/${convId}/upload?filename=${encodeURIComponent(file.name)}`;
+    const resp = await apiFetch(url, { method: 'POST', body: file });
+    if (!resp) continue;
+    showToast(`Uploaded ${file.name}`);
+  }
+
+  // Refresh file list
+  loadFileTree(currentPath);
 }
 
 function renderFileTree(entries) {

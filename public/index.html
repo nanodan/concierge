@@ -208,6 +208,10 @@
           </button>
           <span id="file-panel-path" class="file-panel-path">.</span>
           <input type="text" id="file-search-input" class="file-search-input" placeholder="Search files..." autocomplete="off">
+          <button id="file-panel-upload-btn" class="file-panel-upload-btn" aria-label="Upload file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <input type="file" id="file-panel-file-input" multiple hidden>
         </div>
         <div id="file-tree" class="file-tree"></div>
       </div>
@@ -437,8 +441,14 @@
     <div class="modal file-browser-modal">
       <div class="file-browser-header">
         <h2>Files</h2>
-        <button id="file-browser-close" class="file-browser-close" aria-label="Close">&times;</button>
+        <div class="file-browser-header-actions">
+          <button id="file-browser-upload-btn" class="file-browser-upload-btn" aria-label="Upload file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <button id="file-browser-close" class="file-browser-close" aria-label="Close">&times;</button>
+        </div>
       </div>
+      <input type="file" id="file-browser-file-input" multiple hidden>
       <div class="file-browser-path">
         <button id="file-browser-up" class="file-browser-up" aria-label="Parent directory">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>

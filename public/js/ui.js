@@ -88,6 +88,8 @@ let fileBrowserClose = null;
 let fileBrowserUp = null;
 let fileBrowserCurrentPath = null;
 let fileBrowserList = null;
+let fileBrowserUploadBtn = null;
+let fileBrowserFileInput = null;
 let generalFilesBtn = null;
 let capabilitiesBtn = null;
 let capabilitiesModal = null;
@@ -186,6 +188,8 @@ export function initUI(elements) {
   fileBrowserUp = elements.fileBrowserUp;
   fileBrowserCurrentPath = elements.fileBrowserCurrentPath;
   fileBrowserList = elements.fileBrowserList;
+  fileBrowserUploadBtn = elements.fileBrowserUploadBtn;
+  fileBrowserFileInput = elements.fileBrowserFileInput;
   generalFilesBtn = elements.generalFilesBtn;
   capabilitiesBtn = document.getElementById('capabilities-btn');
   capabilitiesModal = document.getElementById('capabilities-modal');
@@ -705,6 +709,32 @@ async function browseFilesGeneral(targetPath) {
   renderFileBrowserEntries(data.entries, (filePath) => {
     return `/api/files/download?path=${encodeURIComponent(filePath)}`;
   }, browseFilesGeneral);
+}
+
+// Upload files to current file browser directory
+async function uploadToFileBrowser(files) {
+  for (const file of files) {
+    let url;
+    if (fileBrowserMode === 'conversation' && currentFileBrowserConvId) {
+      // Upload to conversation attachments
+      url = `/api/conversations/${currentFileBrowserConvId}/upload?filename=${encodeURIComponent(file.name)}`;
+    } else {
+      // Upload to general filesystem
+      const currentPath = currentFileBrowserPath || '';
+      url = `/api/files/upload?path=${encodeURIComponent(currentPath)}&filename=${encodeURIComponent(file.name)}`;
+    }
+
+    const resp = await apiFetch(url, { method: 'POST', body: file });
+    if (!resp) continue;
+    showToast(`Uploaded ${file.name}`);
+  }
+
+  // Refresh file list
+  if (fileBrowserMode === 'conversation') {
+    browseFiles(currentFileBrowserPath);
+  } else {
+    browseFilesGeneral(currentFileBrowserPath);
+  }
 }
 
 // --- Capabilities Modal ---
@@ -1608,6 +1638,43 @@ export function setupEventListeners(createConversation) {
           const parent = currentFileBrowserPath.replace(/\/[^/]+$/, '') || '/';
           browseFilesGeneral(parent);
         }
+      }
+    });
+  }
+
+  // File browser upload button
+  if (fileBrowserUploadBtn) {
+    fileBrowserUploadBtn.addEventListener('click', () => {
+      if (fileBrowserFileInput) fileBrowserFileInput.click();
+    });
+  }
+
+  if (fileBrowserFileInput) {
+    fileBrowserFileInput.addEventListener('change', () => {
+      if (fileBrowserFileInput.files.length) {
+        uploadToFileBrowser(fileBrowserFileInput.files);
+        fileBrowserFileInput.value = '';
+      }
+    });
+  }
+
+  // Drag-and-drop for file browser
+  if (fileBrowserModal) {
+    fileBrowserModal.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      fileBrowserModal.classList.add('drag-over');
+    });
+    fileBrowserModal.addEventListener('dragleave', (e) => {
+      // Only remove class if leaving the modal entirely
+      if (!fileBrowserModal.contains(e.relatedTarget)) {
+        fileBrowserModal.classList.remove('drag-over');
+      }
+    });
+    fileBrowserModal.addEventListener('drop', (e) => {
+      e.preventDefault();
+      fileBrowserModal.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) {
+        uploadToFileBrowser(e.dataTransfer.files);
       }
     });
   }

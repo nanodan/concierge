@@ -30,9 +30,9 @@ Organized by category. Each file contains individual items with priority, effort
 | File | Open Items | Focus |
 |------|------------|-------|
 | [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
-| [ux-features.md](ux-features.md) | 11 | Templates, tags, search, timestamps, lightbox |
+| [ux-features.md](ux-features.md) | 9 | Search, export, code blocks, starred messages |
 | [architecture.md](architecture.md) | 1 | localStorage versioning |
-| [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
+| [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
 | [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share, create new file |
@@ -40,9 +40,9 @@ Organized by category. Each file contains individual items with priority, effort
 ## Priority Guide
 
 **High priority** — items that noticeably improve daily usage or address real pain points:
-- Prompt templates (ux)
-- Conversation tags/favorites (ux)
-- Authentication (security, if used remotely)
+- File upload to browser (file-browser)
+- Search within conversation (ux)
+- Text file editing (file-browser)
 
 **Quick wins** — low effort, meaningful improvement:
 - Accent color customization (ux)

@@ -1,24 +1,5 @@
 # Security TODOs
 
-## Add authentication layer
-**Priority:** High (if used remotely)
-**Effort:** Medium
-
-No auth at all. Anyone with network access can read/write all conversations.
-
-**Approach:**
-- Simple token-based auth: generate a random token on first run, store in a config file
-- Require `Authorization: Bearer <token>` on all API requests
-- WebSocket auth: send token in first message or as query param on upgrade
-- Display the token in server startup logs for the user to copy
-- Optional: password-based login page that issues a session cookie
-
-**Files:** `server.js` (middleware), `public/js/utils.js` (apiFetch wrapper)
-
-**Note:** Only needed for remote/multi-user. Local-only usage behind a firewall is fine without.
-
----
-
 ## Add rate limiting
 **Priority:** Medium
 **Effort:** Low
@@ -66,32 +47,3 @@ Hand-rolled markdown parser uses `escapeHtml()` everywhere, but complex edge cas
 
 **Files:** `public/js/markdown.js`, `public/js/render.js` (renderMarkdown calls)
 
----
-
-## Scope search to authenticated user
-**Priority:** Low (only matters with auth)
-**Effort:** Low
-
-Search endpoint returns results from all conversations. If multi-user auth is added, search must filter by user.
-
-**Approach:**
-- Once auth exists, add user context to search
-- Filter conversation list by owner before searching messages
-
-**Files:** `lib/routes.js` (search endpoint)
-
----
-
-## CSRF protection for REST endpoints
-**Priority:** Low
-**Effort:** Low
-
-REST endpoints have no CSRF tokens. Not exploitable in single-user local mode, but matters if auth is added.
-
-**Approach:**
-- Generate CSRF token per session
-- Include in a meta tag, send as header on all fetch requests
-- Validate server-side on state-changing endpoints (POST, PATCH, DELETE)
-- Or use `SameSite=Strict` cookies if switching to cookie-based auth
-
-**Files:** `server.js` (middleware), `public/js/utils.js` (apiFetch wrapper), `public/index.html` (meta tag)

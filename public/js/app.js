@@ -88,6 +88,8 @@ const fileBrowserClose = document.getElementById('file-browser-close');
 const fileBrowserUp = document.getElementById('file-browser-up');
 const fileBrowserCurrentPath = document.getElementById('file-browser-current-path');
 const fileBrowserList = document.getElementById('file-browser-list');
+const fileBrowserUploadBtn = document.getElementById('file-browser-upload-btn');
+const fileBrowserFileInput = document.getElementById('file-browser-file-input');
 const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
@@ -97,6 +99,8 @@ const filePanelClose = document.getElementById('file-panel-close');
 const filePanelUp = document.getElementById('file-panel-up');
 const filePanelPath = document.getElementById('file-panel-path');
 const fileSearchInput = document.getElementById('file-search-input');
+const filePanelUploadBtn = document.getElementById('file-panel-upload-btn');
+const filePanelFileInput = document.getElementById('file-panel-file-input');
 const filePanelTree = document.getElementById('file-tree');
 const filePanelViewer = document.getElementById('file-viewer');
 const fileViewerName = document.getElementById('file-viewer-name');
@@ -265,6 +269,8 @@ initUI({
   fileBrowserUp,
   fileBrowserCurrentPath,
   fileBrowserList,
+  fileBrowserUploadBtn,
+  fileBrowserFileInput,
   generalFilesBtn,
   conversationList,
   pullIndicator,
@@ -285,6 +291,8 @@ initFilePanel({
   filePanelUp,
   filePanelPath,
   fileSearchInput,
+  filePanelUploadBtn,
+  filePanelFileInput,
   fileTree: filePanelTree,
   fileViewer: filePanelViewer,
   fileViewerName,

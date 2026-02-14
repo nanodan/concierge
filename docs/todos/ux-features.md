@@ -14,38 +14,6 @@
 
 ---
 
-## Prompt templates / quick-send library
-**Priority:** High
-**Effort:** Medium
-
-Save and reuse frequently-used prompts. Big time-saver for repetitive workflows.
-
-**Approach:**
-- Store templates in localStorage or as a server-side JSON file
-- UI: button near the message input to open a template picker
-- Support variables/placeholders (e.g. `{{filename}}`) that prompt before sending
-- Allow creating templates from sent messages (long-press → "Save as template")
-
-**Files:** `public/js/ui.js` (new UI), `public/index.html` (modal), `public/css/components.css`, optionally `server.js` (if server-stored)
-
----
-
-## Conversation tags and favorites
-**Priority:** High
-**Effort:** Medium
-
-Star or tag conversations for quick access. Scope-based grouping alone isn't enough for heavy users.
-
-**Approach:**
-- Add `tags: string[]` and `starred: boolean` fields to conversation metadata
-- Filter/sort by tags in the conversation list
-- UI: star icon on conversation cards, tag editor in long-press menu
-- Add tag filter chips above the conversation list
-
-**Files:** `lib/routes.js` (conversation model, PATCH endpoint), `public/js/conversations.js` (renderConversationList, filters), `public/css/list.css`
-
----
-
 ## ~~Batch operations on conversation list~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium

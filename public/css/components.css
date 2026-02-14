@@ -1384,6 +1384,41 @@
   font-weight: 600;
 }
 
+.file-browser-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.file-browser-upload-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+}
+
+.file-browser-upload-btn:hover {
+  opacity: 0.9;
+}
+
+.file-browser-upload-btn:active {
+  opacity: 0.8;
+}
+
+.file-browser-modal.drag-over {
+  background: var(--accent-muted, rgba(var(--accent-rgb, 99, 102, 241), 0.1));
+}
+
+.file-browser-modal.drag-over .file-browser-list {
+  pointer-events: none;
+}
+
 .file-browser-close {
   background: none;
   border: none;

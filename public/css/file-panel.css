@@ -1521,6 +1521,38 @@
   color: var(--text-tertiary);
 }
 
+/* Upload button */
+.file-panel-upload-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.file-panel-upload-btn:hover {
+  opacity: 0.9;
+}
+
+.file-panel-upload-btn:active {
+  opacity: 0.8;
+}
+
+/* Drag-and-drop state */
+.files-view.drag-over {
+  background: var(--accent-muted, rgba(var(--accent-rgb, 99, 102, 241), 0.1));
+}
+
+.files-view.drag-over .file-tree {
+  pointer-events: none;
+}
+
 /* Search results */
 .search-result-item {
   padding: 8px 12px;
