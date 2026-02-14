@@ -719,6 +719,70 @@
   opacity: 0.85;
 }
 
+.dialog-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: 12px;
+}
+
+.dialog-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.dialog-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.scope-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.scope-option:hover {
+  background: var(--surface);
+}
+
+.scope-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-alpha-10);
+}
+
+.scope-option input[type="radio"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.scope-option span:first-of-type {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.scope-desc {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 /* Overlay/modal keyframes */
 @keyframes overlay-fade-in {
   from { opacity: 0; }

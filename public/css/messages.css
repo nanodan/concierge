@@ -18,6 +18,7 @@
   line-height: 1.5;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  -webkit-touch-callout: none; /* Prevent iOS callout on long-press */
 }
 
 .message.user {

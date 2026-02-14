@@ -410,6 +410,8 @@ export function attachMessageActions() {
 setAttachMessageActionsCallback(attachMessageActions);
 
 function showMsgActionPopup(x, y, el, index, isUser) {
+  // Clear any text selection from long-press
+  window.getSelection()?.removeAllRanges();
   msgActionPopup.innerHTML = '';
 
   if (isUser) {
@@ -443,18 +445,16 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   });
   msgActionPopup.appendChild(reactBtn);
 
-  // Remember button (for assistant messages)
-  if (!isUser) {
-    const rememberBtn = document.createElement('button');
-    rememberBtn.className = 'action-popup-btn';
-    rememberBtn.textContent = 'Remember';
-    rememberBtn.addEventListener('click', () => {
-      haptic(10);
-      hideMsgActionPopup();
-      rememberMessage(el, index);
-    });
-    msgActionPopup.appendChild(rememberBtn);
-  }
+  // Remember button (for all messages)
+  const rememberBtn = document.createElement('button');
+  rememberBtn.className = 'action-popup-btn';
+  rememberBtn.textContent = 'Remember';
+  rememberBtn.addEventListener('click', () => {
+    haptic(10);
+    hideMsgActionPopup();
+    rememberMessage(el, index);
+  });
+  msgActionPopup.appendChild(rememberBtn);
 
   // Fork from here
   const forkBtn = document.createElement('button');
@@ -1859,40 +1859,91 @@ async function rememberMessage(el, _index) {
   const maxLen = 500;
   const memoryText = text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
 
-  // Ask user for the memory text (pre-filled with message snippet)
-  const finalText = await showDialog({
-    title: 'Save as Memory',
-    input: true,
-    placeholder: 'Memory text',
-    confirmLabel: 'Save',
-    defaultValue: memoryText,
-  });
-
-  if (!finalText || !finalText.trim()) return;
-
-  // Get scope (project cwd or global)
+  // Get scope options
   const currentId = state.getCurrentConversationId();
   const conv = state.conversations.find(c => c.id === currentId);
   const cwd = conv?.cwd || null;
 
-  let scope = 'global';
-  if (cwd) {
-    // Default to project-specific since we're in a conversation
-    const useGlobal = await showDialog({
-      title: 'Memory Scope',
-      message: `Save to this project only, or make it global?`,
-      confirmLabel: 'Project only (Recommended)',
-      cancelLabel: 'Global',
-    });
-    scope = useGlobal ? cwd : 'global';
-  }
+  // Show combined dialog with text input and scope selection
+  const result = await showRememberDialog(memoryText, cwd);
+  if (!result) return;
 
   const source = { conversationId: currentId };
-  const memory = await createMemory(finalText.trim(), scope, null, source);
+  const memory = await createMemory(result.text.trim(), result.scope, null, source);
   if (memory) {
     state.addMemory(memory);
-    showToast(scope === 'global' ? 'Global memory saved' : 'Project memory saved');
+    showToast(result.scope === 'global' ? 'Global memory saved' : 'Project memory saved');
   }
+}
+
+// Combined dialog for remember with text + scope
+function showRememberDialog(defaultText, cwd) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'dialog';
+    dialog.innerHTML = `
+      <div class="dialog-title">Save as Memory</div>
+      <textarea class="dialog-textarea" rows="3" placeholder="Memory text">${defaultText}</textarea>
+      <div class="dialog-scope">
+        <label class="scope-option">
+          <input type="radio" name="memory-scope" value="global" ${!cwd ? 'checked' : ''}>
+          <span>Global</span>
+          <span class="scope-desc">Applies to all conversations</span>
+        </label>
+        ${cwd ? `
+        <label class="scope-option">
+          <input type="radio" name="memory-scope" value="project" checked>
+          <span>This project</span>
+          <span class="scope-desc">${cwd.split('/').pop() || cwd}</span>
+        </label>
+        ` : ''}
+      </div>
+      <div class="dialog-actions">
+        <button class="btn-secondary" data-action="cancel">Cancel</button>
+        <button class="btn-primary" data-action="save">Save</button>
+      </div>
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const textarea = dialog.querySelector('.dialog-textarea');
+    textarea.focus();
+    textarea.select();
+
+    function cleanup() {
+      overlay.remove();
+    }
+
+    function onSave() {
+      const text = textarea.value.trim();
+      if (!text) {
+        cleanup();
+        resolve(null);
+        return;
+      }
+      const scopeInput = dialog.querySelector('input[name="memory-scope"]:checked');
+      const scope = scopeInput?.value === 'project' ? cwd : 'global';
+      cleanup();
+      resolve({ text, scope });
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(null);
+    }
+
+    dialog.querySelector('[data-action="save"]').addEventListener('click', onSave);
+    dialog.querySelector('[data-action="cancel"]').addEventListener('click', onCancel);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) onCancel(); });
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onSave(); }
+      if (e.key === 'Escape') onCancel();
+    });
+  });
 }
 
 // --- Memory toggle in chat header ---
