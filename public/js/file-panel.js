@@ -611,14 +611,26 @@ export async function viewFile(filePath) {
       return;
     }
 
-    // Render content with syntax highlighting
+    const fileUrl = `/api/conversations/${convId}/files/download?path=${encodeURIComponent(filePath)}&inline=true`;
+
+    // Render content with syntax highlighting + button to open in new tab
     const langClass = data.language ? `language-${data.language}` : '';
-    fileViewerContent.innerHTML = `<code class="${langClass}">${escapeHtml(data.content)}</code>`;
+    fileViewerContent.innerHTML = `
+      <code class="${langClass}">${escapeHtml(data.content)}</code>
+      <button class="file-viewer-open-tab-btn" title="Open in new tab">
+        ${ICONS.openExternal}
+      </button>`;
 
     // Apply syntax highlighting
     const codeEl = fileViewerContent.querySelector('code');
     if (window.hljs && data.language && !codeEl.dataset.highlighted) {
       hljs.highlightElement(codeEl);
+    }
+
+    // Attach click handler for open in tab button
+    const openBtn = fileViewerContent.querySelector('.file-viewer-open-tab-btn');
+    if (openBtn) {
+      openBtn.addEventListener('click', () => window.open(fileUrl, '_blank'));
     }
 }
 

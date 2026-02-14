@@ -485,14 +485,36 @@
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.file-viewer-fullsize-btn:hover {
+.file-viewer-fullsize-btn:hover,
+.file-viewer-open-tab-btn:hover {
   background: var(--hover-bg);
   color: var(--text);
 }
 
-.file-viewer-fullsize-btn svg {
+.file-viewer-fullsize-btn svg,
+.file-viewer-open-tab-btn svg {
   width: 18px;
   height: 18px;
+}
+
+/* Open in new tab button (for text files) */
+.file-viewer-open-tab-btn {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 2px 8px rgba(0, 0, 0, 0.15));
+  transition: background var(--transition-fast), color var(--transition-fast);
+  z-index: 10;
 }
 
 /* Dragging state */
