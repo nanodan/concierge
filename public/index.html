@@ -128,6 +128,11 @@
         <button id="capabilities-btn" class="capabilities-btn" aria-label="View commands" title="Commands &amp; Skills">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
         </button>
+        <button id="memory-btn" class="memory-indicator active" aria-label="Toggle memory" title="Memory">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
       </div>
       <button id="new-chat-here-btn" class="header-icon-btn hide-mobile" aria-label="New chat in this folder" title="New chat in this folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -277,6 +282,15 @@
     <div id="branches-content" class="branches-content"></div>
   </div>
 
+  <!-- Memory View -->
+  <div id="memory-view" class="view">
+    <header class="top-bar chat-header">
+      <button id="memory-back-btn" class="back-btn" aria-label="Back">&larr;</button>
+      <div class="chat-title"><span>Memory</span></div>
+    </header>
+    <div id="memory-content" class="memory-content"></div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
   </div><!-- /views-container -->
 
@@ -391,6 +405,14 @@
     <div class="more-menu-item mobile-only" id="more-files">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       <span>Browse Files</span>
+    </div>
+    <div class="more-menu-item" id="more-memory">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a4 4 0 0 1 4 4v4a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+        <path d="M8 14v2a4 4 0 0 0 8 0v-2"/>
+        <circle cx="12" cy="20" r="2"/>
+      </svg>
+      <span>Memory</span>
     </div>
     <div class="more-menu-item mobile-only" id="more-archive">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>

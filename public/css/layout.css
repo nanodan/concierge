@@ -373,6 +373,17 @@
   pointer-events: auto;
 }
 
+#memory-view {
+  transform: translateX(100%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+#memory-view.slide-in {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
 /* Stats page */
 .stats-content {
   flex: 1;

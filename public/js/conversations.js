@@ -586,6 +586,7 @@ export async function openConversation(id) {
   const ui = await import('./ui.js');
   ui.updateModelBadge(state.getCurrentModel());
   ui.updateModeBadge(state.getCurrentAutopilot());
+  ui.updateMemoryIndicator(conv.useMemory);
 
   renderMessages(conv.messages);
   showChatView();

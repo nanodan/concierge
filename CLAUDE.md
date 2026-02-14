@@ -112,6 +112,8 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each 
 - `data/index.json` — conversation metadata (loaded at startup, always in memory)
 - `data/conv/{id}.json` — messages per conversation (lazy-loaded via `ensureMessages()`)
 - `data/uploads/{id}/` — uploaded file attachments per conversation
+- `data/memory/global.json` — global memories (apply to all conversations)
+- `data/memory/{scope-hash}.json` — project-scoped memories (hash of cwd path)
 - Atomic writes: all saves go through `atomicWrite()` (write to .tmp, rename to target)
 
 ### HTTPS
@@ -136,6 +138,7 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - **Safe areas**: iOS safe area insets handled via `env(safe-area-inset-*)` CSS variables.
 - **View transitions**: Three views (list, chat, stats) swap via CSS transform + opacity animations with `slide-out`/`slide-in` classes.
 - **Keyboard shortcuts**: Cmd+K (search), Cmd+N (new chat), Cmd+E (export), Cmd+Shift+A (toggle archived), Escape (back/close).
+- **Memory system**: Persistent memories across conversations. Scoped globally or per-project (cwd). Memories injected via `--append-system-prompt`. Toggle per-conversation via brain icon in chat header. "Remember" option in message context menu to save snippets. Memory view accessible from more menu.
 
 ## REST API
 
@@ -148,6 +151,10 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - `GET /api/conversations/:id/export?format=markdown|json` — export conversation
 - `POST /api/conversations/:id/upload` — upload file attachment (raw body, X-Filename header)
 - `POST /api/conversations/:id/fork` — fork conversation from message index
+- `GET /api/memory?scope=` — list memories (global + project-scoped)
+- `POST /api/memory` — create memory `{ text, scope, category? }`
+- `PATCH /api/memory/:id` — update memory (toggle enabled, edit text)
+- `DELETE /api/memory/:id?scope=` — delete memory
 
 ## WebSocket Events
 

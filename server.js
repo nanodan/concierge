@@ -15,6 +15,7 @@ const {
   saveConversation,
   loadFromDisk,
   ensureMessages,
+  loadMemories,
 } = require('./lib/data');
 const {
   spawnClaude,
@@ -116,10 +117,16 @@ async function handleMessage(ws, msg) {
   await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
+  // Load memories if enabled for this conversation
+  let memories = [];
+  if (conv.useMemory !== false) {
+    memories = await loadMemories(conv.cwd);
+  }
+
   spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
-  });
+  }, memories);
 }
 
 async function handleRegenerate(ws, msg) {
@@ -152,10 +159,16 @@ async function handleRegenerate(ws, msg) {
   await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
+  // Load memories if enabled for this conversation
+  let memories = [];
+  if (conv.useMemory !== false) {
+    memories = await loadMemories(conv.cwd);
+  }
+
   spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
-  });
+  }, memories);
 }
 
 async function handleEdit(ws, msg) {
@@ -218,12 +231,18 @@ async function handleEdit(ws, msg) {
 
   broadcastStatus(newId, 'thinking');
 
+  // Load memories if enabled for this conversation
+  let memories = [];
+  if (forkedConv.useMemory !== false) {
+    memories = await loadMemories(forkedConv.cwd);
+  }
+
   // Send the edited message in the forked conversation
   const userMsg = messages[messageIndex];
   spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
-  });
+  }, memories);
 }
 
 function broadcastStatus(conversationId, status) {

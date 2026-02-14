@@ -5,6 +5,10 @@
 export let conversations = [];
 export let currentConversationId = null;
 
+// Memory system
+export let memoryEnabled = localStorage.getItem('memoryEnabled') !== 'false'; // Global toggle
+export let memories = []; // Current project's memories
+
 // Models
 export let models = [];
 export let currentModel = 'sonnet';
@@ -588,4 +592,38 @@ export function resetStreamingState() {
   isStreaming = false;
   allMessages = [];
   messagesOffset = 0;
+}
+
+// --- Memory state ---
+
+export function setMemoryEnabled(enabled) {
+  memoryEnabled = enabled;
+  localStorage.setItem('memoryEnabled', enabled ? 'true' : 'false');
+}
+
+export function getMemoryEnabled() {
+  return memoryEnabled;
+}
+
+export function setMemories(mems) {
+  memories = mems;
+}
+
+export function getMemories() {
+  return memories;
+}
+
+export function addMemory(memory) {
+  memories.push(memory);
+}
+
+export function updateMemory(id, updates) {
+  const idx = memories.findIndex(m => m.id === id);
+  if (idx >= 0) {
+    memories[idx] = { ...memories[idx], ...updates };
+  }
+}
+
+export function removeMemory(id) {
+  memories = memories.filter(m => m.id !== id);
 }
