@@ -16,16 +16,17 @@ Claude Remote Chat is a three-tier PWA: a Node.js backend spawns Claude CLI proc
                                    │   data/    │
                                    │ index.json │
                                    │ conv/*.json│
+                                   │ memory/*.json│
                                    └───────────┘
 ```
 
 ## Backend (`server.js` + `lib/*.js`)
 
 The backend is split into modules:
-- `server.js` (~226 lines) — Entry point, Express/WS setup, WebSocket message handlers
-- `lib/routes.js` (~364 lines) — REST API endpoints
-- `lib/claude.js` (~240 lines) — Claude CLI process spawning and stream parsing
-- `lib/data.js` (~170 lines) — Data storage, atomic writes, lazy loading
+- `server.js` (~270 lines) — Entry point, Express/WS setup, WebSocket message handlers
+- `lib/routes.js` (~1860 lines) — REST API endpoints including git integration, file browser, capabilities, memory
+- `lib/claude.js` (~435 lines) — Claude CLI process spawning, stream parsing, memory injection
+- `lib/data.js` (~275 lines) — Data storage, atomic writes, lazy loading, memory persistence
 
 ### Server Startup
 
@@ -51,12 +52,13 @@ claude -p "{text}" --output-format stream-json --verbose \
   [--dangerously-skip-permissions] \
   [--resume {sessionId}] \
   [--add-dir {cwd}] \
-  [--add-image {path}]  # for image attachments (repeatable)
+  [--append-system-prompt {memories}]  # injected if memory enabled
 ```
 
 **Lifecycle:**
 - Process starts → server sends `status: "thinking"` to client
 - stdout emits JSON lines → server parses and forwards as `delta` events
+- Tool calls → server sends `tool_start` and `tool_result` events
 - Process exits → server sends `result` event with cost/duration/tokens, then `status: "idle"`
 - Timeout: 5 minutes (`PROCESS_TIMEOUT`) per message
 
@@ -65,10 +67,15 @@ claude -p "{text}" --output-format stream-json --verbose \
 
 ### Stream Event Processing
 
-Claude CLI outputs newline-delimited JSON. Two event types matter:
+Claude CLI outputs newline-delimited JSON. Key event types:
 
 1. **`stream_event`** with nested `content_block_delta` → extract `text_delta.text` → send as `delta`
-2. **`result`** → extract `costUSD`, `durationMs`, `sessionId`, token counts → send as `result`
+2. **`stream_event`** with `thinking_delta` → send as `thinking` event
+3. **`content_block_start`** with `tool_use` → send as `tool_start` event
+4. **`user`** with `tool_result` → send as `tool_result` event
+5. **`result`** → extract `costUSD`, `durationMs`, `sessionId`, token counts → send as `result`
+
+Tool calls are accumulated separately and wrapped in a `:::trace` block in the final message.
 
 A buffer handles partial JSON lines that span multiple stdout chunks.
 
@@ -78,6 +85,8 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 - `data/index.json` holds lightweight metadata for all conversations (loaded at startup)
 - `data/conv/{id}.json` holds full message arrays (loaded on demand via `ensureMessages()`)
 - `data/uploads/{id}/` holds uploaded file attachments per conversation (cleaned up on delete)
+- `data/memory/global.json` holds global memories (apply to all conversations)
+- `data/memory/{scope-hash}.json` holds project-scoped memories (SHA-256 hash of cwd path)
 - Messages are set to `null` after saving to allow garbage collection
 
 **Atomic Writes:**
@@ -88,8 +97,9 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 ```javascript
 {
   id, name, cwd, claudeSessionId, status,
-  archived, pinned, autopilot, model, createdAt,
-  messageCount, lastMessage: { role, text, timestamp, cost, duration, sessionId }
+  archived, pinned, autopilot, useMemory, model, createdAt,
+  messageCount, parentId, forkIndex,
+  lastMessage: { role, text, timestamp, cost, duration, sessionId }
 }
 ```
 
@@ -102,6 +112,14 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 { role: 'assistant', text, timestamp, cost, duration, sessionId, inputTokens, outputTokens }
 ```
 
+**Memory** (stored globally or per-project):
+```javascript
+{
+  id, text, scope, // 'global' or cwd path
+  category, enabled, source, createdAt
+}
+```
+
 ### REST API
 
 | Method | Endpoint | Description |
@@ -109,16 +127,57 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `GET` | `/api/conversations` | List conversations. Query: `?archived=true` |
 | `POST` | `/api/conversations` | Create conversation. Body: `{ name, cwd, autopilot, model }` |
 | `GET` | `/api/conversations/:id` | Get conversation with messages |
-| `PATCH` | `/api/conversations/:id` | Update fields (archive, name, model, autopilot, pinned) |
+| `PATCH` | `/api/conversations/:id` | Update fields (archive, name, model, autopilot, pinned, useMemory) |
 | `DELETE` | `/api/conversations/:id` | Delete conversation and message file |
 | `GET` | `/api/conversations/search` | Search. Query: `?q=term&dateFrom=ISO&dateTo=ISO&model=id` |
+| `GET` | `/api/conversations/:id/tree` | Get conversation branch tree (ancestors + descendants) |
 | `GET` | `/api/models` | List available Claude models |
-| `GET` | `/api/browse` | Directory listing. Query: `?path=/some/dir` |
+| `GET` | `/api/browse` | Directory listing (for cwd picker). Query: `?path=/some/dir` |
+| `GET` | `/api/files` | General file browser. Query: `?path=/some/dir` |
+| `GET` | `/api/files/download` | Download file. Query: `?path=/file&inline=true` |
+| `POST` | `/api/files/upload` | Upload file. Query: `?path=/dir&filename=name` |
 | `POST` | `/api/mkdir` | Create directory. Body: `{ path }` |
 | `GET` | `/api/stats` | Aggregate stats across all conversations (cached 30s) |
 | `GET` | `/api/conversations/:id/export` | Export conversation. Query: `?format=markdown\|json` |
-| `POST` | `/api/conversations/:id/upload` | Upload file attachment (raw body, `X-Filename` header) |
+| `POST` | `/api/conversations/:id/upload` | Upload attachment (raw body, `X-Filename` header) |
 | `POST` | `/api/conversations/:id/fork` | Fork conversation from message index. Body: `{ fromMessageIndex }` |
+| `GET` | `/api/conversations/:id/files` | List files in conversation cwd. Query: `?path=subdir` |
+| `GET` | `/api/conversations/:id/files/content` | Get file content as JSON. Query: `?path=file` |
+| `GET` | `/api/conversations/:id/files/search` | Git grep search. Query: `?q=pattern` |
+| `GET` | `/api/conversations/:id/files/download` | Download file from cwd. Query: `?path=file` |
+| `GET` | `/api/capabilities` | List skills/commands/agents. Query: `?cwd=/path` |
+| `GET` | `/api/memory` | List memories. Query: `?scope=cwd` |
+| `POST` | `/api/memory` | Create memory. Body: `{ text, scope, category?, source? }` |
+| `PATCH` | `/api/memory/:id` | Update memory. Body: `{ enabled?, text?, category?, scope }` |
+| `DELETE` | `/api/memory/:id` | Delete memory. Query: `?scope=...` |
+
+#### Git Integration Endpoints
+
+All git endpoints operate on the conversation's working directory:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/conversations/:id/git/status` | Get git status (branch, staged, unstaged, untracked, ahead/behind) |
+| `GET` | `/api/conversations/:id/git/branches` | List local and remote branches |
+| `POST` | `/api/conversations/:id/git/diff` | Get diff for file. Body: `{ path, staged }` |
+| `POST` | `/api/conversations/:id/git/stage` | Stage files. Body: `{ paths: [...] }` |
+| `POST` | `/api/conversations/:id/git/unstage` | Unstage files. Body: `{ paths: [...] }` |
+| `POST` | `/api/conversations/:id/git/discard` | Discard changes. Body: `{ paths: [...] }` |
+| `POST` | `/api/conversations/:id/git/commit` | Create commit. Body: `{ message }` |
+| `POST` | `/api/conversations/:id/git/branch` | Create branch. Body: `{ name, checkout? }` |
+| `POST` | `/api/conversations/:id/git/checkout` | Checkout branch. Body: `{ branch }` |
+| `POST` | `/api/conversations/:id/git/push` | Push to remote |
+| `POST` | `/api/conversations/:id/git/pull` | Pull from remote |
+| `GET` | `/api/conversations/:id/git/stash` | List stashes |
+| `POST` | `/api/conversations/:id/git/stash` | Create stash. Body: `{ message? }` |
+| `POST` | `/api/conversations/:id/git/stash/pop` | Pop stash. Body: `{ index }` |
+| `POST` | `/api/conversations/:id/git/stash/apply` | Apply stash. Body: `{ index }` |
+| `POST` | `/api/conversations/:id/git/stash/drop` | Drop stash. Body: `{ index }` |
+| `GET` | `/api/conversations/:id/git/commits` | Get recent commits |
+| `GET` | `/api/conversations/:id/git/commits/:hash` | Get single commit diff |
+| `POST` | `/api/conversations/:id/git/revert` | Revert commit. Body: `{ hash }` |
+| `POST` | `/api/conversations/:id/git/reset` | Reset to commit. Body: `{ hash, mode: soft\|mixed\|hard }` |
+| `POST` | `/api/conversations/:id/git/undo-commit` | Undo last commit (soft reset HEAD~1) |
 
 ### WebSocket Protocol
 
@@ -129,28 +188,29 @@ A buffer handles partial JSON lines that span multiple stdout chunks.
 | `message` | `conversationId`, `text`, `attachments?` | Send user message, spawns Claude process |
 | `cancel` | `conversationId` | Kill active process |
 | `regenerate` | `conversationId` | Re-generate last assistant response (resets session) |
-| `edit` | `conversationId`, `messageIndex`, `text` | Edit user message at index, truncate & re-send |
+| `edit` | `conversationId`, `messageIndex`, `text` | Edit message, auto-forks conversation |
 
 **Server → Client:**
 
 | Type | Fields | Description |
 |------|--------|-------------|
 | `delta` | `conversationId`, `text` | Streaming text chunk |
+| `thinking` | `conversationId`, `text` | Extended thinking output |
+| `tool_start` | `conversationId`, `tool`, `id?` | Tool execution started |
+| `tool_result` | `conversationId`, `toolUseId`, `isError` | Tool execution completed |
 | `result` | `conversationId`, `text`, `cost`, `duration`, `sessionId`, `inputTokens`, `outputTokens` | Final complete response |
 | `status` | `conversationId`, `status` | `"thinking"` or `"idle"` |
 | `error` | `conversationId`, `error` | Error message |
 | `stderr` | `conversationId`, `text` | Claude CLI stderr output |
-| `messages_updated` | `conversationId`, `messages` | Full message array after edit (triggers re-render) |
+| `edit_forked` | `originalConversationId`, `conversationId`, `conversation` | Edit created a fork, switch to it |
 
 ### Model Configuration
 
 ```javascript
 MODELS = [
   { id: 'opus', name: 'Opus 4.6', context: 200000 },
-  { id: 'claude-opus-4-20250514', name: 'Opus 4', context: 200000 },
+  { id: 'claude-opus-4.5', name: 'Opus 4.5', context: 200000 },
   { id: 'sonnet', name: 'Sonnet 4.5', context: 200000 },
-  { id: 'claude-sonnet-4-20250514', name: 'Sonnet 4', context: 200000 },
-  { id: 'haiku', name: 'Haiku 4.5', context: 200000 }
 ]
 ```
 
@@ -163,13 +223,15 @@ The frontend is split into ES modules for maintainability:
 ```
 public/js/
   app.js           - Entry point, module imports, initialization
-  state.js         - Shared mutable state, getters/setters
-  utils.js         - Helper functions (formatTime, haptic, toast, dialog)
+  state.js         - Shared mutable state, getters/setters, notifications
+  utils.js         - Helper functions (formatTime, haptic, toast, dialog, apiFetch)
   websocket.js     - WebSocket connection management
   render.js        - Message rendering, code blocks, TTS, reactions
   conversations.js - Conversation CRUD, list rendering, swipe/long-press
   ui.js            - UI interactions, event handlers, modals, theme, stats
   markdown.js      - Hand-rolled markdown parser
+  file-panel.js    - File browser panel, git status/commits, stash management
+  branches.js      - Conversation branch tree visualization
 ```
 
 ### State Management (`state.js`)
@@ -193,10 +255,14 @@ isRecording               // Voice recording state
 currentTTSBtn             // Active TTS button reference
 pendingAttachments[]      // Files queued for upload with next message
 currentTheme              // 'auto' | 'light' | 'dark'
+currentColorTheme         // 'darjeeling' | 'claude' | 'budapest' | 'moonrise' | 'aquatic'
+notificationsEnabled      // Desktop notification preference
 pendingMessages[]         // Messages queued while WS disconnected (localStorage-persisted)
 allMessages[]             // Full messages array for virtual scroll
 messagesOffset            // How many messages rendered from start
 collapsedScopes{}         // Which cwd scope groups are collapsed (localStorage-persisted)
+memoryEnabled             // Global memory toggle
+memories[]                // Current project's memories
 ```
 
 ### Module Dependencies
@@ -208,16 +274,20 @@ app.js (entry)
   ├── websocket.js ──► state.js, render.js, conversations.js
   ├── render.js ──► state.js, utils.js, markdown.js
   ├── conversations.js ──► state.js, utils.js, render.js
-  └── ui.js ──► state.js, utils.js, websocket.js, render.js, conversations.js
+  ├── ui.js ──► state.js, utils.js, websocket.js, render.js, conversations.js
+  ├── file-panel.js ──► state.js, utils.js, markdown.js
+  └── branches.js ──► state.js, utils.js, markdown.js
 ```
 
-### Three Views
+### Four Views
 
-The app has three mutually exclusive views, transitioned via CSS transforms:
+The app has four mutually exclusive views, transitioned via CSS transforms:
 
 1. **List View** (`#list-view`) - Conversation browser grouped by working directory (scope), with search, archive toggle, FAB
-2. **Chat View** (`#chat-view`) - Message list, input bar, header with controls
+2. **Chat View** (`#chat-view`) - Message list, input bar, header with controls, file panel
 3. **Stats View** (`#stats-view`) - Analytics dashboard
+4. **Branches View** (`#branches-view`) - Conversation branch tree visualization
+5. **Memory View** (`#memory-view`) - Memory management interface
 
 View transitions use `slide-out` / `slide-in` CSS classes with `transform` + `opacity` animations (350ms cubic-bezier).
 
@@ -225,7 +295,7 @@ View transitions use `slide-out` / `slide-in` CSS classes with `transform` + `op
 
 Three phases handle different rendering needs:
 
-1. **`renderMessages()`** - Full re-render when opening a conversation. Maps all messages to HTML, applies markdown, injects TTS/regenerate buttons, renders inline attachment thumbnails, attaches message action handlers (long-press/right-click for edit/copy).
+1. **`renderMessages()`** - Full re-render when opening a conversation. Maps all messages to HTML, applies markdown, injects TTS/regenerate buttons, renders inline attachment thumbnails, attaches message action handlers (long-press/right-click for edit/copy/fork).
 
 2. **`appendDelta(text)`** - Called on each streaming chunk. Buffers text in `pendingDelta` and schedules a `requestAnimationFrame` flush via `flushDelta()`. This throttles DOM updates to once per frame, eliminating jank on fast streams.
 
@@ -239,11 +309,12 @@ Hand-rolled parser (no library). Processing order matters:
 
 1. Escape HTML entities
 2. Extract code blocks to numbered placeholders (protects from regex)
-3. Apply inline formatting: code spans, bold, italic
-4. Apply block formatting: headers, horizontal rules, lists, links, paragraphs
-5. Convert line breaks
-6. Restore code blocks from placeholders
-7. Clean malformed tags
+3. Handle `:::trace` blocks (collapsible tool call sections)
+4. Apply inline formatting: code spans, bold, italic
+5. Apply block formatting: headers, horizontal rules, lists, links, paragraphs
+6. Convert line breaks
+7. Restore code blocks from placeholders
+8. Clean malformed tags
 
 Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay.
 
@@ -262,7 +333,7 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 
 **Long-press** (conversation cards):
 - 500ms timer triggers floating action popup
-- Shows Pin/Archive/Rename/Delete options
+- Shows Pin/Archive/Rename/Branches/Delete options
 - Positioned near the touch point
 
 **Bulk selection mode**:
@@ -273,9 +344,9 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 
 **Long-press / right-click** (message bubbles):
 - 500ms timer triggers message action popup
-- User messages: Edit and Copy options
-- Assistant messages: Copy option
-- Edit replaces bubble with inline textarea + Save/Cancel buttons
+- User messages: Edit, Copy, Fork options
+- Assistant messages: Copy, Remember (save to memory) options
+- Edit creates a fork instead of truncating
 
 **Desktop fallback:**
 - Right-click opens same context menu as long-press (both cards and messages)
@@ -288,7 +359,7 @@ Code blocks get syntax highlighting via highlight.js and a "Copy" button overlay
 | `Cmd/Ctrl+N` | New conversation |
 | `Cmd/Ctrl+E` | Export conversation |
 | `Cmd/Ctrl+Shift+A` | Toggle archived view |
-| `Escape` | Go back / close modal |
+| `Escape` | Go back / close modal / close panel |
 
 ### Voice Input
 
@@ -326,6 +397,31 @@ Fetches aggregated data from `/api/stats` and renders:
 - Hourly distribution bar chart
 - Top 5 conversations by message count
 
+### File Panel (Project Mode)
+
+Slide-in panel for file browsing and git operations:
+- **Files Tab**: Browse conversation cwd, search with git grep, view file content
+- **Changes Tab**: Git status, stage/unstage, commit, push/pull, stash management
+- **History Tab**: Commit history, view diffs, revert, reset, undo commit
+
+Mobile: slides up from bottom with snap points (30%, 60%, 90%)
+Desktop: slides in from right as a sidebar with resize handle
+
+### Conversation Branches
+
+Visual tree of forked conversations:
+- Triggered from long-press menu or branches button
+- SVG-based tree visualization with pan/zoom
+- Click nodes to navigate between forks
+- Shows fork point (message index) on edges
+
+### Desktop Notifications
+
+- Toggle in settings (more menu)
+- Shows when Claude completes a response while tab is hidden
+- Updates page title with checkmark when response completes
+- Requires HTTPS for Notification API on non-localhost
+
 ---
 
 ## Service Worker (`public/sw.js`)
@@ -334,14 +430,14 @@ Fetches aggregated data from `/api/stats` and renders:
 
 **Cached assets:**
 - `/`, `/index.html`, `/style.css`, `/manifest.json`, `/lib/highlight.min.js`
-- All ES modules in `/js/`: `app.js`, `state.js`, `utils.js`, `websocket.js`, `render.js`, `conversations.js`, `ui.js`, `markdown.js`
-- All CSS files in `/css/`: `base.css`, `layout.css`, `components.css`, `messages.css`, `list.css`
-- All color themes: `themes/darjeeling.css`, `themes/claude.css`, `themes/nord.css`, `themes/budapest.css`
+- All ES modules in `/js/`: `app.js`, `state.js`, `utils.js`, `websocket.js`, `render.js`, `conversations.js`, `ui.js`, `markdown.js`, `file-panel.js`, `branches.js`
+- All CSS files in `/css/`: `base.css`, `layout.css`, `components.css`, `messages.css`, `list.css`, `file-panel.css`, `branches.css`
+- All color themes: `themes/darjeeling.css`, `themes/claude.css`, `themes/budapest.css`, `themes/moonrise.css`, `themes/aquatic.css`
 
 **Cached API routes (network-first):**
 - `/api/conversations` — enables offline conversation list loading
 
-**Cache versioning:** `claude-chat-v32` - increment the version number to bust caches on deploy.
+**Cache versioning:** `claude-chat-v73` - increment the version number to bust caches on deploy.
 
 **Lifecycle:**
 1. `install` - Pre-cache all static assets
@@ -360,32 +456,47 @@ Fetches aggregated data from `/api/stats` and renders:
 ### DOM Structure
 ```
 #list-view
-  .top-bar (title, theme toggle, stats button, archive toggle)
+  .top-bar (select mode, files btn, stats btn, archive toggle, more menu)
   #search-bar (input + filter toggle)
   #filter-row (date chips, model dropdown) [collapsible]
   #conversation-list
   #fab (new conversation button)
+  #bulk-action-bar (cancel, count, select all, archive, delete)
 
 #action-popup (long-press/right-click menu for conversation cards)
 #msg-action-popup (long-press/right-click menu for messages)
 
 #chat-view
-  .top-bar (back, name, status dot, mode badge, model selector, export, delete)
+  .top-bar (back, name, status dot, mode badge, model selector, branches, memory, files, export, delete, more)
   #context-bar
   #reconnect-banner (shown when WS disconnected)
   #messages (with #load-more-btn for virtual scroll)
+  #chat-empty-state (shown when no messages)
+  #jump-to-bottom (scroll pill)
   #typing-indicator
   #attachment-preview (queued file thumbnails)
   .input-bar (attach, mic, textarea, send/cancel)
+  #file-panel (file browser + git + history)
 
 #stats-view
   .top-bar (back, title)
   #stats-content
 
+#branches-view
+  .top-bar (back, title)
+  #branches-content
+
+#memory-view
+  .top-bar (back, title)
+  #memory-content
+
 #new-conversation-modal
   (name, cwd browser, autopilot toggle, model select)
 
 #dialog (custom alert/confirm/prompt replacement)
+#lightbox (image viewer)
+#file-browser-modal (general file browser)
+#capabilities-modal (commands & skills browser)
 ```
 
 ---
@@ -399,16 +510,19 @@ CSS is split into modular files:
 | `base.css` | ~82 | CSS variables, resets, base animations |
 | `layout.css` | ~620 | Page layout, headers, view transitions |
 | `components.css` | ~1070 | Buttons, inputs, modals, toasts, toggles |
-| `messages.css` | ~657 | Chat messages, code blocks, attachments |
-| `list.css` | ~677 | Conversation list, cards, swipe, bulk selection |
+| `messages.css` | ~660 | Chat messages, code blocks, attachments |
+| `list.css` | ~680 | Conversation list, cards, swipe, bulk selection |
+| `file-panel.css` | ~900 | File browser panel, git UI, history |
+| `branches.css` | ~150 | Branch tree visualization |
 
 ### Color Themes (`public/css/themes/`)
 
-Four swappable color themes (~210 lines each):
+Five swappable color themes:
 - **Darjeeling** (default) — Warm earth tones
 - **Claude** — Purple accent with neutral grays
-- **Nord** — Arctic blue palette
 - **Budapest** — Grand Budapest Hotel inspired (plum/cream)
+- **Moonrise** — Soft moonlit palette
+- **Aquatic** — Ocean-inspired blues
 
 Themes are loaded via `<link id="color-theme-link">` and swapped dynamically.
 
@@ -444,3 +558,4 @@ Themes are loaded via `<link id="color-theme-link">` and swapped dynamically.
 
 - **User messages**: Right-aligned, gradient purple background (`--accent` to `--accent-light`), white text, rounded corners (top-right square)
 - **Assistant messages**: Left-aligned, dark background with border, full markdown rendering, rounded corners (top-left square)
+- **Tool trace blocks**: Collapsible section for tool calls, dimmed appearance

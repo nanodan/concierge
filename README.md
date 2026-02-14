@@ -1,22 +1,51 @@
 # Claude Remote Chat
 
-A mobile-first Progressive Web App that wraps the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code), providing a real-time streaming chat interface with persistent conversations and mobile-optimized UX.
+A mobile-first Progressive Web App that wraps the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code), providing a real-time streaming chat interface with persistent conversations, git integration, and mobile-optimized UX.
 
 ## Features
 
+### Core
 - **Real-time streaming** - See Claude's responses as they're generated, token by token
 - **Persistent conversations** - Chat history saved to disk, survives restarts
 - **Session continuity** - Conversations resume where you left off using Claude CLI sessions
-- **Multiple models** - Switch between Opus, Sonnet, and Haiku models per conversation
+- **Multiple models** - Switch between Opus and Sonnet models per conversation
+- **Working directory** - Set a per-conversation working directory for Claude to operate in
+- **Autopilot mode** - Skip CLI permission prompts for trusted workflows
+
+### Project Mode
+- **File browser** - Browse and view files in the conversation's working directory
+- **Git integration** - Full git workflow: status, stage/unstage, commit, push/pull, branches, stash
+- **Commit history** - View commits, diffs, revert changes, reset to commit
+- **Code search** - Search files with git grep from within the app
+
+### Conversation Management
+- **Conversation forking** - Fork from any message to explore alternative paths
+- **Branch visualization** - Visual tree of conversation forks with navigation
+- **Edit auto-fork** - Editing a message creates a fork instead of losing history
+- **Memory system** - Save important context that persists across conversations (global or per-project)
+
+### Mobile UX
+- **Swipe gestures** - Swipe to reveal actions, swipe back to list
+- **Long-press menus** - Context menus for cards and messages
 - **Voice input** - Dictate messages using the Web Speech API (requires HTTPS)
 - **Text-to-speech** - Listen to Claude's responses read aloud
-- **Mobile-first design** - Swipe gestures, long-press menus, safe area support for iOS
-- **Autopilot mode** - Skip CLI permission prompts for trusted workflows
-- **Working directory** - Set a per-conversation working directory for Claude to operate in
+- **Safe area support** - Proper handling of iOS notch and home indicator
+
+### Desktop Features
+- **Keyboard shortcuts** - Cmd+K (search), Cmd+N (new), Cmd+E (export)
+- **Desktop notifications** - Get notified when Claude responds while tab is hidden
+- **Resizable panels** - Drag to resize the file browser panel
+
+### Search & Stats
 - **Full-text search** - Search across conversation names and message content
-- **Usage stats** - Dashboard with cost tracking, activity charts, and fun facts
+- **Date & model filters** - Filter search by date range or model
+- **Usage dashboard** - Cost tracking, activity charts, streaks, and fun facts
+
+### PWA
 - **Offline support** - Service worker caches the app shell for offline access
-- **Installable PWA** - Add to home screen on iOS/Android for a native app feel
+- **Installable** - Add to home screen on iOS/Android for a native app feel
+- **Five color themes** - Darjeeling, Claude, Budapest, Moonrise, Aquatic
+- **Light/dark mode** - Auto, light, or dark mode per theme
 
 ## Quick Start
 
@@ -54,9 +83,14 @@ The server auto-detects certs and enables HTTPS. Without certs, it falls back to
 4. **Listen** - Tap the speaker icon on any assistant message to hear it read aloud
 5. **Switch models** - Tap the model name in the chat header to change models
 6. **Autopilot** - Tap the mode badge (AP/ASK) to toggle permission skipping
-7. **Manage conversations** - Swipe left on a card to archive/delete, or long-press for more options
-8. **Search** - Use the search bar to find conversations by name or content
-9. **Stats** - Tap the chart icon to view usage analytics
+7. **Browse files** - Tap the files icon to open the file browser panel
+8. **Git operations** - Use the Changes tab to stage, commit, push/pull, and manage branches
+9. **Fork conversations** - Long-press a message and tap "Fork from here"
+10. **View branches** - Tap the branches icon to see the conversation tree
+11. **Manage conversations** - Swipe left on a card to archive/delete, or long-press for more options
+12. **Search** - Use the search bar to find conversations by name or content
+13. **Stats** - Tap the chart icon to view usage analytics
+14. **Memory** - Save important context via the "Remember" option in message menus
 
 ## Configuration
 
@@ -74,30 +108,59 @@ The server auto-detects certs and enables HTTPS. Without certs, it falls back to
 ## Project Structure
 
 ```
-remote/
-├── server.js              # Express + WebSocket backend
+remote-llm/
+├── server.js              # Express + WebSocket entry point
+├── lib/
+│   ├── routes.js          # REST API endpoints (incl. git, files, memory)
+│   ├── claude.js          # Claude CLI process management
+│   └── data.js            # Data storage and persistence
 ├── public/
 │   ├── index.html         # Single-page app HTML
-│   ├── app.js             # Frontend application logic
-│   ├── style.css          # Complete styling (dark theme)
-│   ├── markdown.js        # Hand-rolled markdown renderer
+│   ├── style.css          # Main stylesheet (imports CSS modules)
+│   ├── js/
+│   │   ├── app.js         # Frontend entry point
+│   │   ├── state.js       # Shared state management
+│   │   ├── utils.js       # Helper functions
+│   │   ├── websocket.js   # WebSocket connection
+│   │   ├── render.js      # Message rendering
+│   │   ├── markdown.js    # Markdown parser
+│   │   ├── conversations.js # Conversation CRUD
+│   │   ├── ui.js          # UI interactions
+│   │   ├── file-panel.js  # File browser + git
+│   │   └── branches.js    # Branch tree visualization
+│   ├── css/
+│   │   ├── base.css       # CSS variables, resets
+│   │   ├── layout.css     # Page layout, views
+│   │   ├── components.css # UI components
+│   │   ├── messages.css   # Chat messages
+│   │   ├── list.css       # Conversation list
+│   │   ├── file-panel.css # File browser styles
+│   │   ├── branches.css   # Branch tree styles
+│   │   └── themes/        # Color theme variants
 │   ├── sw.js              # Service worker
 │   ├── manifest.json      # PWA manifest
 │   └── lib/
 │       └── highlight.min.js  # Syntax highlighting
 ├── data/
 │   ├── index.json         # Conversation metadata
-│   └── conv/              # Individual conversation message files
+│   ├── conv/              # Individual conversation files
+│   ├── uploads/           # File attachments
+│   └── memory/            # Persistent memories
 ├── certs/                 # Optional HTTPS certificates
-│   ├── key.pem
-│   └── cert.pem
-├── docs/                  # Detailed documentation
-│   ├── ARCHITECTURE.md    # System architecture
-│   └── REFERENCE.md       # Developer quick reference
-└── package.json
+├── test/                  # Unit tests
+└── docs/
+    ├── ARCHITECTURE.md    # System architecture
+    └── REFERENCE.md       # Developer quick reference
+```
+
+## Testing
+
+```bash
+npm test      # Run unit tests
+npm run lint  # Run ESLint
 ```
 
 ## Documentation
 
-- [Architecture Guide](docs/ARCHITECTURE.md) - Detailed system design, data flow, and component breakdown
-- [Developer Reference](docs/REFERENCE.md) - Quick-reference for APIs, data models, file map, and common patterns
+- [Architecture Guide](docs/ARCHITECTURE.md) - Detailed system design, data flow, APIs, and component breakdown
+- [Developer Reference](docs/REFERENCE.md) - Quick-reference for file map, data models, functions, and common patterns
