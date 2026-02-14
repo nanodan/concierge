@@ -4,6 +4,8 @@ Organized by category. Each file contains individual items with priority, effort
 
 ## Recently Completed ✅
 
+- **Test coverage** — unit tests for server, claude, data, markdown, utils using Node.js built-in test runner
+- **Image thumbnails** — file browser shows actual thumbnails for images with lazy loading
 - **Tab notifications** — native browser notifications + title prefix when response completes in background
 - **Tool call visibility** — show intermediate tool calls/results during streaming, collapsible in final message
 - **Mobile-friendly buttons** — header buttons, TTS/regenerate buttons sized for touch (40px targets)
@@ -25,11 +27,11 @@ Organized by category. Each file contains individual items with priority, effort
 |------|------------|-------|
 | [performance.md](performance.md) | 4 | Render caching, pagination, search/stats optimization |
 | [ux-features.md](ux-features.md) | 11 | Templates, tags, search, timestamps, lightbox |
-| [architecture.md](architecture.md) | 4 | Error handling, reconnect jitter, tests, localStorage |
+| [architecture.md](architecture.md) | 2 | Error handling, localStorage versioning |
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
-| [file-browser.md](file-browser.md) | 7 | Upload, quick actions, recent files, editing, previews |
+| [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share |
 
 ## Priority Guide
 
@@ -41,10 +43,6 @@ Organized by category. Each file contains individual items with priority, effort
 - Authentication (security, if used remotely)
 
 **Quick wins** — low effort, meaningful improvement:
-- WebSocket reconnect jitter (architecture) ⭐
-- Dynamic token limits per model (ux) ⭐
-- Message timestamps on tap (ux) ⭐
-- Per-conversation stats (ux) ⭐
-- Image lightbox (ux)
 - Accent color customization (ux)
 - Input validation hardening (security)
+- localStorage versioning (architecture)

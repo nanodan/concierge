@@ -46,23 +46,20 @@ Many fetch calls silently fail. No consistent pattern for showing errors to the 
 
 ---
 
-## Add basic test coverage
+## ~~Add basic test coverage~~ ✅ DONE
 **Priority:** Medium
 **Effort:** High
 
-Zero tests currently. Critical paths (streaming, session management, search, markdown parsing) are untested.
+~~Zero tests currently.~~ **IMPLEMENTED**
 
-**Approach:**
-- Start with unit tests for pure functions:
-  - `markdown.js` — rendering edge cases
-  - `escapeHtml` — XSS prevention
-  - Server-side search logic
-  - Conversation CRUD operations
-- Use a lightweight test runner (e.g., `node --test` built-in, or `vitest`)
-- Integration tests for WebSocket message flow (mock Claude CLI)
-- No need to test DOM — focus on logic
+Test files created using Node.js built-in test runner:
+- `test/server.test.js` — convMeta, atomicWrite, processStreamEvent
+- `test/claude.test.js` — stream event handling, tool calls, thinking, tokens
+- `test/data.test.js` — data layer, stats cache
+- `test/markdown.test.js` — markdown rendering, XSS prevention
+- `test/utils.test.js` — formatTime, formatTokens, truncate
 
-**Files:** New `tests/` directory, `package.json` (test script)
+Run with `npm test`.
 
 ---
 
