@@ -1,4 +1,4 @@
-const CACHE_NAME = 'claude-chat-v74';
+const CACHE_NAME = 'claude-chat-v75';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,9 @@ const STATIC_ASSETS = [
   '/css/themes/budapest.css',
   '/css/themes/moonrise.css',
   '/css/themes/aquatic.css',
+  '/css/themes/tenenbaums.css',
+  '/css/themes/solarized.css',
+  '/css/themes/catppuccin.css',
   '/css/base.css',
   '/css/layout.css',
   '/css/components.css',

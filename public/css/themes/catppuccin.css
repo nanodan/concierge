@@ -1,0 +1,290 @@
+/*
+ * Catppuccin Theme
+ * Soothing pastel theme for the high-spirited
+ * Dark: Mocha variant | Light: Latte variant
+ */
+
+/* ========== DARK MODE (Mocha) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-rosewater: #f5e0dc;
+  --palette-flamingo: #f2cdcd;
+  --palette-pink: #f5c2e7;
+  --palette-mauve: #cba6f7;
+  --palette-red: #f38ba8;
+  --palette-maroon: #eba0ac;
+  --palette-peach: #fab387;
+  --palette-yellow: #f9e2af;
+  --palette-green: #a6e3a1;
+  --palette-teal: #94e2d5;
+  --palette-sky: #89dceb;
+  --palette-sapphire: #74c7ec;
+  --palette-blue: #89b4fa;
+  --palette-lavender: #b4befe;
+  --palette-text: #cdd6f4;
+  --palette-subtext1: #bac2de;
+  --palette-subtext0: #a6adc8;
+  --palette-overlay2: #9399b2;
+  --palette-overlay1: #7f849c;
+  --palette-overlay0: #6c7086;
+  --palette-surface2: #585b70;
+  --palette-surface1: #45475a;
+  --palette-surface0: #313244;
+  --palette-base: #1e1e2e;
+  --palette-mantle: #181825;
+  --palette-crust: #11111b;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-base);
+  --bg-secondary: var(--palette-mantle);
+  --bg-tertiary: var(--palette-surface0);
+  --surface: var(--palette-surface0);
+  --input-bg: var(--palette-mantle);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-text);
+  --text-secondary: var(--palette-subtext0);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-mauve);
+  --accent-light: var(--palette-lavender);
+  --accent-secondary: var(--palette-teal);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-red);
+  --success: var(--palette-green);
+  --warning: var(--palette-peach);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-surface1);
+  --glass-bg: rgba(30, 30, 46, 0.85);
+  --glass-border: rgba(205, 214, 244, 0.12);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-mauve);
+  --user-bubble-end: #a87fd4;
+  --assistant-bubble: var(--palette-mantle);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(203, 166, 247, 0.08);
+  --accent-alpha-12: rgba(203, 166, 247, 0.12);
+  --accent-alpha-15: rgba(203, 166, 247, 0.15);
+  --accent-alpha-20: rgba(203, 166, 247, 0.2);
+  --accent-alpha-25: rgba(203, 166, 247, 0.25);
+  --accent-alpha-30: rgba(203, 166, 247, 0.3);
+  --accent-alpha-35: rgba(203, 166, 247, 0.35);
+  --accent-alpha-50: rgba(203, 166, 247, 0.5);
+
+  --danger-alpha-15: rgba(243, 139, 168, 0.15);
+  --danger-alpha-40: rgba(243, 139, 168, 0.4);
+
+  --teal-alpha-6: rgba(148, 226, 213, 0.06);
+  --teal-alpha-25: rgba(148, 226, 213, 0.25);
+
+  --terracotta-alpha-6: rgba(250, 179, 135, 0.06);
+  --terracotta-alpha-10: rgba(250, 179, 135, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-green);
+  --status-thinking: var(--palette-mauve);
+  --status-disconnected: var(--palette-overlay0);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-teal);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-lavender);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-mauve);
+  --syntax-string: var(--palette-green);
+  --syntax-number: var(--palette-peach);
+  --syntax-comment: var(--palette-overlay1);
+  --syntax-function: var(--palette-blue);
+  --syntax-type: var(--palette-yellow);
+  --syntax-variable: var(--palette-maroon);
+  --syntax-operator: var(--palette-sky);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--palette-crust);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh === */
+  --mesh-color-1: var(--accent-alpha-8);
+  --mesh-color-2: rgba(245, 194, 231, 0.04);
+  --mesh-color-3: var(--teal-alpha-6);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #1e1e2e;
+}
+
+/* ========== LIGHT MODE (Latte) ========== */
+html[data-theme="light"] {
+  /* === Palette Overrides === */
+  --palette-rosewater: #dc8a78;
+  --palette-flamingo: #dd7878;
+  --palette-pink: #ea76cb;
+  --palette-mauve: #8839ef;
+  --palette-red: #d20f39;
+  --palette-maroon: #e64553;
+  --palette-peach: #fe640b;
+  --palette-yellow: #df8e1d;
+  --palette-green: #40a02b;
+  --palette-teal: #179299;
+  --palette-sky: #04a5e5;
+  --palette-sapphire: #209fb5;
+  --palette-blue: #1e66f5;
+  --palette-lavender: #7287fd;
+  --palette-text: #4c4f69;
+  --palette-subtext1: #5c5f77;
+  --palette-subtext0: #6c6f85;
+  --palette-overlay2: #7c7f93;
+  --palette-overlay1: #8c8fa1;
+  --palette-overlay0: #9ca0b0;
+  --palette-surface2: #acb0be;
+  --palette-surface1: #bcc0cc;
+  --palette-surface0: #ccd0da;
+  --palette-base: #eff1f5;
+  --palette-mantle: #e6e9ef;
+  --palette-crust: #dce0e8;
+
+  /* === Backgrounds === */
+  --bg: var(--palette-base);
+  --bg-secondary: var(--palette-mantle);
+  --bg-tertiary: var(--palette-surface0);
+  --surface: #ffffff;
+  --input-bg: #ffffff;
+
+  /* === Text === */
+  --text: var(--palette-text);
+  --text-secondary: var(--palette-subtext0);
+
+  /* === Accent === */
+  --accent: var(--palette-mauve);
+  --accent-light: var(--palette-lavender);
+
+  /* === Borders === */
+  --border: var(--palette-surface1);
+  --glass-bg: rgba(239, 241, 245, 0.85);
+  --glass-border: rgba(76, 79, 105, 0.12);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: var(--palette-mantle);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(136, 57, 239, 0.08);
+  --accent-alpha-12: rgba(136, 57, 239, 0.12);
+  --accent-alpha-15: rgba(136, 57, 239, 0.15);
+  --accent-alpha-20: rgba(136, 57, 239, 0.2);
+
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: var(--palette-mantle);
+  --code-header-bg: var(--palette-surface0);
+  --code-inline-bg: rgba(136, 57, 239, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(136, 57, 239, 0.06);
+  --mesh-color-2: rgba(234, 118, 203, 0.04);
+  --mesh-color-3: rgba(23, 146, 153, 0.05);
+
+  /* === Syntax Highlighting === */
+  --syntax-keyword: #8839ef;
+  --syntax-string: #40a02b;
+  --syntax-number: #fe640b;
+  --syntax-comment: #8c8fa1;
+  --syntax-function: #1e66f5;
+  --syntax-type: #df8e1d;
+  --syntax-variable: #e64553;
+  --syntax-operator: #04a5e5;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #eff1f5;
+}
+
+/* Auto theme via media query */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-rosewater: #dc8a78;
+    --palette-flamingo: #dd7878;
+    --palette-pink: #ea76cb;
+    --palette-mauve: #8839ef;
+    --palette-red: #d20f39;
+    --palette-maroon: #e64553;
+    --palette-peach: #fe640b;
+    --palette-yellow: #df8e1d;
+    --palette-green: #40a02b;
+    --palette-teal: #179299;
+    --palette-sky: #04a5e5;
+    --palette-sapphire: #209fb5;
+    --palette-blue: #1e66f5;
+    --palette-lavender: #7287fd;
+    --palette-text: #4c4f69;
+    --palette-subtext1: #5c5f77;
+    --palette-subtext0: #6c6f85;
+    --palette-overlay2: #7c7f93;
+    --palette-overlay1: #8c8fa1;
+    --palette-overlay0: #9ca0b0;
+    --palette-surface2: #acb0be;
+    --palette-surface1: #bcc0cc;
+    --palette-surface0: #ccd0da;
+    --palette-base: #eff1f5;
+    --palette-mantle: #e6e9ef;
+    --palette-crust: #dce0e8;
+
+    --bg: var(--palette-base);
+    --bg-secondary: var(--palette-mantle);
+    --bg-tertiary: var(--palette-surface0);
+    --surface: #ffffff;
+    --input-bg: #ffffff;
+    --text: var(--palette-text);
+    --text-secondary: var(--palette-subtext0);
+    --accent: var(--palette-mauve);
+    --accent-light: var(--palette-lavender);
+    --border: var(--palette-surface1);
+    --glass-bg: rgba(239, 241, 245, 0.85);
+    --glass-border: rgba(76, 79, 105, 0.12);
+    --assistant-bubble: var(--palette-mantle);
+
+    --accent-alpha-8: rgba(136, 57, 239, 0.08);
+    --accent-alpha-12: rgba(136, 57, 239, 0.12);
+    --accent-alpha-15: rgba(136, 57, 239, 0.15);
+    --accent-alpha-20: rgba(136, 57, 239, 0.2);
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: var(--palette-mantle);
+    --code-header-bg: var(--palette-surface0);
+    --code-inline-bg: rgba(136, 57, 239, 0.1);
+    --mesh-color-1: rgba(136, 57, 239, 0.06);
+    --mesh-color-2: rgba(234, 118, 203, 0.04);
+    --mesh-color-3: rgba(23, 146, 153, 0.05);
+    --syntax-keyword: #8839ef;
+    --syntax-string: #40a02b;
+    --syntax-number: #fe640b;
+    --syntax-comment: #8c8fa1;
+    --syntax-function: #1e66f5;
+    --syntax-type: #df8e1d;
+    --syntax-variable: #e64553;
+    --syntax-operator: #04a5e5;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #eff1f5;
+  }
+}
