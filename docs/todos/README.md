@@ -30,16 +30,23 @@ Organized by category. Each file contains individual items with priority, effort
 | File | Open Items | Focus |
 |------|------------|-------|
 | [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
-| [ux-features.md](ux-features.md) | 9 | Search, export, code blocks, starred messages |
+| [ux-features.md](ux-features.md) | 14 | Context visualization, diff review, screenshot-to-code, voice-to-voice, live preview |
 | [architecture.md](architecture.md) | 2 | localStorage versioning, server restart |
 | [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
 | [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share, create new file |
+| [automation.md](automation.md) | 3 | Triggers, parallel conversations, task queue |
 
 ## Priority Guide
 
 **High priority** — items that noticeably improve daily usage or address real pain points:
+- Context visualization + auto-compression (ux) — show context breakdown, auto-compress at limit
+- Diff review UI (ux) — GitHub-style accept/reject per hunk when Claude edits files
+- Screenshot-to-code (ux) — paste image, watch Claude recreate it with live preview
+- Voice-to-voice (ux) — real-time bidirectional voice conversation with Claude
+- Trigger system (automation) — auto-start conversations on git push, file change, schedule, webhook
+- Live code preview (ux) — render HTML/JS live as Claude streams
 - File upload to browser (file-browser)
 - Search within conversation (ux)
 - Text file editing (file-browser)

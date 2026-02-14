@@ -1,16 +1,18 @@
 # Claude Remote Chat
 
-A mobile-first Progressive Web App that wraps the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code), providing a real-time streaming chat interface with persistent conversations, git integration, and mobile-optimized UX.
+A mobile-first Progressive Web App for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (Anthropic's agentic CLI). Claude autonomously executes multi-step workflows — running shell commands, editing files, searching code, fixing errors — while you watch the stream in real-time or come back later to see results.
+
+This isn't just a chat interface. Each conversation spawns Claude Code as a persistent agent that can loop, retry, use tools, and complete complex tasks autonomously. You provide direction; Claude does the work.
 
 ## Features
 
-### Core
-- **Real-time streaming** - See Claude's responses as they're generated, token by token
-- **Persistent conversations** - Chat history saved to disk, survives restarts
-- **Session continuity** - Conversations resume where you left off using Claude CLI sessions
-- **Multiple models** - Switch between Opus and Sonnet models per conversation
-- **Working directory** - Set a per-conversation working directory for Claude to operate in
-- **Autopilot mode** - Skip CLI permission prompts for trusted workflows
+### Agentic Workflows
+- **Autonomous execution** - Claude runs commands, edits files, searches code, and iterates until the task is done
+- **Real-time streaming** - Watch Claude think and act, token by token, tool call by tool call
+- **Tool visibility** - See which tools Claude is using (Bash, Read, Edit, Grep, etc.) as it works
+- **Session continuity** - Conversations persist Claude's full context; pick up where you left off
+- **Autopilot mode** - Skip permission prompts for trusted workflows (or require approval for each action)
+- **Multiple models** - Switch between Opus and Sonnet per conversation
 
 ### Project Mode
 - **File browser** - Browse and view files in the conversation's working directory

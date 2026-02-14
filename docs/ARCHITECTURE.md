@@ -2,23 +2,27 @@
 
 ## System Overview
 
-Claude Remote Chat is a three-tier PWA: a Node.js backend spawns Claude CLI processes, streams output over WebSocket to a vanilla JS frontend, and persists conversations as JSON files on disk.
+Claude Remote Chat is a mobile-first interface for **Claude Code** (Anthropic's agentic coding CLI). Each conversation spawns a Claude Code process that can autonomously execute multi-step workflows: running shell commands, editing files, searching code, making API calls, and iterating until the task is complete.
+
+The architecture is a three-tier PWA: a Node.js backend manages Claude Code processes and streams their output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk, and Claude's session state allows conversations to resume with full context.
 
 ```
-┌─────────────┐     WebSocket      ┌──────────────┐     stdio      ┌───────────┐
-│   Browser    │ ◄──────────────► │   server.js   │ ◄────────────► │ Claude CLI│
-│  (app.js)   │     HTTP/REST      │  Express+WS   │   spawn/kill   │  Process  │
-└─────────────┘                    └──────────────┘                 └───────────┘
-                                         │
-                                    JSON files
-                                         │
-                                   ┌─────┴─────┐
-                                   │   data/    │
-                                   │ index.json │
-                                   │ conv/*.json│
+┌─────────────┐     WebSocket      ┌──────────────┐     stdio      ┌───────────────────────────┐
+│   Browser    │ ◄──────────────► │   server.js   │ ◄────────────► │       Claude Code         │
+│  (app.js)   │     HTTP/REST      │  Express+WS   │   spawn/kill   │  ┌─────────────────────┐  │
+└─────────────┘                    └──────────────┘                 │  │   Agentic Loop      │  │
+                                         │                          │  │ ┌────┐→┌────┐→┌────┐│  │
+                                    JSON files                      │  │ │Read│ │Edit│ │Run ││  │
+                                         │                          │  │ └────┘ └────┘ └────┘│  │
+                                   ┌─────┴─────┐                    │  └─────────────────────┘  │
+                                   │   data/    │                    │ Tools: Bash, Edit, Read  │
+                                   │ index.json │                    │ Grep, Write, WebFetch    │
+                                   │ conv/*.json│                    └───────────────────────────┘
                                    │ memory/*.json│
                                    └───────────┘
 ```
+
+**Key insight:** Claude Code is an autonomous agent, not a simple chat model. When you send a message, Claude may execute dozens of tool calls — reading files, running commands, editing code, searching, retrying on failure — before returning a final result. This app streams that entire agentic process to your browser in real-time.
 
 ## Backend (`server.js` + `lib/*.js`)
 
