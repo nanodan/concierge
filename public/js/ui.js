@@ -1716,10 +1716,39 @@ async function rememberMessage(el, _index) {
 // --- Memory toggle in chat header ---
 export function updateMemoryIndicator(useMemory) {
   const memoryBtn = document.getElementById('memory-btn');
-  if (!memoryBtn) return;
-  memoryBtn.classList.toggle('active', useMemory !== false);
-  memoryBtn.classList.toggle('disabled', useMemory === false);
-  memoryBtn.title = useMemory !== false ? 'Memory enabled (click to disable)' : 'Memory disabled (click to enable)';
+  if (memoryBtn) {
+    memoryBtn.classList.toggle('active', useMemory !== false);
+    memoryBtn.classList.toggle('disabled', useMemory === false);
+    memoryBtn.title = useMemory !== false ? 'Memory enabled (click to disable)' : 'Memory disabled (click to enable)';
+  }
+  // Also update the menu label
+  const chatMoreMemoryLabel = document.getElementById('chat-more-memory-label');
+  if (chatMoreMemoryLabel) {
+    chatMoreMemoryLabel.textContent = useMemory !== false ? 'Memory: On' : 'Memory: Off';
+  }
+}
+
+// Show conversation stats dropdown
+function showConvStatsDropdown() {
+  if (!convStatsDropdown) return;
+  const currentId = state.getCurrentConversationId();
+  const conv = state.conversations.find(c => c.id === currentId);
+  if (!conv) return;
+
+  const messages = state.getAllMessages();
+  const userMsgs = messages.filter(m => m.role === 'user').length;
+  const assistantMsgs = messages.filter(m => m.role === 'assistant').length;
+  const totalCost = messages.reduce((sum, m) => sum + (m.cost || 0), 0);
+  const totalInput = messages.reduce((sum, m) => sum + (m.inputTokens || 0), 0);
+  const totalOutput = messages.reduce((sum, m) => sum + (m.outputTokens || 0), 0);
+
+  convStatsDropdown.innerHTML = `
+    <div class="conv-stats-row"><span class="conv-stats-label">Messages</span><span class="conv-stats-value">${userMsgs} / ${assistantMsgs}</span></div>
+    <div class="conv-stats-row"><span class="conv-stats-label">Tokens in</span><span class="conv-stats-value">${formatTokens(totalInput)}</span></div>
+    <div class="conv-stats-row"><span class="conv-stats-label">Tokens out</span><span class="conv-stats-value">${formatTokens(totalOutput)}</span></div>
+    <div class="conv-stats-row"><span class="conv-stats-label">Total cost</span><span class="conv-stats-value">$${totalCost.toFixed(4)}</span></div>
+  `;
+  convStatsDropdown.classList.remove('hidden');
 }
 
 async function toggleConversationMemory() {
@@ -2163,7 +2192,12 @@ export function setupEventListeners(createConversation) {
     });
   });
 
+  let dropdownOpenedAt = 0;
   document.addEventListener('click', () => {
+    // Skip closing if dropdown was just opened (within 300ms)
+    if (Date.now() - dropdownOpenedAt < 300) {
+      return;
+    }
     modelDropdown.classList.add('hidden');
     if (convStatsDropdown) convStatsDropdown.classList.add('hidden');
   });
@@ -2177,25 +2211,7 @@ export function setupEventListeners(createConversation) {
         convStatsDropdown.classList.add('hidden');
         return;
       }
-      // Calculate stats from current conversation
-      const currentId = state.getCurrentConversationId();
-      const conv = state.conversations.find(c => c.id === currentId);
-      if (!conv) return;
-
-      const messages = state.getAllMessages();
-      const userMsgs = messages.filter(m => m.role === 'user').length;
-      const assistantMsgs = messages.filter(m => m.role === 'assistant').length;
-      const totalCost = messages.reduce((sum, m) => sum + (m.cost || 0), 0);
-      const totalInput = messages.reduce((sum, m) => sum + (m.inputTokens || 0), 0);
-      const totalOutput = messages.reduce((sum, m) => sum + (m.outputTokens || 0), 0);
-
-      convStatsDropdown.innerHTML = `
-        <div class="conv-stats-row"><span class="conv-stats-label">Messages</span><span class="conv-stats-value">${userMsgs} / ${assistantMsgs}</span></div>
-        <div class="conv-stats-row"><span class="conv-stats-label">Tokens in</span><span class="conv-stats-value">${formatTokens(totalInput)}</span></div>
-        <div class="conv-stats-row"><span class="conv-stats-label">Tokens out</span><span class="conv-stats-value">${formatTokens(totalOutput)}</span></div>
-        <div class="conv-stats-row"><span class="conv-stats-label">Total cost</span><span class="conv-stats-value">$${totalCost.toFixed(4)}</span></div>
-      `;
-      convStatsDropdown.classList.remove('hidden');
+      showConvStatsDropdown();
     });
   }
 
@@ -2394,9 +2410,98 @@ export function setupEventListeners(createConversation) {
     });
   }
 
+  const chatMoreStats = document.getElementById('chat-more-stats');
+  const chatMoreFiles = document.getElementById('chat-more-files');
+  const chatMoreBranches = document.getElementById('chat-more-branches');
+  const chatMoreCapabilities = document.getElementById('chat-more-capabilities');
+  const chatMoreMemory = document.getElementById('chat-more-memory');
   const chatMoreNew = document.getElementById('chat-more-new');
   const chatMoreExport = document.getElementById('chat-more-export');
   const chatMoreDelete = document.getElementById('chat-more-delete');
+
+  if (chatMoreStats) {
+    chatMoreStats.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeChatMoreMenu();
+      haptic(10);
+      dropdownOpenedAt = Date.now();
+      showConvStatsDropdown();
+    });
+  }
+
+  if (chatMoreFiles) {
+    chatMoreFiles.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      if (filesBtn) filesBtn.click();
+    });
+  }
+
+  if (chatMoreBranches) {
+    chatMoreBranches.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      const branchesBtn = document.getElementById('branches-btn');
+      if (branchesBtn) branchesBtn.click();
+    });
+  }
+
+  if (chatMoreCapabilities) {
+    chatMoreCapabilities.addEventListener('click', () => {
+      closeChatMoreMenu();
+      haptic(10);
+      if (capabilitiesBtn) capabilitiesBtn.click();
+    });
+  }
+
+  if (chatMoreMemory) {
+    let memoryMenuPressTimer = null;
+    let memoryMenuLongPressed = false;
+
+    const handleMemoryLongPress = () => {
+      memoryMenuLongPressed = true;
+      haptic(20);
+      closeChatMoreMenu();
+      showMemoryView();
+    };
+
+    chatMoreMemory.addEventListener('mousedown', () => {
+      memoryMenuLongPressed = false;
+      memoryMenuPressTimer = setTimeout(handleMemoryLongPress, 500);
+    });
+
+    chatMoreMemory.addEventListener('mouseup', () => {
+      clearTimeout(memoryMenuPressTimer);
+      if (!memoryMenuLongPressed) {
+        haptic(10);
+        toggleConversationMemory();
+        // Don't close menu - let user see the state change
+      }
+    });
+
+    chatMoreMemory.addEventListener('mouseleave', () => {
+      clearTimeout(memoryMenuPressTimer);
+    });
+
+    chatMoreMemory.addEventListener('touchstart', () => {
+      memoryMenuLongPressed = false;
+      memoryMenuPressTimer = setTimeout(handleMemoryLongPress, 500);
+    }, { passive: true });
+
+    chatMoreMemory.addEventListener('touchend', (e) => {
+      clearTimeout(memoryMenuPressTimer);
+      if (!memoryMenuLongPressed) {
+        e.preventDefault();
+        haptic(10);
+        toggleConversationMemory();
+        // Don't close menu - let user see the state change
+      }
+    });
+
+    chatMoreMemory.addEventListener('touchcancel', () => {
+      clearTimeout(memoryMenuPressTimer);
+    });
+  }
 
   if (chatMoreNew) {
     chatMoreNew.addEventListener('click', () => {

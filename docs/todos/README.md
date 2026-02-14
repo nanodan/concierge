@@ -31,7 +31,7 @@ Organized by category. Each file contains individual items with priority, effort
 |------|------------|-------|
 | [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
 | [ux-features.md](ux-features.md) | 9 | Search, export, code blocks, starred messages |
-| [architecture.md](architecture.md) | 1 | localStorage versioning |
+| [architecture.md](architecture.md) | 2 | localStorage versioning, server restart |
 | [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |

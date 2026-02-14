@@ -81,3 +81,24 @@ Offline messages, unread convs, theme, collapsed scopes all stored in localStora
 - Clear stale keys that are no longer used
 
 **Files:** `public/js/app.js` (initialization)
+
+---
+
+## Server restart via app
+**Priority:** Medium
+**Effort:** Low
+
+Allow restarting the Node.js server from within the app UI (e.g., after code changes or to apply new configuration).
+
+**Approach:**
+- Add `POST /api/restart` endpoint that triggers `process.exit(0)`
+- Run server under a process manager that auto-restarts on exit
+- Add UI button in settings or admin menu
+- Show brief "Restarting..." indicator, then reconnect WebSocket
+
+**Options:**
+1. **Process manager** (recommended): Run under `pm2 start server.js` or `while true; do node server.js; sleep 1; done`. Endpoint just exits.
+2. **Self-spawn**: Server spawns detached replacement before exiting. Fragile due to port timing.
+3. **Systemd/launchd**: For production deployments.
+
+**Files:** `lib/routes.js`, `public/js/ui.js`
