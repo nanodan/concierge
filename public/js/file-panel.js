@@ -1,6 +1,6 @@
 // --- File Panel (Project Mode) ---
 import { escapeHtml } from './markdown.js';
-import { haptic, showToast, showDialog } from './utils.js';
+import { haptic, showToast, showDialog, apiFetch } from './utils.js';
 import * as state from './state.js';
 
 // DOM elements
@@ -383,37 +383,37 @@ export async function loadFileTree(subpath) {
 
   fileTree.innerHTML = '<div class="file-tree-loading">Loading...</div>';
 
-  try {
-    const qs = subpath ? `?path=${encodeURIComponent(subpath)}` : '';
-    const res = await fetch(`/api/conversations/${convId}/files${qs}`);
-    const data = await res.json();
-
-    if (data.error) {
-      fileTree.innerHTML = `
-        <div class="file-tree-empty">
-          ${ICONS.error}
-          <p>${escapeHtml(data.error)}</p>
-        </div>`;
-      return;
-    }
-
-    if (data.entries.length === 0) {
-      fileTree.innerHTML = `
-        <div class="file-tree-empty">
-          ${ICONS.emptyFolder}
-          <p>Empty folder</p>
-        </div>`;
-      return;
-    }
-
-    renderFileTree(data.entries);
-  } catch (_err) {
+  const qs = subpath ? `?path=${encodeURIComponent(subpath)}` : '';
+  const res = await apiFetch(`/api/conversations/${convId}/files${qs}`, { silent: true });
+  if (!res) {
     fileTree.innerHTML = `
       <div class="file-tree-empty">
         ${ICONS.error}
         <p>Failed to load files</p>
       </div>`;
+    return;
   }
+  const data = await res.json();
+
+  if (data.error) {
+    fileTree.innerHTML = `
+      <div class="file-tree-empty">
+        ${ICONS.error}
+        <p>${escapeHtml(data.error)}</p>
+      </div>`;
+    return;
+  }
+
+  if (data.entries.length === 0) {
+    fileTree.innerHTML = `
+      <div class="file-tree-empty">
+        ${ICONS.emptyFolder}
+        <p>Empty folder</p>
+      </div>`;
+    return;
+  }
+
+  renderFileTree(data.entries);
 }
 
 function renderFileTree(entries) {
@@ -468,18 +468,25 @@ export async function viewFile(filePath) {
   fileViewer.classList.remove('hidden');
   setTimeout(() => fileViewer.classList.add('open'), 10);
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/files/content?path=${encodeURIComponent(filePath)}`);
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/files/content?path=${encodeURIComponent(filePath)}`, { silent: true });
+  if (!res) {
+    fileViewerContent.innerHTML = `
+      <div class="file-viewer-error">
+        ${ICONS.error}
+        <p>Failed to load file</p>
+      </div>`;
+    return;
+  }
+  const data = await res.json();
 
-    if (data.error) {
-      fileViewerContent.innerHTML = `
-        <div class="file-viewer-error">
-          ${ICONS.error}
-          <p>${escapeHtml(data.error)}</p>
-        </div>`;
-      return;
-    }
+  if (data.error) {
+    fileViewerContent.innerHTML = `
+      <div class="file-viewer-error">
+        ${ICONS.error}
+        <p>${escapeHtml(data.error)}</p>
+      </div>`;
+    return;
+  }
 
     if (data.binary) {
       const fileUrl = `/api/conversations/${convId}/files/download?path=${encodeURIComponent(filePath)}&inline=true`;
@@ -548,13 +555,6 @@ export async function viewFile(filePath) {
     if (window.hljs && data.language && !codeEl.dataset.highlighted) {
       hljs.highlightElement(codeEl);
     }
-  } catch (_err) {
-    fileViewerContent.innerHTML = `
-      <div class="file-viewer-error">
-        ${ICONS.error}
-        <p>Failed to load file</p>
-      </div>`;
-  }
 }
 
 function closeFileViewer() {
@@ -603,21 +603,21 @@ async function loadGitStatus() {
     commitForm.classList.add('hidden');
   }
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/status`);
-    gitStatus = await res.json();
-
-    if (!gitStatus.isRepo) {
-      renderNotARepo();
-      return;
-    }
-
-    renderChangesView();
-  } catch (_err) {
+  const res = await apiFetch(`/api/conversations/${convId}/git/status`, { silent: true });
+  if (!res) {
     if (changesList) {
       changesList.innerHTML = '<div class="changes-empty">Failed to load git status</div>';
     }
+    return;
   }
+  gitStatus = await res.json();
+
+  if (!gitStatus.isRepo) {
+    renderNotARepo();
+    return;
+  }
+
+  renderChangesView();
 }
 
 function renderNotARepo() {
@@ -820,28 +820,29 @@ async function viewDiff(filePath, staged) {
   fileViewer.classList.remove('hidden');
   setTimeout(() => fileViewer.classList.add('open'), 10);
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/diff`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: filePath, staged })
-    });
-    const data = await res.json();
-
-    if (data.error) {
-      fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
-      return;
-    }
-
-    if (!data.raw || data.raw.trim() === '') {
-      fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>No changes to display</p></div>`;
-      return;
-    }
-
-    renderDiff(data);
-  } catch (_err) {
+  const res = await apiFetch(`/api/conversations/${convId}/git/diff`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: filePath, staged }),
+    silent: true,
+  });
+  if (!res) {
     fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>Failed to load diff</p></div>`;
+    return;
   }
+  const data = await res.json();
+
+  if (data.error) {
+    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
+    return;
+  }
+
+  if (!data.raw || data.raw.trim() === '') {
+    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>No changes to display</p></div>`;
+    return;
+  }
+
+  renderDiff(data);
 }
 
 function renderDiff(data) {
@@ -872,72 +873,63 @@ async function stageFiles(paths) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/stage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/stage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast('Staged');
-    loadGitStatus();
-  } catch (_err) {
-    showToast('Failed to stage files');
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast('Staged');
+  loadGitStatus();
 }
 
 async function unstageFiles(paths) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/unstage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/unstage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast('Unstaged');
-    loadGitStatus();
-  } catch (_err) {
-    showToast('Failed to unstage files');
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast('Unstaged');
+  loadGitStatus();
 }
 
 async function discardChanges(paths) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/discard`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/discard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths }),
+  });
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast('Changes discarded');
-    loadGitStatus();
-  } catch (_err) {
-    showToast('Failed to discard changes');
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast('Changes discarded');
+  loadGitStatus();
 }
 
 async function handleCommit() {
@@ -953,27 +945,23 @@ async function handleCommit() {
   commitBtn.disabled = true;
   haptic(15);
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/commit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/commit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  commitBtn.disabled = false;
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast(`Committed ${data.hash}`);
-    commitMessage.value = '';
-    loadGitStatus();
-  } catch (_err) {
-    showToast('Commit failed');
-  } finally {
-    commitBtn.disabled = false;
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast(`Committed ${data.hash}`);
+  commitMessage.value = '';
+  loadGitStatus();
 }
 
 // === Branch Management ===
@@ -982,15 +970,14 @@ async function loadBranches() {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/branches`);
-    branches = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/branches`, { silent: true });
+  if (!res) {
+    branches = null;
+    return;
+  }
+  branches = await res.json();
 
-    if (branches.error) {
-      branches = null;
-      return;
-    }
-  } catch (_err) {
+  if (branches.error) {
     branches = null;
   }
 }
@@ -1086,50 +1073,44 @@ async function createBranch(name, checkout) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/branch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, checkout })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/branch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, checkout }),
+  });
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast(`Created ${name}`);
-    loadGitStatus();
-    loadBranches();
-  } catch (_err) {
-    showToast('Failed to create branch');
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast(`Created ${name}`);
+  loadGitStatus();
+  loadBranches();
 }
 
 async function checkoutBranch(branch) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  try {
-    const res = await fetch(`/api/conversations/${convId}/git/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ branch })
-    });
-    const data = await res.json();
+  const res = await apiFetch(`/api/conversations/${convId}/git/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branch }),
+  });
+  if (!res) return;
+  const data = await res.json();
 
-    if (data.error) {
-      showToast(data.error);
-      return;
-    }
-
-    showToast(`Switched to ${branch}`);
-    loadGitStatus();
-    loadBranches();
-  } catch (_err) {
-    showToast('Failed to checkout branch');
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
   }
+
+  showToast(`Switched to ${branch}`);
+  loadGitStatus();
+  loadBranches();
 }
 
 export function isFilePanelOpen() {

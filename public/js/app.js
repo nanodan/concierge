@@ -1,7 +1,7 @@
 // --- Main entry point ---
 // This module imports all other modules and initializes the application
 
-import { initToast, initDialog } from './utils.js';
+import { initToast, initDialog, apiFetch } from './utils.js';
 import { initWebSocket, connectWS } from './websocket.js';
 import * as state from './state.js';
 import {
@@ -313,18 +313,18 @@ setupEventListeners(createConversation);
 
 // --- Load models ---
 async function loadModels() {
-  try {
-    const res = await fetch('/api/models');
-    const models = await res.json();
-    state.setModels(models);
-    // Populate modal select
-    convModelSelect.innerHTML = models.map(m =>
-      `<option value="${m.id}"${m.id === 'sonnet' ? ' selected' : ''}>${m.name}</option>`
-    ).join('');
-    populateFilterModels();
-  } catch {
+  const res = await apiFetch('/api/models', { silent: true });
+  if (!res) {
     state.setModels([{ id: 'sonnet', name: 'Sonnet 4.5', context: 200000 }]);
+    return;
   }
+  const models = await res.json();
+  state.setModels(models);
+  // Populate modal select
+  convModelSelect.innerHTML = models.map(m =>
+    `<option value="${m.id}"${m.id === 'sonnet' ? ' selected' : ''}>${m.name}</option>`
+  ).join('');
+  populateFilterModels();
 }
 
 // --- Init ---

@@ -18,20 +18,25 @@ Code has been split into ES modules:
 
 ---
 
-## Add consistent error handling
+## ~~Add consistent error handling~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium
 
-Many fetch calls silently fail. No consistent pattern for showing errors to the user.
+~~Many fetch calls silently fail. No consistent pattern for showing errors to the user.~~ **IMPLEMENTED**
 
-**Approach:**
-- Create a central `handleError(error, context)` function
-- Display user-visible toast/banner for all failed operations
-- Log errors to console with context for debugging
-- Categorize errors: network, server, client, timeout
-- Add retry logic for transient failures (network blips)
+Created `apiFetch()` wrapper in `utils.js`:
+- Checks `res.ok` and extracts error message from `{ error }` response
+- Shows toast notification on error with appropriate message
+- Returns `null` on error for caller to handle
+- Supports `silent: true` option for background operations
+- Logs errors to console with URL context
 
-**Files:** `public/app.js` (all fetch calls, WebSocket error handler)
+Updated 30+ fetch calls across:
+- `conversations.js` — loadConversations, getConversation, createConversation, deleteConversation, archiveConversation, renameConversation, pinConversation, forkConversation, searchConversations
+- `ui.js` — file upload, switchModel, browseTo, browseFiles, browseFilesGeneral, loadStats, createFolder, modeBadge toggle
+- `file-panel.js` — loadFileTree, viewFile, loadGitStatus, viewDiff, stageFiles, unstageFiles, discardChanges, handleCommit, loadBranches, createBranch, checkoutBranch
+- `branches.js` — loadBranchesTree
+- `app.js` — loadModels
 
 ---
 

@@ -4,6 +4,7 @@ Organized by category. Each file contains individual items with priority, effort
 
 ## Recently Completed ✅
 
+- **Consistent error handling** — `apiFetch()` wrapper with toast notifications for 30+ fetch calls across all frontend modules
 - **Test coverage** — unit tests for server, claude, data, markdown, utils using Node.js built-in test runner
 - **Image thumbnails** — file browser shows actual thumbnails for images with lazy loading
 - **Tab notifications** — native browser notifications + title prefix when response completes in background
@@ -27,7 +28,7 @@ Organized by category. Each file contains individual items with priority, effort
 |------|------------|-------|
 | [performance.md](performance.md) | 4 | Render caching, pagination, search/stats optimization |
 | [ux-features.md](ux-features.md) | 11 | Templates, tags, search, timestamps, lightbox |
-| [architecture.md](architecture.md) | 2 | Error handling, localStorage versioning |
+| [architecture.md](architecture.md) | 1 | localStorage versioning |
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
@@ -39,7 +40,6 @@ Organized by category. Each file contains individual items with priority, effort
 - Cache markdown render output (performance)
 - Prompt templates (ux)
 - Conversation tags/favorites (ux)
-- Consistent error handling (architecture)
 - Authentication (security, if used remotely)
 
 **Quick wins** — low effort, meaningful improvement:
