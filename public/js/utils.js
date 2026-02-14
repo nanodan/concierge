@@ -163,3 +163,23 @@ export function getDialogOverlay() {
 export function getDialogCancel() {
   return dialogCancel;
 }
+
+// --- API Fetch wrapper ---
+// Centralized fetch with error handling and toast notifications
+export async function apiFetch(url, options = {}) {
+  const { silent = false, ...fetchOptions } = options;
+  try {
+    const res = await fetch(url, fetchOptions);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const msg = data.error || `Request failed (${res.status})`;
+      if (!silent) showToast(msg, { variant: 'error' });
+      return null;
+    }
+    return res;
+  } catch (err) {
+    if (!silent) showToast('Network error — check connection', { variant: 'error' });
+    console.error('Fetch error:', url, err);
+    return null;
+  }
+}

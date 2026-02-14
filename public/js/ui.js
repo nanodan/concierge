@@ -1,6 +1,6 @@
 // --- UI interactions ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel } from './utils.js';
+import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch } from './utils.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
@@ -260,16 +260,13 @@ export async function sendMessage(text) {
   // Upload attachments first
   let attachments = [];
   for (const att of pendingAttachments) {
-    try {
-      const resp = await fetch(
-        `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
-        { method: 'POST', body: att.file }
-      );
-      const result = await resp.json();
-      attachments.push(result);
-    } catch {
-      showToast(`Failed to upload ${att.name}`, { variant: 'error' });
-    }
+    const resp = await apiFetch(
+      `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
+      { method: 'POST', body: att.file }
+    );
+    if (!resp) continue;
+    const result = await resp.json();
+    attachments.push(result);
   }
 
   // Build attachment HTML for the message bubble
@@ -538,11 +535,12 @@ export function updateContextBar(inputTokens, outputTokens, modelId) {
 }
 
 export async function switchModel(convId, modelId) {
-  await fetch(`/api/conversations/${convId}`, {
+  const res = await apiFetch(`/api/conversations/${convId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: modelId }),
   });
+  if (!res) return;
   state.setCurrentModel(modelId);
   updateModelBadge(modelId);
   const models = state.getModels();
@@ -552,35 +550,35 @@ export async function switchModel(convId, modelId) {
 
 // --- Directory browser ---
 async function browseTo(dirPath) {
-  try {
-    const qs = dirPath ? `?path=${encodeURIComponent(dirPath)}` : '';
-    const res = await fetch(`/api/browse${qs}`);
-    const data = await res.json();
-    if (data.error) {
-      dirList.innerHTML = `<div class="dir-empty">${escapeHtml(data.error)}</div>`;
-      return;
-    }
-    state.setCurrentBrowsePath(data.path);
-    dirCurrentPath.textContent = data.path;
-    convCwdInput.value = data.path;
-
-    if (data.dirs.length === 0) {
-      dirList.innerHTML = '<div class="dir-empty">No subdirectories</div>';
-    } else {
-      dirList.innerHTML = data.dirs.map(d =>
-        `<div class="dir-item" data-name="${escapeHtml(d)}">` +
-        `<span class="dir-item-icon">&#x1F4C1;</span>` +
-        `<span class="dir-item-name">${escapeHtml(d)}</span>` +
-        `</div>`
-      ).join('');
-      dirList.querySelectorAll('.dir-item').forEach(item => {
-        item.addEventListener('click', () => {
-          browseTo(state.getCurrentBrowsePath() + '/' + item.dataset.name);
-        });
-      });
-    }
-  } catch (_err) {
+  const qs = dirPath ? `?path=${encodeURIComponent(dirPath)}` : '';
+  const res = await apiFetch(`/api/browse${qs}`, { silent: true });
+  if (!res) {
     dirList.innerHTML = `<div class="dir-empty">Failed to browse</div>`;
+    return;
+  }
+  const data = await res.json();
+  if (data.error) {
+    dirList.innerHTML = `<div class="dir-empty">${escapeHtml(data.error)}</div>`;
+    return;
+  }
+  state.setCurrentBrowsePath(data.path);
+  dirCurrentPath.textContent = data.path;
+  convCwdInput.value = data.path;
+
+  if (data.dirs.length === 0) {
+    dirList.innerHTML = '<div class="dir-empty">No subdirectories</div>';
+  } else {
+    dirList.innerHTML = data.dirs.map(d =>
+      `<div class="dir-item" data-name="${escapeHtml(d)}">` +
+      `<span class="dir-item-icon">&#x1F4C1;</span>` +
+      `<span class="dir-item-name">${escapeHtml(d)}</span>` +
+      `</div>`
+    ).join('');
+    dirList.querySelectorAll('.dir-item').forEach(item => {
+      item.addEventListener('click', () => {
+        browseTo(state.getCurrentBrowsePath() + '/' + item.dataset.name);
+      });
+    });
   }
 }
 
@@ -647,22 +645,22 @@ async function browseFiles(subpath) {
 
   fileBrowserList.innerHTML = '<div class="file-browser-empty">Loading...</div>';
 
-  try {
-    const qs = subpath ? `?path=${encodeURIComponent(subpath)}` : '';
-    const res = await fetch(`/api/conversations/${currentFileBrowserConvId}/files${qs}`);
-    const data = await res.json();
-
-    if (data.error) {
-      fileBrowserList.innerHTML = `<div class="file-browser-empty">${escapeHtml(data.error)}</div>`;
-      return;
-    }
-
-    renderFileBrowserEntries(data.entries, (filePath) => {
-      return `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}`;
-    }, browseFiles);
-  } catch (_err) {
+  const qs = subpath ? `?path=${encodeURIComponent(subpath)}` : '';
+  const res = await apiFetch(`/api/conversations/${currentFileBrowserConvId}/files${qs}`, { silent: true });
+  if (!res) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
+    return;
   }
+  const data = await res.json();
+
+  if (data.error) {
+    fileBrowserList.innerHTML = `<div class="file-browser-empty">${escapeHtml(data.error)}</div>`;
+    return;
+  }
+
+  renderFileBrowserEntries(data.entries, (filePath) => {
+    return `/api/conversations/${currentFileBrowserConvId}/files/download?path=${encodeURIComponent(filePath)}`;
+  }, browseFiles);
 }
 
 async function browseFilesGeneral(targetPath) {
@@ -672,27 +670,27 @@ async function browseFilesGeneral(targetPath) {
 
   fileBrowserList.innerHTML = '<div class="file-browser-empty">Loading...</div>';
 
-  try {
-    const qs = targetPath ? `?path=${encodeURIComponent(targetPath)}` : '';
-    const res = await fetch(`/api/files${qs}`);
-    const data = await res.json();
-
-    if (data.error) {
-      fileBrowserList.innerHTML = `<div class="file-browser-empty">${escapeHtml(data.error)}</div>`;
-      return;
-    }
-
-    // Update path display with actual resolved path
-    currentFileBrowserPath = data.path;
-    fileBrowserCurrentPath.textContent = data.path;
-    fileBrowserUp.disabled = !data.parent;
-
-    renderFileBrowserEntries(data.entries, (filePath) => {
-      return `/api/files/download?path=${encodeURIComponent(filePath)}`;
-    }, browseFilesGeneral);
-  } catch (_err) {
+  const qs = targetPath ? `?path=${encodeURIComponent(targetPath)}` : '';
+  const res = await apiFetch(`/api/files${qs}`, { silent: true });
+  if (!res) {
     fileBrowserList.innerHTML = `<div class="file-browser-empty">Failed to load files</div>`;
+    return;
   }
+  const data = await res.json();
+
+  if (data.error) {
+    fileBrowserList.innerHTML = `<div class="file-browser-empty">${escapeHtml(data.error)}</div>`;
+    return;
+  }
+
+  // Update path display with actual resolved path
+  currentFileBrowserPath = data.path;
+  fileBrowserCurrentPath.textContent = data.path;
+  fileBrowserUp.disabled = !data.parent;
+
+  renderFileBrowserEntries(data.entries, (filePath) => {
+    return `/api/files/download?path=${encodeURIComponent(filePath)}`;
+  }, browseFilesGeneral);
 }
 
 function renderFileBrowserEntries(entries, getDownloadUrl, navigateFn) {
@@ -1065,13 +1063,13 @@ async function loadStats() {
       <div class="skeleton-line" style="width:100%;height:80px"></div>
     </div>
   `;
-  try {
-    const res = await fetch('/api/stats');
-    const s = await res.json();
-    renderStats(s);
-  } catch {
+  const res = await apiFetch('/api/stats');
+  if (!res) {
     statsContent.innerHTML = '<div class="stats-loading">Failed to load stats</div>';
+    return;
   }
+  const s = await res.json();
+  renderStats(s);
 }
 
 function renderStats(s) {
@@ -1293,20 +1291,17 @@ export function setupEventListeners(createConversation) {
     const name = await showDialog({ title: 'New folder', input: true, placeholder: 'Folder name', confirmLabel: 'Create' });
     if (!name || !name.trim()) return;
     const newPath = state.getCurrentBrowsePath() + '/' + name.trim();
-    try {
-      const res = await fetch('/api/mkdir', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: newPath }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        browseTo(newPath);
-      } else {
-        showDialog({ title: 'Error', message: data.error || 'Failed to create folder' });
-      }
-    } catch {
-      showDialog({ title: 'Error', message: 'Failed to create folder' });
+    const res = await apiFetch('/api/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: newPath }),
+    });
+    if (!res) return;
+    const data = await res.json();
+    if (data.ok) {
+      browseTo(newPath);
+    } else {
+      showDialog({ title: 'Error', message: data.error || 'Failed to create folder' });
     }
   });
 
@@ -1522,10 +1517,11 @@ export function setupEventListeners(createConversation) {
     const newAutopilot = !state.getCurrentAutopilot();
     state.setCurrentAutopilot(newAutopilot);
     updateModeBadge(newAutopilot);
-    await fetch(`/api/conversations/${currentConversationId}`, {
+    await apiFetch(`/api/conversations/${currentConversationId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ autopilot: newAutopilot }),
+      silent: true,
     });
   });
 

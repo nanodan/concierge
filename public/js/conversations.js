@@ -1,6 +1,6 @@
 // --- Conversation management ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, setLoading, showToast, showDialog, haptic } from './utils.js';
+import { formatTime, setLoading, showToast, showDialog, haptic, apiFetch } from './utils.js';
 import { openNewChatModal } from './ui.js';
 import { renderMessages } from './render.js';
 import * as state from './state.js';
@@ -54,40 +54,38 @@ export async function loadConversations() {
     `).join('');
   }
   setLoading(listView, true);
-  try {
-    const qs = state.getShowingArchived() ? '?archived=true' : '';
-    const res = await fetch(`/api/conversations${qs}`);
-    const convs = await res.json();
-    state.setConversations(convs);
-    if (!chatView.classList.contains('slide-in')) {
-      renderConversationList();
-    }
-  } catch (err) {
-    console.error('Failed to load conversations:', err);
-  } finally {
-    setLoading(listView, false);
+  const qs = state.getShowingArchived() ? '?archived=true' : '';
+  const res = await apiFetch(`/api/conversations${qs}`);
+  setLoading(listView, false);
+  if (!res) return;
+  const convs = await res.json();
+  state.setConversations(convs);
+  if (!chatView.classList.contains('slide-in')) {
+    renderConversationList();
   }
 }
 
 export async function getConversation(id) {
-  const res = await fetch(`/api/conversations/${id}`);
-  if (!res.ok) return null;
+  const res = await apiFetch(`/api/conversations/${id}`, { silent: true });
+  if (!res) return null;
   return res.json();
 }
 
 export async function createConversation(name, cwd, autopilot, model) {
-  const res = await fetch('/api/conversations', {
+  const res = await apiFetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, cwd, autopilot, model }),
   });
+  if (!res) return;
   const conv = await res.json();
   await loadConversations();
   openConversation(conv.id);
 }
 
 export async function deleteConversation(id) {
-  await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/conversations/${id}`, { method: 'DELETE' });
+  if (!res) return;
   if (state.getCurrentConversationId() === id) {
     showListView();
   }
@@ -133,7 +131,7 @@ export function softDeleteConversation(id) {
   // Schedule actual deletion
   const timeout = setTimeout(async () => {
     if (pendingDelete && pendingDelete.id === id) {
-      await fetch(`/api/conversations/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/conversations/${id}`, { method: 'DELETE', silent: true });
       pendingDelete = null;
     }
   }, 5000);
@@ -142,49 +140,48 @@ export function softDeleteConversation(id) {
 }
 
 export async function archiveConversation(id, archived) {
-  await fetch(`/api/conversations/${id}`, {
+  const res = await apiFetch(`/api/conversations/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ archived }),
   });
+  if (!res) return;
   await loadConversations();
 }
 
 export async function renameConversation(id, name) {
-  await fetch(`/api/conversations/${id}`, {
+  const res = await apiFetch(`/api/conversations/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+  if (!res) return;
   await loadConversations();
 }
 
 export async function pinConversation(id, pinned) {
-  await fetch(`/api/conversations/${id}`, {
+  const res = await apiFetch(`/api/conversations/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pinned }),
   });
+  if (!res) return;
   await loadConversations();
 }
 
 export async function forkConversation(fromMessageIndex) {
   const currentConversationId = state.getCurrentConversationId();
   if (!currentConversationId) return;
-  try {
-    const res = await fetch(`/api/conversations/${currentConversationId}/fork`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fromMessageIndex }),
-    });
-    if (!res.ok) { showToast('Fork failed', { variant: 'error' }); return; }
-    const conv = await res.json();
-    showToast('Forked conversation');
-    await loadConversations();
-    openConversation(conv.id);
-  } catch (_err) {
-    showToast('Fork failed', { variant: 'error' });
-  }
+  const res = await apiFetch(`/api/conversations/${currentConversationId}/fork`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromMessageIndex }),
+  });
+  if (!res) return;
+  const conv = await res.json();
+  showToast('Forked conversation');
+  await loadConversations();
+  openConversation(conv.id);
 }
 
 export async function searchConversations(query, filters = {}) {
@@ -193,7 +190,8 @@ export async function searchConversations(query, filters = {}) {
   if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
   if (filters.dateTo) params.set('dateTo', filters.dateTo);
   if (filters.model) params.set('model', filters.model);
-  const res = await fetch(`/api/conversations/search?${params}`);
+  const res = await apiFetch(`/api/conversations/search?${params}`, { silent: true });
+  if (!res) return [];
   return res.json();
 }
 

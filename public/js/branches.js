@@ -1,6 +1,6 @@
 // --- Conversation branches visualization ---
 import { escapeHtml } from './markdown.js';
-import { haptic } from './utils.js';
+import { haptic, apiFetch } from './utils.js';
 import * as state from './state.js';
 
 // DOM elements (set by init)
@@ -34,18 +34,14 @@ export async function loadBranchesTree(conversationId) {
 
   branchesContent.innerHTML = '<div class="branches-loading">Loading tree...</div>';
 
-  try {
-    const res = await fetch(`/api/conversations/${conversationId}/tree`);
-    if (!res.ok) {
-      branchesContent.innerHTML = '<div class="branches-empty">Failed to load tree</div>';
-      return;
-    }
-    const data = await res.json();
-    _currentTreeData = data;
-    renderTree(data);
-  } catch (_err) {
+  const res = await apiFetch(`/api/conversations/${conversationId}/tree`, { silent: true });
+  if (!res) {
     branchesContent.innerHTML = '<div class="branches-empty">Failed to load tree</div>';
+    return;
   }
+  const data = await res.json();
+  _currentTreeData = data;
+  renderTree(data);
 }
 
 function renderTree(data) {
