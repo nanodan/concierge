@@ -33,13 +33,19 @@ let pushBtn = null;
 let pullBtn = null;
 let aheadBehindBadge = null;
 
+// History tab elements
+let historyTab = null;
+let historyView = null;
+let historyList = null;
+let commits = null;
+
 // Panel state
 let currentPath = '';
 let isOpen = false;
 let isDragging = false;
 let dragStartY = 0;
 let dragStartHeight = 0;
-let currentTab = 'files'; // 'files' | 'changes'
+let currentTab = 'files'; // 'files' | 'changes' | 'history'
 let gitStatus = null;
 let branches = null;
 let _viewingDiff = null; // { path, staged }
@@ -123,6 +129,11 @@ export function initFilePanel(elements) {
   pullBtn = elements.pullBtn;
   aheadBehindBadge = elements.aheadBehindBadge;
 
+  // History tab elements
+  historyTab = elements.historyTab;
+  historyView = elements.historyView;
+  historyList = elements.historyList;
+
   setupEventListeners();
 }
 
@@ -167,6 +178,9 @@ function setupEventListeners() {
   }
   if (changesTab) {
     changesTab.addEventListener('click', () => switchTab('changes'));
+  }
+  if (historyTab) {
+    historyTab.addEventListener('click', () => switchTab('history'));
   }
 
   // Branch selector
@@ -592,17 +606,21 @@ function switchTab(tab) {
   // Update tab buttons
   if (filesTab) filesTab.classList.toggle('active', tab === 'files');
   if (changesTab) changesTab.classList.toggle('active', tab === 'changes');
+  if (historyTab) historyTab.classList.toggle('active', tab === 'history');
 
   // Update views
   if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
   if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
+  if (historyView) historyView.classList.toggle('hidden', tab !== 'history');
 
   // Load content
   if (tab === 'files') {
     loadFileTree(currentPath);
-  } else {
+  } else if (tab === 'changes') {
     loadGitStatus();
     loadBranches();
+  } else if (tab === 'history') {
+    loadCommits();
   }
 }
 
@@ -917,6 +935,94 @@ function renderDiff(data) {
   }
 
   fileViewerContent.innerHTML = `<code class="diff-view">${html}</code>`;
+}
+
+// === Commit History ===
+
+async function loadCommits() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  if (historyList) {
+    historyList.innerHTML = '<div class="history-loading">Loading...</div>';
+  }
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/commits`, { silent: true });
+  if (!res) {
+    if (historyList) {
+      historyList.innerHTML = '<div class="history-empty">Failed to load commits</div>';
+    }
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    if (historyList) {
+      historyList.innerHTML = `<div class="history-empty">${escapeHtml(data.error)}</div>`;
+    }
+    return;
+  }
+
+  commits = data.commits;
+  renderHistoryView();
+}
+
+function renderHistoryView() {
+  if (!historyList) return;
+
+  if (!commits || commits.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">No commits yet</div>';
+    return;
+  }
+
+  historyList.innerHTML = commits.map(c => `
+    <div class="commit-item" data-hash="${c.hash}">
+      <div class="commit-header">
+        <span class="commit-hash">${c.hash.slice(0, 7)}</span>
+        <span class="commit-time">${escapeHtml(c.time)}</span>
+      </div>
+      <div class="commit-message">${escapeHtml(c.message)}</div>
+      <div class="commit-author">${escapeHtml(c.author)}</div>
+    </div>
+  `).join('');
+
+  // Attach click handlers
+  historyList.querySelectorAll('.commit-item').forEach(item => {
+    item.addEventListener('click', () => viewCommitDiff(item.dataset.hash));
+  });
+}
+
+async function viewCommitDiff(hash) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  haptic(10);
+
+  // Show loading state in viewer
+  fileViewerName.textContent = `${hash.slice(0, 7)}`;
+  fileViewerContent.innerHTML = '<code>Loading...</code>';
+  fileViewer.classList.remove('hidden');
+  setTimeout(() => fileViewer.classList.add('open'), 10);
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/commits/${hash}`, { silent: true });
+  if (!res) {
+    fileViewerContent.innerHTML = '<div class="file-viewer-error"><p>Failed to load commit</p></div>';
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
+    return;
+  }
+
+  // Update header with commit info
+  fileViewerName.textContent = `${hash.slice(0, 7)} - ${data.message}`;
+
+  // Render the diff
+  renderDiff(data);
 }
 
 // === Git Operations ===

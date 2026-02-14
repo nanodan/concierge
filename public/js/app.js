@@ -116,6 +116,9 @@ const gitRefreshBtn = document.getElementById('git-refresh-btn');
 const pushBtn = document.getElementById('push-btn');
 const pullBtn = document.getElementById('pull-btn');
 const aheadBehindBadge = document.getElementById('ahead-behind-badge');
+const historyTab = document.getElementById('history-tab');
+const historyView = document.getElementById('history-view');
+const historyList = document.getElementById('history-list');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -299,7 +302,10 @@ initFilePanel({
   gitRefreshBtn,
   pushBtn,
   pullBtn,
-  aheadBehindBadge
+  aheadBehindBadge,
+  historyTab,
+  historyView,
+  historyList
 });
 
 // Initialize branches view
