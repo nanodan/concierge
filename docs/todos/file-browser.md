@@ -1,18 +1,16 @@
 # File Browser TODOs
 
-## File upload
+## ~~File upload~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium
 
-Allow uploading files from phone to any directory on the server.
+~~Allow uploading files from phone to any directory on the server.~~ **IMPLEMENTED**
 
-**Approach:**
-- Add upload button to file browser header
-- Use existing upload endpoint pattern (`/api/files/upload`)
-- Support drag-and-drop on desktop
-- Show upload progress indicator
-
-**Files:** `lib/routes.js`, `public/js/ui.js`, `public/css/components.css`
+- Upload button in file browser header
+- `uploadToFileBrowser()` function handles uploads
+- Works in both conversation attachments and general filesystem mode
+- `POST /api/files/upload?path=&filename=` endpoint
+- Success toast on upload completion
 
 ---
 

@@ -4,6 +4,9 @@ Organized by category. Each file contains individual items with priority, effort
 
 ## Recently Completed ✅
 
+- **Context compression** — click context bar for token breakdown, auto-compress prompt at 85%, manual compress at 50%+
+- **Memory system** — persistent memories across conversations, scoped globally or per-project (cwd), toggle per-conversation
+- **File upload to browser** — upload files from phone/desktop to any directory on the server
 - **Markdown render caching** — FNV-1a hash-based LRU cache (500 messages), 2-5x faster re-renders
 - **Git revert/reset** — revert commits, reset to previous commits (soft/mixed/hard), undo last commit with action buttons in History tab
 - **Open files in new tab** — floating button to open any text file in new tab (renders HTML, shows raw for others)
@@ -30,24 +33,22 @@ Organized by category. Each file contains individual items with priority, effort
 | File | Open Items | Focus |
 |------|------------|-------|
 | [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
-| [ux-features.md](ux-features.md) | 14 | Context visualization, diff review, screenshot-to-code, voice-to-voice, live preview |
+| [ux-features.md](ux-features.md) | 13 | Diff review, screenshot-to-code, voice-to-voice, live preview |
 | [architecture.md](architecture.md) | 2 | localStorage versioning, server restart |
 | [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
-| [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share, create new file |
+| [file-browser.md](file-browser.md) | 5 | Quick actions, recent files, editing, iOS share, create new file |
 | [automation.md](automation.md) | 3 | Triggers, parallel conversations, task queue |
 
 ## Priority Guide
 
 **High priority** — items that noticeably improve daily usage or address real pain points:
-- Context visualization + auto-compression (ux) — show context breakdown, auto-compress at limit
 - Diff review UI (ux) — GitHub-style accept/reject per hunk when Claude edits files
 - Screenshot-to-code (ux) — paste image, watch Claude recreate it with live preview
 - Voice-to-voice (ux) — real-time bidirectional voice conversation with Claude
 - Trigger system (automation) — auto-start conversations on git push, file change, schedule, webhook
 - Live code preview (ux) — render HTML/JS live as Claude streams
-- File upload to browser (file-browser)
 - Search within conversation (ux)
 - Text file editing (file-browser)
 

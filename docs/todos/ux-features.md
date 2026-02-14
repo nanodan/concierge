@@ -358,121 +358,19 @@ Real-time bidirectional voice conversation with Claude. Speak naturally, hear re
 
 ---
 
-## Context visualization + auto-compression
+## ~~Context visualization + auto-compression~~ ✅ DONE
 **Priority:** High
 **Effort:** High
 
-Show accurate context window usage with breakdown, and automatically compress conversations when nearing the limit.
+~~Show accurate context window usage with breakdown, and automatically compress conversations when nearing the limit.~~ **IMPLEMENTED**
 
-**Why:** Users don't know if Claude "remembers" old messages. Hitting context limits causes errors. Transparency + automatic handling = magic.
-
-### Part 1: Accurate Context Tracking
-
-**Current state:**
-- Context bar shows `inputTokens + outputTokens` from last response
-- `inputTokens` from Claude API = full context sent that turn (system + history + message)
-- So last turn's input tokens ≈ current context usage (already close!)
-
-**Improvements needed:**
-- Show breakdown: system prompt, memories, conversation, files read
-- Track files read per turn (from `tool_start` events for Read/Glob/Grep)
-- Estimate system prompt size (base + memories text length * ~1.3 tokens/word)
-- Show "oldest message in context" indicator
-
-**UI:**
-```
-┌─────────────────────────────────────────────────┐
-│ Context: 127,000 / 200,000 tokens               │
-│ ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 64%   │
-├─────────────────────────────────────────────────┤
-│ 📄 System prompt        12,400 tokens           │
-│ 🧠 Memories (7 active)   1,200 tokens           │
-│ 💬 Conversation          98,000 tokens          │
-│    └─ 142 messages (oldest: 3 days ago)         │
-│ 📁 Files read this turn  15,400 tokens          │
-│    ├─ server.js (4,200)                         │
-│    ├─ routes.js (8,100)                         │
-│    └─ data.js (3,100)                           │
-├─────────────────────────────────────────────────┤
-│ [Compress conversation]                         │
-└─────────────────────────────────────────────────┘
-```
-
-- Click context bar to expand breakdown panel
-- File list extracted from tool calls in current turn
-- Token estimates for files: `fileSize * 0.25` (rough chars-to-tokens)
-
-### Part 2: Auto-Compression
-
-**Problem:** Claude CLI's `--resume` loads full session history. We can't modify its internal context. Headless mode doesn't auto-compact.
-
-**Solution:** "Soft fork" — same conversation, new Claude session with compressed history.
-
-**Trigger:** At 80% context usage, show warning. At 90%, prompt to compress.
-
-**Compression flow:**
-1. User clicks "Compress" (or auto-triggered at threshold)
-2. Backend calls Claude with compression prompt:
-   ```
-   Summarize this conversation history in ~2000 tokens, preserving:
-   - Key decisions made
-   - Important code/files discussed
-   - Current task state
-   - Any commitments or action items
-
-   History:
-   [first 50% of messages]
-   ```
-3. Create new Claude session (no --resume)
-4. First message to new session:
-   ```
-   [CONTEXT SUMMARY - This conversation was compressed]
-
-   {summary}
-
-   [RECENT MESSAGES - Full detail follows]
-
-   {last 50% of messages, formatted as history}
-   ```
-5. Update conversation: `claudeSessionId = newSessionId`
-6. Frontend shows "Conversation compressed" toast with before/after token counts
-
-**Data model changes:**
-- Add `compressions: [{ timestamp, oldSessionId, messagesSummarized, tokensSaved }]` to conversation
-- Add `summarized: true` flag to messages that were compressed
-- Keep original messages in storage (for history), but mark them
-
-**Backend changes:**
-- New endpoint: `POST /api/conversations/:id/compress`
-- New function in `lib/claude.js`: `compressSession(conversationId, threshold)`
-- Compression prompt template in `lib/compression-prompt.txt`
-
-**Frontend changes:**
-- Expand context bar on click to show breakdown
-- "Compress now" button in expanded view
-- Auto-prompt modal at 90% threshold
-- "Compressed" indicator on old messages (collapsed by default)
-- Settings: auto-compress threshold (off / 80% / 90%)
-
-**Challenges:**
-- Compression quality: summary must preserve critical context
-- Session continuity: Claude loses some nuance from old messages
-- Multiple compressions: conversation could be compressed multiple times
-- Cost: compression requires a Claude call (~$0.05-0.10)
-
-**Nice to have:**
-- "Expand compressed messages" to see original history
-- Compression preview: show what will be summarized before confirming
-- Selective compression: choose which messages to keep in full
-
-**Files:**
-- `lib/claude.js` — compression logic, session management
-- `lib/routes.js` — `/api/conversations/:id/compress` endpoint
-- `lib/compression-prompt.txt` — new file, prompt template
-- `server.js` — WebSocket event for compression status
-- `public/js/ui.js` — expanded context panel, compression UI
-- `public/js/render.js` — compressed message indicators
-- `public/css/components.css` — context breakdown styling
+- Click context bar to see token breakdown (system prompt, memories, conversation)
+- "Compress conversation" button appears at 50%+ context usage
+- At 85% context, auto-compression prompt appears
+- Compression summarizes older messages via Claude CLI and starts fresh session
+- Compressed messages hidden by default but expandable
+- `POST /api/conversations/:id/compress` endpoint
+- Compression history tracked in conversation metadata
 
 ---
 
