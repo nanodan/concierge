@@ -744,3 +744,112 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Compressed messages section */
+.compressed-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin: 0 auto 12px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 300px;
+}
+
+.compressed-section:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-alpha-30);
+}
+
+.compressed-section svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.compressed-section[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.compressed-section-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Summarized/compressed messages (collapsed by default) */
+.message.summarized {
+  opacity: 0.5;
+  max-height: 60px;
+  overflow: hidden;
+  position: relative;
+}
+
+.message.summarized::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(transparent, var(--assistant-bubble));
+  pointer-events: none;
+}
+
+.message-wrapper.summarized,
+.message.summarized:not(.message-wrapper .message) {
+  display: none;
+}
+
+.message-wrapper.summarized.show-compressed,
+.message.summarized.show-compressed:not(.message-wrapper .message) {
+  display: flex;
+}
+
+.message.summarized.show-compressed:not(.message-wrapper .message) {
+  display: block;
+}
+
+/* Compression summary message */
+.message.compression-summary {
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  max-width: 100%;
+}
+
+.message.compression-summary .summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.message.compression-summary .summary-header svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.message.compression-summary .summary-header span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.message.compression-summary .summary-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  opacity: 0.7;
+}

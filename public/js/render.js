@@ -86,16 +86,75 @@ export function renderMessages(messages) {
   attachImageHandlers();
   attachRegenHandlers();
   attachMessageActions();
+  attachCompressedSectionToggle();
   renderAllReactions();
   state.scrollToBottom(true);
 }
 
+// Attach click handler for compressed section toggle
+function attachCompressedSectionToggle() {
+  const messagesContainer = state.getMessagesContainer();
+  const toggle = messagesContainer.querySelector('#compressed-section-toggle');
+  if (!toggle) return;
+
+  toggle.addEventListener('click', () => {
+    const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', !isExpanded);
+
+    // Toggle visibility of summarized messages
+    messagesContainer.querySelectorAll('.message-wrapper.summarized, .message.summarized').forEach(el => {
+      el.classList.toggle('show-compressed', !isExpanded);
+    });
+  });
+
+  toggle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle.click();
+    }
+  });
+}
+
 export function renderMessageSlice(messages, startIndex) {
   const allMessages = state.getAllMessages();
-  return messages.map((m, i) => {
+
+  // Count compressed messages for the section header
+  const compressedCount = messages.filter(m => m.summarized).length;
+  let compressedSection = '';
+  if (compressedCount > 0 && startIndex === 0) {
+    compressedSection = `<div class="compressed-section" id="compressed-section-toggle" aria-expanded="false" role="button" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      <span class="compressed-section-text">${compressedCount} compressed message${compressedCount > 1 ? 's' : ''}</span>
+    </div>`;
+  }
+
+  const messagesHtml = messages.map((m, i) => {
     const globalIndex = startIndex + i;
+
+    // Handle compression summary message
+    if (m.role === 'system' && m.compressionMeta) {
+      const summaryContent = renderMarkdown(m.text);
+      const msgsSummarized = m.compressionMeta.messagesSummarized || 0;
+      const compressedAt = m.compressionMeta.compressedAt
+        ? new Date(m.compressionMeta.compressedAt).toLocaleDateString()
+        : '';
+      return `<div class="message compression-summary" data-index="${globalIndex}">
+        <div class="summary-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/></svg>
+          <span>Compressed Context</span>
+        </div>
+        ${summaryContent}
+        <div class="summary-meta">${msgsSummarized} messages summarized${compressedAt ? ` on ${compressedAt}` : ''}</div>
+      </div>`;
+    }
+
+    // Handle summarized (compressed) messages - hidden by default
+    const isSummarized = m.summarized === true;
+
     const cls = m.role === 'user' ? 'user' : 'assistant';
-    const content = m.role === 'assistant' ? renderMarkdown(m.text) : escapeHtml(m.text);
+    const content = m.role === 'assistant' || m.role === 'system'
+      ? renderMarkdown(m.text)
+      : escapeHtml(m.text);
     const timestamp = m.timestamp || Date.now();
     let meta = formatTime(timestamp);
     if (m.cost != null) {
@@ -119,20 +178,24 @@ export function renderMessageSlice(messages, startIndex) {
     const regenBtn = isLastAssistant
       ? '<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>'
       : '';
-    const ttsBtn = (cls === 'assistant' && window.speechSynthesis)
+    const ttsBtn = (cls === 'assistant' && window.speechSynthesis && !isSummarized)
       ? '<button class="msg-action-btn tts-btn" aria-label="Read aloud"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>'
       : '';
     const actionBtns = (ttsBtn || regenBtn) ? `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>` : '';
 
+    const summarizedClass = isSummarized ? ' summarized' : '';
+
     // Wrap assistant messages with avatar
     if (cls === 'assistant') {
-      return `<div class="message-wrapper assistant">
+      return `<div class="message-wrapper assistant${summarizedClass}">
         <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
-        <div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>
+        <div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>
       </div>`;
     }
-    return `<div class="message ${cls}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>`;
+    return `<div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>`;
   }).join('');
+
+  return compressedSection + messagesHtml;
 }
 
 export function loadMoreMessages() {
@@ -269,6 +332,18 @@ export function finalizeMessage(data) {
     // Import dynamically to avoid circular dependency
     import('./ui.js').then(ui => {
       ui.updateContextBar(data.inputTokens, data.outputTokens, state.getCurrentModel());
+
+      // Check if context is near limit (85%) and show compression prompt
+      const models = state.getModels();
+      const modelId = state.getCurrentModel();
+      const model = models.find(m => m.id === modelId);
+      const contextLimit = model ? model.context : 200000;
+      const totalTokens = (data.inputTokens || 0) + (data.outputTokens || 0);
+      const pct = (totalTokens / contextLimit) * 100;
+
+      if (pct >= 85 && !state.getCompressionPromptShown()) {
+        ui.showCompressionPrompt(pct, totalTokens, contextLimit);
+      }
     });
   }
 }

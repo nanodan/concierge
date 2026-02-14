@@ -139,6 +139,7 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - **View transitions**: Three views (list, chat, stats) swap via CSS transform + opacity animations with `slide-out`/`slide-in` classes.
 - **Keyboard shortcuts**: Cmd+K (search), Cmd+N (new chat), Cmd+E (export), Cmd+Shift+A (toggle archived), Escape (back/close).
 - **Memory system**: Persistent memories across conversations. Scoped globally or per-project (cwd). Memories injected via `--append-system-prompt`. Toggle per-conversation via brain icon in chat header. "Remember" option in message context menu to save snippets. Memory view accessible from more menu.
+- **Context compression**: Click the context bar to see token breakdown. When context reaches 50%+, a "Compress conversation" button appears. Compression summarizes older messages via Claude CLI and starts a fresh session with the summary injected. At 85% context, an auto-compression prompt appears. Compressed messages are hidden by default but can be expanded.
 
 ## REST API
 
@@ -151,6 +152,7 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - `GET /api/conversations/:id/export?format=markdown|json` — export conversation
 - `POST /api/conversations/:id/upload` — upload file attachment (raw body, X-Filename header)
 - `POST /api/conversations/:id/fork` — fork conversation from message index
+- `POST /api/conversations/:id/compress` — compress conversation (summarize old messages)
 - `GET /api/memory?scope=` — list memories (global + project-scoped)
 - `POST /api/memory` — create memory `{ text, scope, category? }`
 - `PATCH /api/memory/:id` — update memory (toggle enabled, edit text)

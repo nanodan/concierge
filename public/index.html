@@ -149,10 +149,12 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
       </button>
     </header>
-    <div id="context-bar" class="context-bar hidden">
+    <div id="context-bar" class="context-bar hidden" role="button" tabindex="0" aria-expanded="false">
       <div class="context-bar-track"><div id="context-bar-fill" class="context-bar-fill"></div></div>
       <span id="context-bar-label" class="context-bar-label">0k / 200k</span>
+      <svg class="context-bar-expand" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
+    <div id="context-breakdown" class="context-breakdown hidden"></div>
     <div id="reconnect-banner" class="reconnect-banner hidden">Reconnecting...</div>
     <div id="messages" class="messages">
       <button id="load-more-btn" class="load-more-btn hidden">Load earlier messages</button>

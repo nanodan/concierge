@@ -9,6 +9,9 @@ export let currentConversationId = null;
 export let memoryEnabled = localStorage.getItem('memoryEnabled') !== 'false'; // Global toggle
 export let memories = []; // Current project's memories
 
+// Compression prompt state (reset per conversation)
+export let compressionPromptShown = false;
+
 // Models
 export let models = [];
 export let currentModel = 'sonnet';
@@ -626,4 +629,18 @@ export function updateMemory(id, updates) {
 
 export function removeMemory(id) {
   memories = memories.filter(m => m.id !== id);
+}
+
+// --- Compression prompt state ---
+
+export function setCompressionPromptShown(shown) {
+  compressionPromptShown = shown;
+}
+
+export function getCompressionPromptShown() {
+  return compressionPromptShown;
+}
+
+export function resetCompressionPromptShown() {
+  compressionPromptShown = false;
 }
