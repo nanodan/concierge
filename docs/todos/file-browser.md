@@ -64,19 +64,16 @@ Open and edit text files directly in a modal editor.
 
 ---
 
-## Image preview thumbnails
+## ~~Image preview thumbnails~~ ✅ DONE
 **Priority:** Low
 **Effort:** Low
 
-Show image thumbnails inline in the file browser instead of generic icon.
+~~Show image thumbnails inline in the file browser instead of generic icon.~~ **IMPLEMENTED**
 
-**Approach:**
-- For image files, set icon background to thumbnail
-- Use `object-fit: cover` for consistent sizing
-- Lazy load thumbnails as they scroll into view
-- Could generate server-side thumbnails for performance
-
-**Files:** `public/js/ui.js`, `public/css/components.css`
+- Image files show actual thumbnail instead of icon
+- Uses `object-fit: cover` for consistent sizing
+- Lazy loading with `loading="lazy"` attribute
+- Works in both file browser modal and file tree panel
 
 ---
 

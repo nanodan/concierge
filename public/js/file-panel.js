@@ -417,13 +417,24 @@ export async function loadFileTree(subpath) {
 }
 
 function renderFileTree(entries) {
+  const convId = state.getCurrentConversationId();
   fileTree.innerHTML = entries.map(entry => {
     const icon = getFileIcon(entry);
     const meta = entry.type === 'directory' ? '' : formatFileSize(entry.size);
+    const isImage = IMAGE_EXTS.has(entry.ext);
+
+    // For images, show actual thumbnail instead of icon
+    let iconHtml;
+    if (isImage && convId) {
+      const thumbUrl = `/api/conversations/${convId}/files/download?path=${encodeURIComponent(entry.path)}&inline=true`;
+      iconHtml = `<div class="file-tree-icon thumbnail"><img src="${thumbUrl}" alt="" loading="lazy" /></div>`;
+    } else {
+      iconHtml = `<div class="file-tree-icon ${icon.class}">${icon.svg}</div>`;
+    }
 
     return `
       <div class="file-tree-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}" data-ext="${entry.ext || ''}">
-        <div class="file-tree-icon ${icon.class}">${icon.svg}</div>
+        ${iconHtml}
         <span class="file-tree-name">${escapeHtml(entry.name)}</span>
         ${meta ? `<span class="file-tree-meta">${meta}</span>` : ''}
       </div>`;
@@ -1124,3 +1135,9 @@ async function checkoutBranch(branch) {
 export function isFilePanelOpen() {
   return isOpen;
 }
+
+export function isFileViewerOpen() {
+  return fileViewer && fileViewer.classList.contains('open');
+}
+
+export { closeFileViewer };

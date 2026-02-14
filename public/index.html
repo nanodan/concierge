@@ -96,6 +96,7 @@
     <button class="action-popup-btn" data-action="pin" id="popup-pin-btn">Pin</button>
     <button class="action-popup-btn" data-action="archive" id="popup-archive-btn">Archive</button>
     <button class="action-popup-btn" data-action="rename">Rename</button>
+    <button class="action-popup-btn" data-action="branches">View branches</button>
     <button class="action-popup-btn danger" data-action="delete">Delete</button>
   </div>
   <div id="action-popup-overlay" class="action-popup-overlay hidden"></div>
@@ -121,6 +122,9 @@
           </button>
           <div id="conv-stats-dropdown" class="conv-stats-dropdown hidden"></div>
         </div>
+        <button id="branches-btn" class="branches-btn" aria-label="View branches" title="View branches">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M6 9v6c0 3 3 3 6 3h3"/></svg>
+        </button>
       </div>
       <button id="new-chat-here-btn" class="header-icon-btn hide-mobile" aria-label="New chat in this folder" title="New chat in this folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -239,6 +243,15 @@
       <div class="chat-title"><span>Stats</span></div>
     </header>
     <div id="stats-content" class="stats-content"></div>
+  </div>
+
+  <!-- Branches View -->
+  <div id="branches-view" class="view">
+    <header class="top-bar chat-header">
+      <button id="branches-back-btn" class="back-btn" aria-label="Back">&larr;</button>
+      <div class="chat-title"><span>Conversation Branches</span></div>
+    </header>
+    <div id="branches-content" class="branches-content"></div>
   </div>
 
   <div id="toast-container" class="toast-container"></div>

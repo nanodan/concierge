@@ -523,6 +523,10 @@ export function setupActionPopupHandlers(hideMsgActionPopup) {
         if (newName && newName.trim()) {
           renameConversation(id, newName.trim());
         }
+      } else if (action === 'branches') {
+        const { showBranchesView, loadBranchesTree } = await import('./branches.js');
+        showBranchesView();
+        loadBranchesTree(id);
       }
     });
   });
