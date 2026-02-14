@@ -1,6 +1,20 @@
 // --- Markdown module (ES module wrapper) ---
 // This wraps the original markdown.js which attaches to window.markdown
 
+// Cache for rendered markdown (content hash -> HTML)
+const markdownCache = new Map();
+const MAX_CACHE_SIZE = 500; // ~500 messages worth
+
+// Simple FNV-1a hash - fast and good distribution
+function hashString(str) {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 16777619) >>> 0;
+  }
+  return hash.toString(36);
+}
+
 function escapeHtml(text) {
   return text
     .replace(/&/g, '&amp;')
@@ -9,8 +23,14 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
-function renderMarkdown(text) {
+function renderMarkdown(text, { skipCache = false } = {}) {
   if (!text) return '';
+
+  // Check cache first (unless skipping for streaming)
+  const cacheKey = skipCache ? null : hashString(text);
+  if (cacheKey && markdownCache.has(cacheKey)) {
+    return markdownCache.get(cacheKey);
+  }
 
   // Extract trace blocks (tool calls) before escaping - they become collapsible
   const traceBlocks = [];
@@ -73,7 +93,26 @@ function renderMarkdown(text) {
     return `<details class="tool-trace"><summary>Show tool calls</summary><div class="trace-content">${traceContent}</div></details>`;
   });
 
+  // Cache result (with LRU eviction)
+  if (cacheKey) {
+    if (markdownCache.size >= MAX_CACHE_SIZE) {
+      // Evict oldest entry (first key in Map iteration order)
+      const firstKey = markdownCache.keys().next().value;
+      markdownCache.delete(firstKey);
+    }
+    markdownCache.set(cacheKey, html);
+  }
+
   return html;
 }
 
-export { escapeHtml, renderMarkdown };
+// Export cache control for testing/debugging
+function clearMarkdownCache() {
+  markdownCache.clear();
+}
+
+function getMarkdownCacheSize() {
+  return markdownCache.size;
+}
+
+export { escapeHtml, renderMarkdown, clearMarkdownCache, getMarkdownCacheSize };

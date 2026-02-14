@@ -201,7 +201,8 @@ export function flushDelta() {
   if (!pendingDelta || !streamingMessageEl) return;
   state.appendStreamingText(pendingDelta);
   state.setPendingDelta('');
-  streamingMessageEl.innerHTML = renderMarkdown(state.getStreamingText());
+  // Skip cache during streaming - text constantly changing
+  streamingMessageEl.innerHTML = renderMarkdown(state.getStreamingText(), { skipCache: true });
   enhanceCodeBlocks(streamingMessageEl);
   state.scrollToBottom();
 }

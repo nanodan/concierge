@@ -1,6 +1,6 @@
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { escapeHtml, renderMarkdown } = require('./helpers/markdown.cjs');
+const { escapeHtml, renderMarkdown, clearMarkdownCache, getMarkdownCacheSize } = require('./helpers/markdown.cjs');
 
 describe('escapeHtml', () => {
   it('escapes ampersands', () => {
@@ -198,5 +198,77 @@ describe('renderMarkdown', () => {
     const result = renderMarkdown('- **bold item**\n- *italic item*');
     assert.ok(result.includes('<li><strong>bold item</strong></li>'));
     assert.ok(result.includes('<li><em>italic item</em></li>'));
+  });
+});
+
+describe('markdown caching', () => {
+  beforeEach(() => {
+    clearMarkdownCache();
+  });
+
+  it('caches rendered output', () => {
+    const text = '**bold** and *italic*';
+    const initialSize = getMarkdownCacheSize();
+
+    const result1 = renderMarkdown(text);
+    assert.equal(getMarkdownCacheSize(), initialSize + 1);
+
+    const result2 = renderMarkdown(text);
+    assert.equal(result1, result2);
+    // Size should not increase for same content
+    assert.equal(getMarkdownCacheSize(), initialSize + 1);
+  });
+
+  it('returns same output for same input', () => {
+    const text = '# Heading\n\nSome **content** here';
+    const result1 = renderMarkdown(text);
+    const result2 = renderMarkdown(text);
+    assert.equal(result1, result2);
+  });
+
+  it('caches different content separately', () => {
+    clearMarkdownCache();
+
+    renderMarkdown('first content');
+    renderMarkdown('second content');
+    renderMarkdown('third content');
+
+    assert.equal(getMarkdownCacheSize(), 3);
+  });
+
+  it('skips cache when skipCache option is true', () => {
+    clearMarkdownCache();
+
+    const text = 'some streaming text';
+    renderMarkdown(text, { skipCache: true });
+
+    // Should not be cached
+    assert.equal(getMarkdownCacheSize(), 0);
+  });
+
+  it('clearMarkdownCache empties the cache', () => {
+    renderMarkdown('content 1');
+    renderMarkdown('content 2');
+    assert.ok(getMarkdownCacheSize() > 0);
+
+    clearMarkdownCache();
+    assert.equal(getMarkdownCacheSize(), 0);
+  });
+
+  it('handles empty and falsy inputs without caching', () => {
+    clearMarkdownCache();
+
+    renderMarkdown('');
+    renderMarkdown(null);
+    renderMarkdown(undefined);
+
+    // Empty/falsy inputs should not be cached
+    assert.equal(getMarkdownCacheSize(), 0);
+  });
+
+  it('different content produces different output', () => {
+    const result1 = renderMarkdown('hello');
+    const result2 = renderMarkdown('world');
+    assert.notEqual(result1, result2);
   });
 });
