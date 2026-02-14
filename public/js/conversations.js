@@ -565,6 +565,8 @@ export function triggerSearch() {
 export async function openConversation(id) {
   state.setCurrentConversationId(id);
   state.deleteUnread(id);
+  // Clear any text from previous conversation
+  if (messageInput) messageInput.value = '';
   setLoading(chatView, true);
   const conv = await getConversation(id);
   setLoading(chatView, false);
