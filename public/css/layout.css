@@ -363,13 +363,13 @@
 }
 
 #branches-view {
-  transform: translateX(100%);
+  transform: translateY(-100%);
   z-index: 4;
   pointer-events: none;
 }
 
 #branches-view.slide-in {
-  transform: translateX(0);
+  transform: translateY(0);
   pointer-events: auto;
 }
 

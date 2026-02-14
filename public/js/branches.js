@@ -7,19 +7,14 @@ import * as state from './state.js';
 let branchesView = null;
 let branchesBackBtn = null;
 let branchesContent = null;
-let listView = null;
-let chatView = null;
 
 // State
 let _currentTreeData = null;
-let openedFromChat = false;
 
 export function initBranches(elements) {
   branchesView = elements.branchesView;
   branchesBackBtn = elements.branchesBackBtn;
   branchesContent = elements.branchesContent;
-  listView = elements.listView;
-  chatView = elements.chatView;
 
   if (branchesBackBtn) {
     branchesBackBtn.addEventListener('click', () => {
@@ -295,25 +290,15 @@ async function navigateToConversation(id) {
   openConversation(id);
 }
 
-export function showBranchesView(fromChat = false) {
+export function showBranchesView() {
   if (!branchesView) return;
-  openedFromChat = fromChat;
-  if (fromChat) {
-    chatView.classList.remove('slide-in');
-  } else {
-    listView.classList.add('slide-out');
-  }
+  // Branches view slides down from top as an overlay
   branchesView.classList.add('slide-in');
 }
 
 export function closeBranchesView() {
   if (!branchesView) return;
   branchesView.classList.remove('slide-in');
-  if (openedFromChat) {
-    chatView.classList.add('slide-in');
-  } else {
-    listView.classList.remove('slide-out');
-  }
 }
 
 export function isBranchesViewOpen() {
@@ -323,6 +308,6 @@ export function isBranchesViewOpen() {
 export function openBranchesFromChat() {
   const currentId = state.getCurrentConversationId();
   if (!currentId) return;
-  showBranchesView(true);
+  showBranchesView();
   loadBranchesTree(currentId);
 }
