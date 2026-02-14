@@ -1602,3 +1602,218 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Capabilities Modal */
+.capabilities-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.capabilities-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+}
+
+.capabilities-btn:active {
+  transform: scale(0.95);
+}
+
+.capabilities-modal {
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(600px, calc(100vh - 100px));
+  display: flex;
+  flex-direction: column;
+}
+
+.capabilities-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.capabilities-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.capabilities-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.capabilities-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text);
+}
+
+.capabilities-search {
+  margin: 12px 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.capabilities-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-alpha-15);
+}
+
+.capabilities-search::placeholder {
+  color: var(--text-secondary);
+}
+
+.capabilities-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+  min-height: 200px;
+}
+
+.capabilities-section {
+  margin-bottom: 16px;
+}
+
+.capabilities-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  padding: 8px 12px 6px;
+}
+
+.capability-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.capability-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.capability-item:active {
+  background: var(--bg-secondary);
+}
+
+.capability-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+}
+
+.capability-icon.skill {
+  background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+}
+
+.capability-icon.command {
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+}
+
+.capability-icon.agent {
+  background: linear-gradient(135deg, #10B981, #34D399);
+}
+
+.capability-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.capability-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.capability-name code {
+  font-family: 'SF Mono', SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 13px;
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.capability-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.capability-source {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.capabilities-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.capabilities-empty svg {
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.capabilities-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.capabilities-hint {
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  border-top: 1px solid var(--border);
+}

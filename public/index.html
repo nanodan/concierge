@@ -125,6 +125,9 @@
         <button id="branches-btn" class="branches-btn" aria-label="View branches" title="View branches">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M6 9v6c0 3 3 3 6 3h3"/></svg>
         </button>
+        <button id="capabilities-btn" class="capabilities-btn" aria-label="View commands" title="Commands &amp; Skills">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+        </button>
       </div>
       <button id="new-chat-here-btn" class="header-icon-btn hide-mobile" aria-label="New chat in this folder" title="New chat in this folder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -439,6 +442,19 @@
         <span id="file-browser-current-path" class="file-browser-current-path">.</span>
       </div>
       <div id="file-browser-list" class="file-browser-list"></div>
+    </div>
+  </div>
+
+  <!-- Capabilities Modal -->
+  <div id="capabilities-modal" class="modal-overlay hidden">
+    <div class="modal capabilities-modal">
+      <div class="capabilities-header">
+        <h2>Commands &amp; Skills</h2>
+        <button id="capabilities-close" class="capabilities-close" aria-label="Close">&times;</button>
+      </div>
+      <input type="text" id="capabilities-search" class="capabilities-search" placeholder="Search commands..." autocomplete="off">
+      <div id="capabilities-list" class="capabilities-list"></div>
+      <div class="capabilities-hint">Tap a command to insert it into the message</div>
     </div>
   </div>
 
