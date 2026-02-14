@@ -96,6 +96,7 @@ const filePanelBackdrop = document.getElementById('file-panel-backdrop');
 const filePanelClose = document.getElementById('file-panel-close');
 const filePanelUp = document.getElementById('file-panel-up');
 const filePanelPath = document.getElementById('file-panel-path');
+const fileSearchInput = document.getElementById('file-search-input');
 const filePanelTree = document.getElementById('file-tree');
 const filePanelViewer = document.getElementById('file-viewer');
 const fileViewerName = document.getElementById('file-viewer-name');
@@ -282,6 +283,7 @@ initFilePanel({
   filePanelClose,
   filePanelUp,
   filePanelPath,
+  fileSearchInput,
   fileTree: filePanelTree,
   fileViewer: filePanelViewer,
   fileViewerName,

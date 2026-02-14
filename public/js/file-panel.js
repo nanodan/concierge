@@ -9,6 +9,7 @@ let filePanelBackdrop = null;
 let filePanelClose = null;
 let filePanelUp = null;
 let filePanelPath = null;
+let fileSearchInput = null;
 let fileTree = null;
 let fileViewer = null;
 let fileViewerName = null;
@@ -49,6 +50,11 @@ let currentTab = 'files'; // 'files' | 'changes' | 'history'
 let gitStatus = null;
 let branches = null;
 let _viewingDiff = null; // { path, staged }
+
+// Search state
+let _searchMode = false;
+let searchResults = null;
+let searchTimeout = null;
 
 // Snap points for mobile (percentage of viewport height)
 const SNAP_POINTS = [30, 60, 90];
@@ -105,6 +111,7 @@ export function initFilePanel(elements) {
   filePanelClose = elements.filePanelClose;
   filePanelUp = elements.filePanelUp;
   filePanelPath = elements.filePanelPath;
+  fileSearchInput = elements.fileSearchInput;
   fileTree = elements.fileTree;
   fileViewer = elements.fileViewer;
   fileViewerName = elements.fileViewerName;
@@ -221,6 +228,18 @@ function setupEventListeners() {
   // Pull button
   if (pullBtn) {
     pullBtn.addEventListener('click', handlePull);
+  }
+
+  // File search input
+  if (fileSearchInput) {
+    fileSearchInput.addEventListener('input', handleSearchInput);
+    fileSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        fileSearchInput.value = '';
+        exitSearchMode();
+        fileSearchInput.blur();
+      }
+    });
   }
 
   // Mobile drag gesture
@@ -361,6 +380,13 @@ export function openFilePanel() {
   // Reset git state
   gitStatus = null;
   branches = null;
+
+  // Reset search state
+  _searchMode = false;
+  searchResults = null;
+  if (fileSearchInput) {
+    fileSearchInput.value = '';
+  }
 
   // Reset viewer state
   closeFileViewer();
@@ -596,6 +622,115 @@ function closeFileViewer() {
   }, 300);
 }
 
+// === File Search ===
+
+function handleSearchInput(e) {
+  const query = e.target.value.trim();
+
+  clearTimeout(searchTimeout);
+
+  if (!query) {
+    exitSearchMode();
+    return;
+  }
+
+  searchTimeout = setTimeout(() => searchFiles(query), 300);
+}
+
+async function searchFiles(query) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  _searchMode = true;
+  fileTree.innerHTML = '<div class="file-tree-loading">Searching...</div>';
+
+  const res = await apiFetch(
+    `/api/conversations/${convId}/files/search?q=${encodeURIComponent(query)}`,
+    { silent: true }
+  );
+
+  if (!res) {
+    fileTree.innerHTML = `
+      <div class="file-tree-empty">
+        ${ICONS.error}
+        <p>Search failed</p>
+      </div>`;
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    fileTree.innerHTML = `
+      <div class="file-tree-empty">
+        ${ICONS.error}
+        <p>${escapeHtml(data.error)}</p>
+      </div>`;
+    return;
+  }
+
+  searchResults = data.results;
+  renderSearchResults();
+}
+
+function renderSearchResults() {
+  if (!searchResults || searchResults.length === 0) {
+    fileTree.innerHTML = `<div class="file-tree-empty">No matches found</div>`;
+    return;
+  }
+
+  fileTree.innerHTML = searchResults.map(r => `
+    <div class="search-result-item" data-path="${escapeHtml(r.path)}" data-line="${r.line}">
+      <div class="search-result-location">
+        <span class="search-result-path">${escapeHtml(r.path)}</span>
+        <span class="search-result-line">:${r.line}</span>
+      </div>
+      <div class="search-result-content">${escapeHtml(r.content.trim())}</div>
+    </div>
+  `).join('');
+
+  // Attach click handlers
+  fileTree.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      openFileAtLine(item.dataset.path, parseInt(item.dataset.line, 10));
+    });
+  });
+}
+
+async function openFileAtLine(filePath, line) {
+  haptic(10);
+  await viewFile(filePath);
+
+  // Scroll to line after content loads
+  setTimeout(() => {
+    const codeEl = fileViewerContent.querySelector('code');
+    if (!codeEl) return;
+
+    // Split by newlines to find the target line
+    const lines = codeEl.innerHTML.split('\n');
+    if (line > 0 && line <= lines.length) {
+      // Highlight the line
+      lines[line - 1] = `<span class="highlight-line">${lines[line - 1]}</span>`;
+      codeEl.innerHTML = lines.join('\n');
+
+      // Scroll to highlighted line
+      const highlighted = codeEl.querySelector('.highlight-line');
+      if (highlighted) {
+        highlighted.scrollIntoView({ block: 'center' });
+      }
+    }
+  }, 150);
+}
+
+function exitSearchMode() {
+  _searchMode = false;
+  searchResults = null;
+  if (fileSearchInput) {
+    fileSearchInput.value = '';
+  }
+  loadFileTree(currentPath);
+}
+
 // === Tab Switching ===
 
 function switchTab(tab) {
@@ -612,6 +747,15 @@ function switchTab(tab) {
   if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
   if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
   if (historyView) historyView.classList.toggle('hidden', tab !== 'history');
+
+  // Reset search state when switching to files tab
+  if (tab === 'files') {
+    _searchMode = false;
+    searchResults = null;
+    if (fileSearchInput) {
+      fileSearchInput.value = '';
+    }
+  }
 
   // Load content
   if (tab === 'files') {

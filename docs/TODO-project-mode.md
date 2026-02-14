@@ -18,14 +18,14 @@
 ## High Priority (Core Workflow)
 
 ### Push/Pull
-- [ ] Push commits to remote
-- [ ] Pull latest changes from remote
-- [ ] Show ahead/behind count in branch selector
-- [ ] Handle push failures (non-fast-forward, auth errors)
+- [x] Push commits to remote
+- [x] Pull latest changes from remote
+- [x] Show ahead/behind count in branch selector
+- [x] Handle push failures (non-fast-forward, auth errors)
 
 ### Commit History
-- [ ] View recent commits (hash, message, author, date)
-- [ ] Click commit to view its diff
+- [x] View recent commits (hash, message, author, date)
+- [x] Click commit to view its diff
 - [ ] Show commit count since last push
 
 ### File Search
