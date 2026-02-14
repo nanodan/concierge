@@ -1134,8 +1134,9 @@ function updateMoreArchiveLabel() {
 const COLOR_THEMES = {
   darjeeling: { name: 'Darjeeling', icon: '\u{1F3DC}' },
   claude: { name: 'Claude', icon: '\u{1F49C}' },
-  nord: { name: 'Nord', icon: '\u2744' },
-  budapest: { name: 'Budapest', icon: '\u{1F3E8}' }
+  budapest: { name: 'Budapest', icon: '\u{1F3E8}' },
+  moonrise: { name: 'Moonrise', icon: '\u{1F3D5}' },
+  aquatic: { name: 'Aquatic', icon: '\u{1F6A2}' }
 };
 
 function applyColorTheme(animate = false) {

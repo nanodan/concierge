@@ -1,0 +1,214 @@
+/*
+ * Moonrise Kingdom Theme
+ * Inspired by Wes Anderson's 1960s New England scout camp palette
+ */
+
+/* ========== DARK MODE (default) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-khaki: #C4A574;
+  --palette-khaki-light: #D4B88A;
+  --palette-olive: #6B7F59;
+  --palette-olive-light: #8A9E76;
+  --palette-mustard: #D4A03A;
+  --palette-mustard-light: #E4B44E;
+  --palette-brown: #8B6B4A;
+  --palette-brown-dark: #5C4633;
+  --palette-cream: #E8DFD0;
+  --palette-cream-muted: #B8A890;
+  --palette-forest-dark: #1A1F18;
+  --palette-forest-mid: #252A22;
+  --palette-forest-light: #2F352B;
+  --palette-forest-lighter: #3A4235;
+  --palette-forest-border: #4A5340;
+  --palette-coral: #C76B5A;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-forest-dark);
+  --bg-secondary: var(--palette-forest-mid);
+  --bg-tertiary: var(--palette-forest-lighter);
+  --surface: var(--palette-forest-light);
+  --input-bg: var(--palette-forest-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-cream);
+  --text-secondary: var(--palette-cream-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-mustard);
+  --accent-light: var(--palette-mustard-light);
+  --accent-secondary: var(--palette-olive);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-coral);
+  --success: var(--palette-olive);
+  --warning: var(--palette-mustard);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-forest-border);
+  --glass-bg: rgba(37, 42, 34, 0.85);
+  --glass-border: rgba(232, 223, 208, 0.12);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-olive);
+  --user-bubble-end: var(--palette-brown-dark);
+  --assistant-bubble: var(--palette-forest-mid);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(212, 160, 58, 0.08);
+  --accent-alpha-12: rgba(212, 160, 58, 0.12);
+  --accent-alpha-15: rgba(212, 160, 58, 0.15);
+  --accent-alpha-20: rgba(212, 160, 58, 0.2);
+  --accent-alpha-25: rgba(212, 160, 58, 0.25);
+  --accent-alpha-30: rgba(212, 160, 58, 0.3);
+  --accent-alpha-35: rgba(212, 160, 58, 0.35);
+  --accent-alpha-50: rgba(212, 160, 58, 0.5);
+
+  --danger-alpha-15: rgba(199, 107, 90, 0.15);
+  --danger-alpha-40: rgba(199, 107, 90, 0.4);
+
+  --olive-alpha-6: rgba(107, 127, 89, 0.06);
+  --olive-alpha-25: rgba(107, 127, 89, 0.25);
+
+  --khaki-alpha-6: rgba(196, 165, 116, 0.06);
+  --khaki-alpha-10: rgba(196, 165, 116, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-olive);
+  --status-thinking: var(--palette-mustard);
+  --status-disconnected: var(--palette-forest-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--olive-alpha-25);
+  --mode-autopilot-text: var(--palette-olive-light);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-mustard);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-mustard);
+  --syntax-string: var(--palette-olive-light);
+  --syntax-number: var(--palette-coral);
+  --syntax-comment: #6B6355;
+  --syntax-function: var(--palette-khaki);
+  --syntax-type: var(--palette-mustard-light);
+  --syntax-variable: var(--palette-brown);
+  --syntax-operator: var(--palette-cream-muted);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh === */
+  --mesh-color-1: var(--accent-alpha-8);
+  --mesh-color-2: var(--khaki-alpha-6);
+  --mesh-color-3: var(--olive-alpha-6);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #1A1F18;
+}
+
+/* ========== LIGHT MODE ========== */
+html[data-theme="light"] {
+  --palette-forest-dark: #F5F3ED;
+  --palette-forest-mid: #EBE8E0;
+  --palette-forest-light: #FFFEF8;
+  --palette-forest-lighter: #DDD9CE;
+  --palette-forest-border: #CCC7B8;
+  --palette-cream: #2F352B;
+  --palette-cream-muted: #5A6350;
+
+  --bg: #F5F3ED;
+  --bg-secondary: #EBE8E0;
+  --bg-tertiary: #DDD9CE;
+  --surface: #FFFEF8;
+  --input-bg: #FFFEF8;
+
+  --text: #2F352B;
+  --text-secondary: #5A6350;
+
+  --border: #CCC7B8;
+  --glass-bg: rgba(255, 254, 248, 0.85);
+  --glass-border: rgba(92, 70, 51, 0.12);
+
+  --assistant-bubble: #F5F3ED;
+
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  --code-bg: #EBE8E0;
+  --code-header-bg: #DDD9CE;
+  --code-inline-bg: rgba(212, 160, 58, 0.1);
+
+  --mesh-color-1: rgba(212, 160, 58, 0.06);
+  --mesh-color-2: rgba(196, 165, 116, 0.04);
+  --mesh-color-3: rgba(107, 127, 89, 0.05);
+
+  --syntax-keyword: #8B6B4A;
+  --syntax-string: #4A6340;
+  --syntax-number: #A05545;
+  --syntax-comment: #8B8070;
+  --syntax-function: #5C7A4A;
+  --syntax-type: #B8860B;
+  --syntax-variable: #8B5A3A;
+  --syntax-operator: #5A6350;
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --theme-color: #F5F3ED;
+}
+
+/* Auto theme via media query */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-forest-dark: #F5F3ED;
+    --palette-forest-mid: #EBE8E0;
+    --palette-forest-light: #FFFEF8;
+    --palette-forest-lighter: #DDD9CE;
+    --palette-forest-border: #CCC7B8;
+    --palette-cream: #2F352B;
+    --palette-cream-muted: #5A6350;
+
+    --bg: #F5F3ED;
+    --bg-secondary: #EBE8E0;
+    --bg-tertiary: #DDD9CE;
+    --surface: #FFFEF8;
+    --input-bg: #FFFEF8;
+    --text: #2F352B;
+    --text-secondary: #5A6350;
+    --border: #CCC7B8;
+    --glass-bg: rgba(255, 254, 248, 0.85);
+    --glass-border: rgba(92, 70, 51, 0.12);
+    --assistant-bubble: #F5F3ED;
+
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #EBE8E0;
+    --code-header-bg: #DDD9CE;
+    --code-inline-bg: rgba(212, 160, 58, 0.1);
+    --mesh-color-1: rgba(212, 160, 58, 0.06);
+    --mesh-color-2: rgba(196, 165, 116, 0.04);
+    --mesh-color-3: rgba(107, 127, 89, 0.05);
+    --syntax-keyword: #8B6B4A;
+    --syntax-string: #4A6340;
+    --syntax-number: #A05545;
+    --syntax-comment: #8B8070;
+    --syntax-function: #5C7A4A;
+    --syntax-type: #B8860B;
+    --syntax-variable: #8B5A3A;
+    --syntax-operator: #5A6350;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #F5F3ED;
+  }
+}
