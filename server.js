@@ -4,6 +4,7 @@ const https = require('https');
 const { WebSocketServer } = require('ws');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 
 const { setupRoutes } = require('./lib/routes');
 const {
@@ -180,25 +181,46 @@ async function handleEdit(ws, msg) {
     return;
   }
 
-  // Update message and truncate everything after
-  conv.messages[messageIndex].text = text;
-  conv.messages[messageIndex].timestamp = Date.now();
-  conv.messages.length = messageIndex + 1;
+  // Auto-fork: create a new conversation instead of truncating
+  const newId = uuidv4();
+  const messages = conv.messages.slice(0, messageIndex + 1).map(m => ({ ...m }));
 
-  // Reset session
-  conv.claudeSessionId = null;
-  conv.status = 'thinking';
-  await saveConversation(conversationId);
-  broadcastStatus(conversationId, 'thinking');
+  // Update the edited message in the fork
+  messages[messageIndex].text = text;
+  messages[messageIndex].timestamp = Date.now();
 
-  // Tell client to re-render messages
+  const forkedConv = {
+    id: newId,
+    name: `${conv.name} (edit)`,
+    cwd: conv.cwd,
+    claudeSessionId: null, // Fresh session for the edit
+    messages,
+    status: 'thinking',
+    archived: false,
+    pinned: false,
+    autopilot: conv.autopilot,
+    model: conv.model,
+    createdAt: Date.now(),
+    parentId: conversationId,
+    forkIndex: messageIndex,
+  };
+
+  conversations.set(newId, forkedConv);
+  await saveConversation(newId);
+
+  // Notify client of the fork and switch to it
   ws.send(JSON.stringify({
-    type: 'messages_updated',
-    conversationId,
-    messages: conv.messages,
+    type: 'edit_forked',
+    originalConversationId: conversationId,
+    conversationId: newId,
+    conversation: convMeta(forkedConv),
   }));
 
-  spawnClaude(ws, conversationId, conv, text, conv.messages[messageIndex].attachments, UPLOAD_DIR, {
+  broadcastStatus(newId, 'thinking');
+
+  // Send the edited message in the forked conversation
+  const userMsg = messages[messageIndex];
+  spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
   });

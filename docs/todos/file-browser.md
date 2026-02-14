@@ -77,6 +77,19 @@ Open and edit text files directly in a modal editor.
 
 ---
 
+## ~~Open files in new tab~~ ✅ DONE
+**Priority:** Low
+**Effort:** Low
+
+~~Allow opening files in a new browser tab for direct viewing/rendering.~~ **IMPLEMENTED**
+
+- All text files show floating "Open in new tab" button in file viewer
+- HTML files render in browser when opened in new tab
+- Button styled consistently with image full-size button
+- Fixed position with safe area insets for iOS
+
+---
+
 ## iOS share sheet integration
 **Priority:** Low
 **Effort:** Medium

@@ -44,9 +44,9 @@
 - [x] Drop stash
 
 ### Revert/Reset
-- [ ] Revert a specific commit
-- [ ] Reset to a previous commit (soft/mixed/hard)
-- [ ] Undo last commit (keep changes staged)
+- [x] Revert a specific commit
+- [x] Reset to a previous commit (soft/mixed/hard)
+- [x] Undo last commit (keep changes staged)
 
 ### Conflict Resolution
 - [ ] Detect merge conflicts

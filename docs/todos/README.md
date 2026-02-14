@@ -4,6 +4,8 @@ Organized by category. Each file contains individual items with priority, effort
 
 ## Recently Completed ✅
 
+- **Git revert/reset** — revert commits, reset to previous commits (soft/mixed/hard), undo last commit with action buttons in History tab
+- **Open files in new tab** — floating button to open any text file in new tab (renders HTML, shows raw for others)
 - **Consistent error handling** — `apiFetch()` wrapper with toast notifications for 30+ fetch calls across all frontend modules
 - **Test coverage** — unit tests for server, claude, data, markdown, utils using Node.js built-in test runner
 - **Image thumbnails** — file browser shows actual thumbnails for images with lazy loading
@@ -32,7 +34,7 @@ Organized by category. Each file contains individual items with priority, effort
 | [security.md](security.md) | 6 | Auth, rate limiting, input validation, XSS, CSRF |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
-| [file-browser.md](file-browser.md) | 6 | Upload, quick actions, recent files, editing, iOS share |
+| [file-browser.md](file-browser.md) | 5 | Upload, quick actions, recent files, editing, iOS share |
 
 ## Priority Guide
 

@@ -109,6 +109,16 @@ function handleWSMessage(data) {
       }
       break;
 
+    case 'edit_forked':
+      // Switch to the forked conversation
+      loadConversations().then(() => {
+        import('./conversations.js').then(c => {
+          c.openConversation(data.conversationId);
+        });
+      });
+      showToast('Edited in new fork');
+      break;
+
     case 'stderr':
       break;
 
