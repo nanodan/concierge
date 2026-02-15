@@ -294,6 +294,8 @@ let resizeHandle = null;
 let isResizing = false;
 let resizeStartX = 0;
 let resizeStartWidth = 0;
+let resizeScrollDistance = 0;
+let resizeMessages = null;
 
 function setupDesktopResize() {
   // Create resize handle if it doesn't exist
@@ -312,6 +314,12 @@ function setupDesktopResize() {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
+
+    // Save scroll position for preservation during resize
+    resizeMessages = document.getElementById('messages');
+    if (resizeMessages) {
+      resizeScrollDistance = resizeMessages.scrollHeight - resizeMessages.scrollTop;
+    }
   });
 
   document.addEventListener('mousemove', (e) => {
@@ -321,6 +329,11 @@ function setupDesktopResize() {
     filePanel.style.width = newWidth + 'px';
     // Update CSS variable for margin adjustments
     document.documentElement.style.setProperty('--file-panel-width', newWidth + 'px');
+
+    // Preserve scroll position as content reflows
+    if (resizeMessages) {
+      resizeMessages.scrollTop = resizeMessages.scrollHeight - resizeScrollDistance;
+    }
   });
 
   document.addEventListener('mouseup', () => {
@@ -328,6 +341,7 @@ function setupDesktopResize() {
       isResizing = false;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      resizeMessages = null;
     }
   });
 }
