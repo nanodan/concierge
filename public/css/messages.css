@@ -31,13 +31,15 @@
 
 .message.assistant {
   align-self: flex-start;
-  background: linear-gradient(var(--assistant-bubble), var(--assistant-bubble)) padding-box,
-              linear-gradient(135deg, var(--accent-alpha-25), var(--accent-alpha-8) 50%, transparent) border-box;
+  background: var(--assistant-bubble);
   color: var(--text);
   border-bottom-left-radius: 6px;
   max-width: 92%;
-  box-shadow: 0 1px 6px var(--black-alpha-20);
-  border: 1px solid transparent;
+  box-shadow:
+    inset 0 1px 2px var(--black-alpha-8),
+    0 1px 6px var(--black-alpha-20);
+  border: 1px solid var(--glass-border);
+  border-left: 2px solid var(--accent-alpha-30);
 }
 
 /* Claude avatar for assistant messages */
@@ -61,8 +63,8 @@
 }
 
 .claude-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), var(--accent-light));
   display: flex;
@@ -72,11 +74,13 @@
   font-size: 14px;
   color: white;
   box-shadow: 0 2px 8px var(--accent-alpha-30);
+  outline: 1px solid var(--accent-alpha-20);
+  outline-offset: 2px;
 }
 
 .claude-avatar svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .message .meta {
@@ -203,6 +207,23 @@
   background: var(--code-bg);
   border: 1px solid var(--glass-border);
   overflow: hidden;
+  position: relative;
+}
+
+/* Subtle paper grain texture overlay */
+.code-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  border-radius: inherit;
+  mix-blend-mode: overlay;
+}
+
+html[data-theme="light"] .code-block::before {
+  opacity: 0.015;
 }
 
 .code-block-header {
@@ -340,13 +361,14 @@
 }
 
 .message.assistant h1, .message.assistant h2, .message.assistant h3 {
-  font-weight: 700;
-  margin: 8px 0 4px;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 12px 0 6px;
+  letter-spacing: -0.01em;
 }
 
-.message.assistant h1 { font-size: 18px; }
-.message.assistant h2 { font-size: 16px; }
+.message.assistant h1 { font-size: 20px; }
+.message.assistant h2 { font-size: 17px; }
 .message.assistant h3 { font-size: 15px; }
 
 .message.assistant a {
@@ -372,6 +394,20 @@
   display: none;
 }
 
+/* Typewriter cursor before dots */
+.typing-indicator::before {
+  content: '▋';
+  color: var(--accent);
+  font-size: 14px;
+  animation: cursor-blink 1s step-end infinite;
+  margin-right: -4px;
+}
+
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
 .typing-dots {
   display: flex;
   gap: 4px;
@@ -395,10 +431,10 @@
 }
 
 .typing-dots span {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--text-secondary);
+  background: var(--accent-alpha-50);
   animation: typing 1.4s ease-in-out infinite;
 }
 
@@ -706,43 +742,71 @@
   flex: 1;
   padding: 32px;
   text-align: center;
-  animation: fade-in 0.4s ease;
+  animation: empty-state-appear 0.6s var(--smooth);
 }
 
 .chat-empty-state.hidden {
   display: none;
 }
 
+/* Hide messages container when empty state is visible */
+.chat-empty-state:not(.hidden) + .messages {
+  display: none;
+}
+
 .chat-empty-icon {
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-alpha-15), var(--accent-alpha-8));
+  background: linear-gradient(145deg, var(--accent-alpha-12), var(--accent-alpha-8));
+  border: 2px solid var(--accent-alpha-25);
+  outline: 1px solid var(--accent-alpha-12);
+  outline-offset: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 28px;
+  position: relative;
+  animation: gentle-float 4s ease-in-out infinite;
+}
+
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .chat-empty-icon svg {
   color: var(--accent);
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .chat-empty-state p {
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
 }
 
 .chat-empty-state span {
   font-size: 14px;
   color: var(--text-secondary);
+  font-style: italic;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+/* Decorative flourish */
+.chat-empty-state::after {
+  content: '— ✦ —';
+  display: block;
+  margin-top: 28px;
+  font-size: 10px;
+  color: var(--accent-alpha-35);
+  letter-spacing: 3px;
+}
+
+@keyframes empty-state-appear {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
