@@ -18,7 +18,7 @@ export function initBranches(elements) {
 
   if (branchesBackBtn) {
     branchesBackBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeBranchesView();
     });
   }
@@ -186,7 +186,7 @@ function renderTree(data) {
     node.addEventListener('click', () => {
       const id = node.dataset.id;
       if (id && id !== data.currentId) {
-        haptic(10);
+        haptic();
         navigateToConversation(id);
       }
     });

@@ -172,7 +172,7 @@ function renderCapabilityItem(item, type) {
 
 function insertCapability(name, _type) {
   if (!messageInput) return;
-  haptic(10);
+  haptic();
   const prefix = `/${name} `;
   messageInput.value = prefix + messageInput.value;
   messageInput.focus();
@@ -190,7 +190,7 @@ export function getCachedCapabilities() {
 export function setupCapabilitiesEventListeners() {
   if (capabilitiesBtn) {
     capabilitiesBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       openCapabilitiesModal();
     });
   }

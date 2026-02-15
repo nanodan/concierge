@@ -288,7 +288,7 @@ export function setupFileBrowserEventListeners(generalFilesBtn, haptic) {
 
   if (generalFilesBtn) {
     generalFilesBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       openFileBrowser('general');
     });
   }

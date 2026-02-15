@@ -66,7 +66,7 @@ export function applyTheme(animate = false) {
 }
 
 export function selectTheme(newTheme) {
-  haptic(10);
+  haptic();
   state.setCurrentTheme(newTheme);
   applyTheme(true); // animate the transition
   updateThemeIcon();
@@ -230,7 +230,7 @@ function closeColorThemeDropdownOnOutsideClick(e) {
 }
 
 export function selectColorTheme(newTheme) {
-  haptic(10);
+  haptic();
   state.setCurrentColorTheme(newTheme);
   applyColorTheme(true);
   updateColorThemeIcon();

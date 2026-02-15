@@ -1,6 +1,6 @@
 // --- UI interactions (core message/input handling) ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch } from './utils.js';
+import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
@@ -295,7 +295,7 @@ function populateRecentDirs() {
   recentDirsList.querySelectorAll('.recent-dir-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       convCwdInput.value = chip.dataset.dir;
-      haptic(10);
+      haptic();
     });
   });
 }
@@ -483,7 +483,7 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   copyBtn.className = 'action-popup-btn';
   copyBtn.textContent = 'Copy';
   copyBtn.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     hideMsgActionPopup();
     const clone = el.cloneNode(true);
     clone.querySelector('.meta')?.remove();
@@ -507,7 +507,7 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   rememberBtn.className = 'action-popup-btn';
   rememberBtn.textContent = 'Remember';
   rememberBtn.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     hideMsgActionPopup();
     rememberMessage(el, index);
   });
@@ -518,7 +518,7 @@ function showMsgActionPopup(x, y, el, index, isUser) {
   forkBtn.className = 'action-popup-btn';
   forkBtn.textContent = 'Fork from here';
   forkBtn.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     hideMsgActionPopup();
     forkConversation(index);
   });
@@ -883,7 +883,7 @@ export function setupEventListeners(createConversation) {
   // Form submission
   inputForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    haptic(10);
+    haptic();
     sendMessage(messageInput.value);
   });
 
@@ -912,7 +912,7 @@ export function setupEventListeners(createConversation) {
   });
 
   jumpToBottomBtn.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
     state.setUserHasScrolledUp(false);
     jumpToBottomBtn.classList.remove('visible');
@@ -920,27 +920,27 @@ export function setupEventListeners(createConversation) {
 
   // Context bar click to toggle breakdown
   contextBar.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     toggleContextBreakdown();
   });
 
   contextBar.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      haptic(10);
+      haptic();
       toggleContextBreakdown();
     }
   });
 
   backBtn.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     showListView();
   });
 
   deleteBtn.addEventListener('click', async () => {
     const currentConversationId = state.getCurrentConversationId();
     if (!currentConversationId) return;
-    haptic(10);
+    haptic();
     const ok = await showDialog({ title: 'Delete conversation?', message: 'This cannot be undone.', confirmLabel: 'Delete', danger: true });
     if (ok) deleteConversation(currentConversationId);
   });
@@ -1014,7 +1014,7 @@ export function setupEventListeners(createConversation) {
   // New chat in same folder
   if (newChatHereBtn) {
     newChatHereBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       const currentId = state.getCurrentConversationId();
       const conv = state.conversations.find(c => c.id === currentId);
       if (conv && conv.cwd) {
@@ -1093,7 +1093,7 @@ export function setupEventListeners(createConversation) {
 
   // Archive toggle
   archiveToggle.addEventListener('click', () => {
-    haptic(10);
+    haptic();
     const newShowing = !state.getShowingArchived();
     state.setShowingArchived(newShowing);
     archiveToggle.classList.toggle('active', newShowing);
@@ -1127,7 +1127,7 @@ export function setupEventListeners(createConversation) {
     const rotation = dampened >= PULL_THRESHOLD * 0.4 ? 180 : 0;
     pullIndicator.querySelector('svg').style.transform = `rotate(${rotation}deg)`;
     if (dampened >= PULL_THRESHOLD * 0.4 && !pullIndicator.dataset.hapticFired) {
-      haptic(10);
+      haptic();
       pullIndicator.dataset.hapticFired = 'true';
     }
   }, { passive: true });
@@ -1173,7 +1173,7 @@ export function setupEventListeners(createConversation) {
       state.setNotificationsEnabled(!enabled);
       updateNotificationsLabel();
       closeMoreMenu();
-      haptic(10);
+      haptic();
     });
   }
 
@@ -1181,7 +1181,7 @@ export function setupEventListeners(createConversation) {
   if (moreStats) {
     moreStats.addEventListener('click', () => {
       closeMoreMenu();
-      haptic(10);
+      haptic();
       listView.classList.add('slide-out');
       statsView.classList.add('slide-in');
       loadStats();
@@ -1191,7 +1191,7 @@ export function setupEventListeners(createConversation) {
   if (moreFiles) {
     moreFiles.addEventListener('click', () => {
       closeMoreMenu();
-      haptic(10);
+      haptic();
       openFileBrowser('general');
     });
   }
@@ -1199,7 +1199,7 @@ export function setupEventListeners(createConversation) {
   if (moreArchive) {
     moreArchive.addEventListener('click', () => {
       closeMoreMenu();
-      haptic(10);
+      haptic();
       const newShowing = !state.getShowingArchived();
       state.setShowingArchived(newShowing);
       if (archiveToggle) archiveToggle.classList.toggle('active', newShowing);
@@ -1214,7 +1214,7 @@ export function setupEventListeners(createConversation) {
   if (moreMemory) {
     moreMemory.addEventListener('click', () => {
       closeMoreMenu();
-      haptic(10);
+      haptic();
       showMemoryView();
     });
   }
@@ -1240,7 +1240,7 @@ export function setupEventListeners(createConversation) {
     chatMoreStats.addEventListener('click', (e) => {
       e.stopPropagation();
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       dropdownOpenedAt = Date.now();
       showConvStatsDropdown();
     });
@@ -1249,7 +1249,7 @@ export function setupEventListeners(createConversation) {
   if (chatMoreFiles) {
     chatMoreFiles.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       if (filesBtn) filesBtn.click();
     });
   }
@@ -1257,7 +1257,7 @@ export function setupEventListeners(createConversation) {
   if (chatMoreBranches) {
     chatMoreBranches.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       const branchesBtn = document.getElementById('branches-btn');
       if (branchesBtn) branchesBtn.click();
     });
@@ -1266,64 +1266,25 @@ export function setupEventListeners(createConversation) {
   if (chatMoreCapabilities) {
     chatMoreCapabilities.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       if (capabilitiesBtn) capabilitiesBtn.click();
     });
   }
 
   if (chatMoreMemory) {
-    let memoryMenuPressTimer = null;
-    let memoryMenuLongPressed = false;
-
-    const handleMemoryLongPress = () => {
-      memoryMenuLongPressed = true;
-      haptic(20);
-      closeChatMoreMenu();
-      showMemoryView();
-    };
-
-    chatMoreMemory.addEventListener('mousedown', () => {
-      memoryMenuLongPressed = false;
-      memoryMenuPressTimer = setTimeout(handleMemoryLongPress, 500);
-    });
-
-    chatMoreMemory.addEventListener('mouseup', () => {
-      clearTimeout(memoryMenuPressTimer);
-      if (!memoryMenuLongPressed) {
-        haptic(10);
-        toggleConversationMemory();
-        // Don't close menu - let user see the state change
-      }
-    });
-
-    chatMoreMemory.addEventListener('mouseleave', () => {
-      clearTimeout(memoryMenuPressTimer);
-    });
-
-    chatMoreMemory.addEventListener('touchstart', () => {
-      memoryMenuLongPressed = false;
-      memoryMenuPressTimer = setTimeout(handleMemoryLongPress, 500);
-    }, { passive: true });
-
-    chatMoreMemory.addEventListener('touchend', (e) => {
-      clearTimeout(memoryMenuPressTimer);
-      if (!memoryMenuLongPressed) {
-        e.preventDefault();
-        haptic(10);
-        toggleConversationMemory();
-        // Don't close menu - let user see the state change
-      }
-    });
-
-    chatMoreMemory.addEventListener('touchcancel', () => {
-      clearTimeout(memoryMenuPressTimer);
+    setupLongPressHandler(chatMoreMemory, {
+      onTap: () => toggleConversationMemory(),
+      onLongPress: () => {
+        closeChatMoreMenu();
+        showMemoryView();
+      },
     });
   }
 
   if (chatMoreNew) {
     chatMoreNew.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       if (newChatHereBtn) newChatHereBtn.click();
     });
   }
@@ -1331,7 +1292,7 @@ export function setupEventListeners(createConversation) {
   if (chatMoreExport) {
     chatMoreExport.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       if (exportBtn) exportBtn.click();
     });
   }
@@ -1339,7 +1300,7 @@ export function setupEventListeners(createConversation) {
   if (chatMoreDelete) {
     chatMoreDelete.addEventListener('click', () => {
       closeChatMoreMenu();
-      haptic(10);
+      haptic();
       if (deleteBtn) deleteBtn.click();
     });
   }

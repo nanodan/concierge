@@ -1,6 +1,6 @@
 // --- Memory view and APIs ---
 import { escapeHtml } from '../markdown.js';
-import { haptic, showToast, showDialog, apiFetch } from '../utils.js';
+import { haptic, showToast, showDialog, apiFetch, setupLongPressHandler } from '../utils.js';
 import * as state from '../state.js';
 
 // DOM elements (set by init)
@@ -185,7 +185,7 @@ function renderMemoryView(memories, currentCwd) {
       await updateMemoryAPI(id, scope, { enabled: !enabled });
       card.classList.toggle('disabled', enabled);
       state.updateMemory(id, { enabled: !enabled });
-      haptic(10);
+      haptic();
     });
 
     card.querySelector('.memory-delete')?.addEventListener('click', async (e) => {
@@ -438,51 +438,9 @@ export function setupMemoryEventListeners() {
   // Memory toggle (click) and memory view (long-press)
   const memoryBtn = document.getElementById('memory-btn');
   if (memoryBtn) {
-    let memoryPressTimer = null;
-    let memoryLongPressed = false;
-
-    memoryBtn.addEventListener('mousedown', () => {
-      memoryLongPressed = false;
-      memoryPressTimer = setTimeout(() => {
-        memoryLongPressed = true;
-        haptic(20);
-        showMemoryView();
-      }, 500);
-    });
-
-    memoryBtn.addEventListener('mouseup', () => {
-      clearTimeout(memoryPressTimer);
-      if (!memoryLongPressed) {
-        haptic(10);
-        toggleConversationMemory();
-      }
-    });
-
-    memoryBtn.addEventListener('mouseleave', () => {
-      clearTimeout(memoryPressTimer);
-    });
-
-    // Touch events for mobile
-    memoryBtn.addEventListener('touchstart', () => {
-      memoryLongPressed = false;
-      memoryPressTimer = setTimeout(() => {
-        memoryLongPressed = true;
-        haptic(20);
-        showMemoryView();
-      }, 500);
-    }, { passive: true });
-
-    memoryBtn.addEventListener('touchend', (e) => {
-      clearTimeout(memoryPressTimer);
-      if (!memoryLongPressed) {
-        e.preventDefault();
-        haptic(10);
-        toggleConversationMemory();
-      }
-    });
-
-    memoryBtn.addEventListener('touchcancel', () => {
-      clearTimeout(memoryPressTimer);
+    setupLongPressHandler(memoryBtn, {
+      onTap: () => toggleConversationMemory(),
+      onLongPress: () => showMemoryView(),
     });
   }
 }

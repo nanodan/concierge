@@ -128,7 +128,7 @@ function setupEventListeners() {
   // Close button
   if (filePanelClose) {
     filePanelClose.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFilePanel();
     });
   }
@@ -136,7 +136,7 @@ function setupEventListeners() {
   // Backdrop click (mobile)
   if (filePanelBackdrop) {
     filePanelBackdrop.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFilePanel();
     });
   }
@@ -154,7 +154,7 @@ function setupEventListeners() {
   // File viewer close
   if (fileViewerClose) {
     fileViewerClose.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFileViewer();
     });
   }
@@ -194,7 +194,7 @@ function setupEventListeners() {
   // Refresh button
   if (gitRefreshBtn) {
     gitRefreshBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       loadGitStatus();
       loadBranches();
     });
@@ -785,7 +785,7 @@ function renderSearchResults() {
 }
 
 async function openFileAtLine(filePath, line) {
-  haptic(10);
+  haptic();
   await viewFile(filePath);
 
   // Scroll to line after content loads
@@ -1110,7 +1110,7 @@ function attachChangeItemListeners() {
       const item = btn.closest('.changes-item');
       const filePath = item.dataset.path;
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'stage') {
         await stageFiles([filePath]);
@@ -1138,7 +1138,7 @@ function attachChangeItemListeners() {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      haptic(10);
+      haptic();
 
       const action = btn.dataset.action;
       if (action === 'unstage-all' && gitStatus?.staged) {
@@ -1199,7 +1199,7 @@ function attachStashListeners() {
       const item = btn.closest('.stash-item');
       const index = parseInt(item.dataset.index, 10);
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'pop') {
         await handleStashPop(index);
@@ -1224,7 +1224,7 @@ function attachStashListeners() {
 }
 
 async function handleStash() {
-  haptic(10);
+  haptic();
 
   const message = await showDialog({
     title: 'Stash changes',
@@ -1343,7 +1343,7 @@ function attachCommitActionListeners() {
       const item = btn.closest('.commit-item');
       const hash = item.dataset.hash;
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'undo') {
         await handleUndoCommit();
@@ -1693,7 +1693,7 @@ async function viewCommitDiff(hash) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  haptic(10);
+  haptic();
 
   // Show loading state in viewer
   fileViewerName.textContent = `${hash.slice(0, 7)}`;

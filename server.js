@@ -101,137 +101,175 @@ function handleCancel(ws, msg) {
 
 async function handleMessage(ws, msg) {
   const { conversationId, text, attachments } = msg;
-  const conv = await ensureMessages(conversationId);
-  if (!conv) {
-    ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
-    return;
+  try {
+    const conv = await ensureMessages(conversationId);
+    if (!conv) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+      return;
+    }
+
+    if (hasActiveProcess(conversationId)) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Conversation is busy' }));
+      return;
+    }
+
+    conv.messages.push({
+      role: 'user',
+      text,
+      attachments: attachments || undefined,
+      timestamp: Date.now(),
+    });
+    conv.status = 'thinking';
+    await saveConversation(conversationId);
+    broadcastStatus(conversationId, 'thinking');
+
+    const memories = await loadConversationMemories(conv);
+    spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
+      onSave: saveConversation,
+      broadcastStatus,
+    }, memories);
+  } catch (err) {
+    console.error('[WS] handleMessage error:', err);
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Internal server error' }));
+    // Reset conversation status to idle on error
+    const conv = conversations.get(conversationId);
+    if (conv) {
+      conv.status = 'idle';
+      try { await saveConversation(conversationId); } catch (_e) { /* best effort */ }
+      broadcastStatus(conversationId, 'idle');
+    }
   }
-
-  if (hasActiveProcess(conversationId)) {
-    ws.send(JSON.stringify({ type: 'error', error: 'Conversation is busy' }));
-    return;
-  }
-
-  conv.messages.push({
-    role: 'user',
-    text,
-    attachments: attachments || undefined,
-    timestamp: Date.now(),
-  });
-  conv.status = 'thinking';
-  await saveConversation(conversationId);
-  broadcastStatus(conversationId, 'thinking');
-
-  const memories = await loadConversationMemories(conv);
-  spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
-    onSave: saveConversation,
-    broadcastStatus,
-  }, memories);
 }
 
 async function handleRegenerate(ws, msg) {
   const { conversationId } = msg;
-  const conv = await ensureMessages(conversationId);
-  if (!conv) {
-    ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
-    return;
+  try {
+    const conv = await ensureMessages(conversationId);
+    if (!conv) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+      return;
+    }
+
+    if (hasActiveProcess(conversationId)) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+      return;
+    }
+
+    // Remove last assistant message
+    if (conv.messages.length > 0 && conv.messages[conv.messages.length - 1].role === 'assistant') {
+      conv.messages.pop();
+    }
+
+    const lastUserMsg = [...conv.messages].reverse().find(m => m.role === 'user');
+    if (!lastUserMsg) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'No user message to regenerate from' }));
+      return;
+    }
+
+    // Reset session for fresh response
+    conv.claudeSessionId = null;
+    conv.status = 'thinking';
+    await saveConversation(conversationId);
+    broadcastStatus(conversationId, 'thinking');
+
+    const memories = await loadConversationMemories(conv);
+    spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
+      onSave: saveConversation,
+      broadcastStatus,
+    }, memories);
+  } catch (err) {
+    console.error('[WS] handleRegenerate error:', err);
+    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Internal server error' }));
+    // Reset conversation status to idle on error
+    const conv = conversations.get(conversationId);
+    if (conv) {
+      conv.status = 'idle';
+      try { await saveConversation(conversationId); } catch (_e) { /* best effort */ }
+      broadcastStatus(conversationId, 'idle');
+    }
   }
-
-  if (hasActiveProcess(conversationId)) {
-    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
-    return;
-  }
-
-  // Remove last assistant message
-  if (conv.messages.length > 0 && conv.messages[conv.messages.length - 1].role === 'assistant') {
-    conv.messages.pop();
-  }
-
-  const lastUserMsg = [...conv.messages].reverse().find(m => m.role === 'user');
-  if (!lastUserMsg) {
-    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'No user message to regenerate from' }));
-    return;
-  }
-
-  // Reset session for fresh response
-  conv.claudeSessionId = null;
-  conv.status = 'thinking';
-  await saveConversation(conversationId);
-  broadcastStatus(conversationId, 'thinking');
-
-  const memories = await loadConversationMemories(conv);
-  spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
-    onSave: saveConversation,
-    broadcastStatus,
-  }, memories);
 }
 
 async function handleEdit(ws, msg) {
   const { conversationId, messageIndex, text } = msg;
-  const conv = await ensureMessages(conversationId);
-  if (!conv) {
-    ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
-    return;
+  let newId = null; // Track the forked conversation ID for error cleanup
+  try {
+    const conv = await ensureMessages(conversationId);
+    if (!conv) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+      return;
+    }
+
+    if (hasActiveProcess(conversationId)) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+      return;
+    }
+
+    if (messageIndex < 0 || messageIndex >= conv.messages.length) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Invalid message index' }));
+      return;
+    }
+
+    if (conv.messages[messageIndex].role !== 'user') {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Can only edit user messages' }));
+      return;
+    }
+
+    // Auto-fork: create a new conversation instead of truncating
+    newId = uuidv4();
+    const messages = conv.messages.slice(0, messageIndex + 1).map(m => ({ ...m }));
+
+    // Update the edited message in the fork
+    messages[messageIndex].text = text;
+    messages[messageIndex].timestamp = Date.now();
+
+    const forkedConv = {
+      id: newId,
+      name: `${conv.name} (edit)`,
+      cwd: conv.cwd,
+      claudeSessionId: null, // Fresh session for the edit
+      messages,
+      status: 'thinking',
+      archived: false,
+      pinned: false,
+      autopilot: conv.autopilot,
+      model: conv.model,
+      createdAt: Date.now(),
+      parentId: conversationId,
+      forkIndex: messageIndex,
+    };
+
+    conversations.set(newId, forkedConv);
+    await saveConversation(newId);
+
+    // Notify client of the fork and switch to it
+    ws.send(JSON.stringify({
+      type: 'edit_forked',
+      originalConversationId: conversationId,
+      conversationId: newId,
+      conversation: convMeta(forkedConv),
+    }));
+
+    broadcastStatus(newId, 'thinking');
+
+    const memories = await loadConversationMemories(forkedConv);
+    const userMsg = messages[messageIndex];
+    spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
+      onSave: saveConversation,
+      broadcastStatus,
+    }, memories);
+  } catch (err) {
+    console.error('[WS] handleEdit error:', err);
+    const errorConvId = newId || conversationId;
+    ws.send(JSON.stringify({ type: 'error', conversationId: errorConvId, error: 'Internal server error' }));
+    // Reset conversation status to idle on error
+    const conv = conversations.get(errorConvId);
+    if (conv) {
+      conv.status = 'idle';
+      try { await saveConversation(errorConvId); } catch (_e) { /* best effort */ }
+      broadcastStatus(errorConvId, 'idle');
+    }
   }
-
-  if (hasActiveProcess(conversationId)) {
-    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
-    return;
-  }
-
-  if (messageIndex < 0 || messageIndex >= conv.messages.length) {
-    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Invalid message index' }));
-    return;
-  }
-
-  if (conv.messages[messageIndex].role !== 'user') {
-    ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Can only edit user messages' }));
-    return;
-  }
-
-  // Auto-fork: create a new conversation instead of truncating
-  const newId = uuidv4();
-  const messages = conv.messages.slice(0, messageIndex + 1).map(m => ({ ...m }));
-
-  // Update the edited message in the fork
-  messages[messageIndex].text = text;
-  messages[messageIndex].timestamp = Date.now();
-
-  const forkedConv = {
-    id: newId,
-    name: `${conv.name} (edit)`,
-    cwd: conv.cwd,
-    claudeSessionId: null, // Fresh session for the edit
-    messages,
-    status: 'thinking',
-    archived: false,
-    pinned: false,
-    autopilot: conv.autopilot,
-    model: conv.model,
-    createdAt: Date.now(),
-    parentId: conversationId,
-    forkIndex: messageIndex,
-  };
-
-  conversations.set(newId, forkedConv);
-  await saveConversation(newId);
-
-  // Notify client of the fork and switch to it
-  ws.send(JSON.stringify({
-    type: 'edit_forked',
-    originalConversationId: conversationId,
-    conversationId: newId,
-    conversation: convMeta(forkedConv),
-  }));
-
-  broadcastStatus(newId, 'thinking');
-
-  const memories = await loadConversationMemories(forkedConv);
-  const userMsg = messages[messageIndex];
-  spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
-    onSave: saveConversation,
-    broadcastStatus,
-  }, memories);
 }
 
 function broadcastStatus(conversationId, status) {
