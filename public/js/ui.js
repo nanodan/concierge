@@ -1,6 +1,6 @@
 // --- UI interactions ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch } from './utils.js';
+import { formatTime, formatTokens, formatFileSize, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch } from './utils.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
@@ -801,12 +801,6 @@ async function browseTo(dirPath) {
 }
 
 // --- File Browser (download files from conversation cwd) ---
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
 function getFileIcon(entry) {
   if (entry.type === 'directory') {
     return { class: 'directory', svg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' };

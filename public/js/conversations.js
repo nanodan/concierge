@@ -1,6 +1,6 @@
 // --- Conversation management ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, setLoading, showToast, showDialog, haptic, apiFetch } from './utils.js';
+import { formatTime, setLoading, showToast, showDialog, haptic, apiFetch, truncate } from './utils.js';
 import { openNewChatModal } from './ui.js';
 import { renderMessages } from './render.js';
 import * as state from './state.js';
@@ -193,11 +193,6 @@ export async function searchConversations(query, filters = {}) {
   const res = await apiFetch(`/api/conversations/search?${params}`, { silent: true });
   if (!res) return [];
   return res.json();
-}
-
-function truncate(text, len) {
-  if (!text) return '';
-  return text.length > len ? text.slice(0, len) + '...' : text;
 }
 
 export function renderConversationList(items) {

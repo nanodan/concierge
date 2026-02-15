@@ -1,6 +1,6 @@
 // --- File Panel (Project Mode) ---
 import { escapeHtml } from './markdown.js';
-import { haptic, showToast, showDialog, apiFetch } from './utils.js';
+import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import * as state from './state.js';
 
 // DOM elements
@@ -98,12 +98,6 @@ function getFileIcon(entry) {
     return { class: 'document', svg: ICONS.document };
   }
   return { class: '', svg: ICONS.file };
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function isMobile() {

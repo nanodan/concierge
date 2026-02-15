@@ -87,6 +87,11 @@ const heartbeat = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeat));
 
+async function loadConversationMemories(conv) {
+  if (conv.useMemory === false) return [];
+  return loadMemories(conv.cwd);
+}
+
 function handleCancel(ws, msg) {
   const { conversationId } = msg;
   if (!cancelProcess(conversationId)) {
@@ -117,12 +122,7 @@ async function handleMessage(ws, msg) {
   await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
-  // Load memories if enabled for this conversation
-  let memories = [];
-  if (conv.useMemory !== false) {
-    memories = await loadMemories(conv.cwd);
-  }
-
+  const memories = await loadConversationMemories(conv);
   spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
@@ -159,12 +159,7 @@ async function handleRegenerate(ws, msg) {
   await saveConversation(conversationId);
   broadcastStatus(conversationId, 'thinking');
 
-  // Load memories if enabled for this conversation
-  let memories = [];
-  if (conv.useMemory !== false) {
-    memories = await loadMemories(conv.cwd);
-  }
-
+  const memories = await loadConversationMemories(conv);
   spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
     onSave: saveConversation,
     broadcastStatus,
@@ -231,13 +226,7 @@ async function handleEdit(ws, msg) {
 
   broadcastStatus(newId, 'thinking');
 
-  // Load memories if enabled for this conversation
-  let memories = [];
-  if (forkedConv.useMemory !== false) {
-    memories = await loadMemories(forkedConv.cwd);
-  }
-
-  // Send the edited message in the forked conversation
+  const memories = await loadConversationMemories(forkedConv);
   const userMsg = messages[messageIndex];
   spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
     onSave: saveConversation,
