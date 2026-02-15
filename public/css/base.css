@@ -17,6 +17,22 @@
   --safe-top: env(safe-area-inset-top, 0px);
 }
 
+/* Simplified animations on touch devices for performance */
+@media (pointer: coarse) {
+  :root {
+    --transition-smooth: 0.2s ease;
+    --spring: ease-out;
+  }
+}
+
+/* Honor user accessibility preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0s;
+    --transition-smooth: 0s;
+  }
+}
+
 /* Body styles */
 html, body {
   height: 100%;
