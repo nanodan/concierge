@@ -741,6 +741,7 @@ html[data-theme="light"] .code-block::before {
   justify-content: center;
   flex: 1;
   padding: 32px;
+  padding-bottom: 80px; /* Offset for input bar to achieve true visual center */
   text-align: center;
   animation: empty-state-appear 0.6s var(--smooth);
 }
