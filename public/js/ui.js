@@ -330,10 +330,13 @@ export async function sendMessage(text) {
     }
     const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
     state.addPendingMessage(msg);
+    const queuedIndex = state.getAllMessages().length;
     const el = document.createElement('div');
     el.className = 'message user animate-in queued';
+    el.dataset.index = queuedIndex;
     el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>`;
     messagesContainer.appendChild(el);
+    attachMessageActions();
     state.scrollToBottom(true);
     messageInput.value = '';
     autoResizeInput();
@@ -367,14 +370,20 @@ export async function sendMessage(text) {
   const chatEmptyState = document.getElementById('chat-empty-state');
   if (chatEmptyState) chatEmptyState.classList.add('hidden');
 
+  // Get index for this message (current length before adding)
+  const allMessages = state.getAllMessages();
+  const msgIndex = allMessages.length;
+
   const el = document.createElement('div');
   el.className = 'message user animate-in';
+  el.dataset.index = msgIndex;
   el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   state.setUserHasScrolledUp(false);
   state.scrollToBottom(true);
 
-  // Attach handlers for any images in the newly added message
+  // Attach handlers for the newly added message
+  attachMessageActions();
   if (attachments.length > 0) {
     const { attachImageHandlers } = await import('./render.js');
     attachImageHandlers();
@@ -388,7 +397,6 @@ export async function sendMessage(text) {
   }));
 
   // Add user message to allMessages so stats are up-to-date
-  const allMessages = state.getAllMessages();
   allMessages.push({
     role: 'user',
     text,

@@ -189,7 +189,7 @@ export async function forkConversation(fromMessageIndex) {
   });
   if (!res) return;
   const conv = await res.json();
-  showToast('Forked conversation');
+  showToast('Forked conversation', { duration: 1500 });
   await loadConversations();
   openConversation(conv.id);
 }

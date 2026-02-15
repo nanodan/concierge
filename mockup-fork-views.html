@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fork Organization Mockup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #f5f5f5;
+      padding: 20px;
+      display: flex;
+      gap: 40px;
+      min-height: 100vh;
+    }
+    .column {
+      flex: 1;
+      max-width: 400px;
+    }
+    h2 {
+      color: #a89eff;
+      margin-bottom: 16px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .description {
+      color: #737373;
+      font-size: 13px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* Card styles */
+    .card {
+      background: #262626;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:hover {
+      background: #171717;
+      border-color: rgba(124, 108, 240, 0.2);
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .card-name {
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-time {
+      font-size: 12px;
+      color: #737373;
+    }
+    .card-preview {
+      font-size: 13px;
+      color: #a3a3a3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Option 1: Nested styles */
+    .fork-group {
+      margin-bottom: 8px;
+    }
+    .fork-parent {
+      position: relative;
+    }
+    .fork-badge {
+      background: rgba(124, 108, 240, 0.15);
+      color: #a89eff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+    .fork-toggle {
+      color: #737373;
+      font-size: 10px;
+      margin-right: 6px;
+    }
+    .fork-children {
+      margin-left: 20px;
+      border-left: 2px solid rgba(124, 108, 240, 0.3);
+      padding-left: 12px;
+      margin-top: 4px;
+    }
+    .fork-children .card {
+      background: #1a1a1a;
+    }
+    .fork-label {
+      font-size: 11px;
+      color: #737373;
+      margin-top: 4px;
+    }
+    .branch-icon {
+      color: #7c6cf0;
+      font-size: 12px;
+    }
+    .fork-children.collapsed {
+      display: none;
+    }
+
+    /* Option 2: Stack styles */
+    .stack-wrapper {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .stack-card {
+      position: relative;
+      z-index: 3;
+    }
+    .stack-shadow-1,
+    .stack-shadow-2 {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      height: 14px;
+      background: #262626;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      z-index: 1;
+    }
+    .stack-shadow-1 {
+      bottom: -6px;
+      opacity: 0.7;
+    }
+    .stack-shadow-2 {
+      bottom: -12px;
+      left: 8px;
+      right: 8px;
+      opacity: 0.4;
+      z-index: 0;
+    }
+    .stack-count {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      background: rgba(124, 108, 240, 0.9);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      z-index: 4;
+    }
+
+    /* Expanded stack */
+    .stack-expanded {
+      background: rgba(124, 108, 240, 0.05);
+      border: 1px solid rgba(124, 108, 240, 0.2);
+      border-radius: 18px;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+    .stack-expanded .card {
+      margin-bottom: 6px;
+    }
+    .stack-expanded .card:last-child {
+      margin-bottom: 0;
+    }
+    .stack-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px 12px;
+      font-size: 12px;
+      color: #a89eff;
+    }
+    .stack-close {
+      background: none;
+      border: none;
+      color: #737373;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #404040;
+      margin: 30px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Option 1: Nested/Indented -->
+  <div class="column">
+    <h2>Option 1: Nested (Collapsed)</h2>
+    <p class="description">
+      Forks appear indented under parent with a connecting line.
+      Click chevron to expand/collapse. Fork count badge on parent.
+    </p>
+
+    <!-- Regular card (no forks) -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-name">Debug API timeout</span>
+        <span class="card-time">2h ago</span>
+      </div>
+      <div class="card-preview">Looking at the network logs...</div>
+    </div>
+
+    <!-- Parent with forks (collapsed) -->
+    <div class="fork-group">
+      <div class="card fork-parent">
+        <div class="card-top">
+          <span class="card-name">
+            <span class="fork-toggle">▶</span>
+            Refactor auth system
+            <span class="fork-badge">2 forks</span>
+          </span>
+          <span class="card-time">5h ago</span>
+        </div>
+        <div class="card-preview">Let's restructure the authentication...</div>
+      </div>
+    </div>
+
+    <!-- Regular card -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-name">Fix CSS grid layout</span>
+        <span class="card-time">1d ago</span>
+      </div>
+      <div class="card-preview">The grid is breaking on mobile...</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Option 1: Nested (Expanded)</h2>
+    <p class="description">
+      When expanded, forks show with branch icon and fork point indicator.
+    </p>
+
+    <!-- Parent with forks (expanded) -->
+    <div class="fork-group">
+      <div class="card fork-parent">
+        <div class="card-top">
+          <span class="card-name">
+            <span class="fork-toggle">▼</span>
+            Refactor auth system
+            <span class="fork-badge">2 forks</span>
+          </span>
+          <span class="card-time">5h ago</span>
+        </div>
+        <div class="card-preview">Let's restructure the authentication...</div>
+      </div>
+      <div class="fork-children">
+        <div class="card">
+          <div class="card-top">
+            <span class="card-name">
+              <span class="branch-icon">⑂</span>
+              Try JWT approach
+            </span>
+            <span class="card-time">4h ago</span>
+          </div>
+          <div class="card-preview">What if we use JWT instead...</div>
+          <div class="fork-label">forked at msg #8</div>
+        </div>
+        <div class="card">
+          <div class="card-top">
+            <span class="card-name">
+              <span class="branch-icon">⑂</span>
+              Session-based auth
+            </span>
+            <span class="card-time">3h ago</span>
+          </div>
+          <div class="card-preview">Let's try session cookies...</div>
+          <div class="fork-label">forked at msg #8</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option 2: Stacked -->
+  <div class="column">
+    <h2>Option 2: Stacked (Collapsed)</h2>
+    <p class="description">
+      Parent card has visual "stack" effect showing items behind it.
+      Badge shows fork count. Tap to expand.
+    </p>
+
+    <!-- Regular card -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-name">Debug API timeout</span>
+        <span class="card-time">2h ago</span>
+      </div>
+      <div class="card-preview">Looking at the network logs...</div>
+    </div>
+
+    <!-- Stacked card -->
+    <div class="stack-wrapper">
+      <div class="card stack-card">
+        <div class="card-top">
+          <span class="card-name">Refactor auth system</span>
+          <span class="card-time">5h ago</span>
+        </div>
+        <div class="card-preview">Let's restructure the authentication...</div>
+      </div>
+      <div class="stack-shadow-1"></div>
+      <div class="stack-shadow-2"></div>
+      <span class="stack-count">+2</span>
+    </div>
+
+    <!-- Regular card -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-name">Fix CSS grid layout</span>
+        <span class="card-time">1d ago</span>
+      </div>
+      <div class="card-preview">The grid is breaking on mobile...</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>Option 2: Stacked (Expanded)</h2>
+    <p class="description">
+      When tapped, stack expands inline showing all related conversations.
+      Tap X or outside to collapse.
+    </p>
+
+    <!-- Expanded stack -->
+    <div class="stack-expanded">
+      <div class="stack-header">
+        <span>⑂ Fork family (3 conversations)</span>
+        <button class="stack-close">×</button>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-name">Refactor auth system</span>
+          <span class="card-time">5h ago</span>
+        </div>
+        <div class="card-preview">Let's restructure the authentication...</div>
+        <div class="fork-label" style="color: #7c6cf0;">● root conversation</div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-name">Try JWT approach</span>
+          <span class="card-time">4h ago</span>
+        </div>
+        <div class="card-preview">What if we use JWT instead...</div>
+        <div class="fork-label">forked at msg #8</div>
+      </div>
+      <div class="card">
+        <div class="card-top">
+          <span class="card-name">Session-based auth</span>
+          <span class="card-time">3h ago</span>
+        </div>
+        <div class="card-preview">Let's try session cookies...</div>
+        <div class="fork-label">forked at msg #8</div>
+      </div>
+    </div>
+
+    <!-- Regular card after -->
+    <div class="card">
+      <div class="card-top">
+        <span class="card-name">Fix CSS grid layout</span>
+        <span class="card-time">1d ago</span>
+      </div>
+      <div class="card-preview">The grid is breaking on mobile...</div>
+    </div>
+  </div>
+
+</body>
+</html>
