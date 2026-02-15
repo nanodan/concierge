@@ -238,6 +238,7 @@ initUI({
   modelDropdown,
   convStatsBtn,
   convStatsDropdown,
+  chatName,
   contextBar,
   contextBarFill,
   contextBarLabel,

@@ -2,7 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
 import { getWS } from './websocket.js';
-import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup } from './conversations.js';
+import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
 import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
@@ -140,6 +140,7 @@ let fileBrowserModal = null;
 let capabilitiesBtn = null;
 let capabilitiesModal = null;
 let memoryView = null;
+let chatName = null;
 
 export function initUI(elements) {
   messagesContainer = elements.messagesContainer;
@@ -203,6 +204,31 @@ export function initUI(elements) {
   capabilitiesBtn = document.getElementById('capabilities-btn');
   capabilitiesModal = document.getElementById('capabilities-modal');
   memoryView = document.getElementById('memory-view');
+  chatName = elements.chatName;
+
+  // Chat name click to rename
+  if (chatName) {
+    chatName.style.cursor = 'pointer';
+    chatName.addEventListener('click', async () => {
+      const currentId = state.getCurrentConversationId();
+      if (!currentId) return;
+      const currentName = chatName.textContent || '';
+      const newName = await showDialog({
+        title: 'Rename conversation',
+        input: true,
+        defaultValue: currentName,
+        placeholder: 'Conversation name',
+        confirmLabel: 'Rename'
+      });
+      if (newName && newName.trim() && newName.trim() !== currentName) {
+        const success = await renameConversation(currentId, newName.trim());
+        if (success) {
+          chatName.textContent = newName.trim();
+          showToast('Conversation renamed');
+        }
+      }
+    });
+  }
 
   // Initialize notifications label
   updateNotificationsLabel();
@@ -330,10 +356,13 @@ export async function sendMessage(text) {
     }
     const msg = { type: 'message', conversationId: currentConversationId, text: text || '' };
     state.addPendingMessage(msg);
+    const queuedIndex = state.getAllMessages().length;
     const el = document.createElement('div');
     el.className = 'message user animate-in queued';
+    el.dataset.index = queuedIndex;
     el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>`;
     messagesContainer.appendChild(el);
+    attachMessageActions();
     state.scrollToBottom(true);
     messageInput.value = '';
     autoResizeInput();
@@ -367,14 +396,20 @@ export async function sendMessage(text) {
   const chatEmptyState = document.getElementById('chat-empty-state');
   if (chatEmptyState) chatEmptyState.classList.add('hidden');
 
+  // Get index for this message (current length before adding)
+  const allMessages = state.getAllMessages();
+  const msgIndex = allMessages.length;
+
   const el = document.createElement('div');
   el.className = 'message user animate-in';
+  el.dataset.index = msgIndex;
   el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
   messagesContainer.appendChild(el);
   state.setUserHasScrolledUp(false);
   state.scrollToBottom(true);
 
-  // Attach handlers for any images in the newly added message
+  // Attach handlers for the newly added message
+  attachMessageActions();
   if (attachments.length > 0) {
     const { attachImageHandlers } = await import('./render.js');
     attachImageHandlers();
@@ -388,7 +423,6 @@ export async function sendMessage(text) {
   }));
 
   // Add user message to allMessages so stats are up-to-date
-  const allMessages = state.getAllMessages();
   allMessages.push({
     role: 'user',
     text,

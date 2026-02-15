@@ -271,6 +271,8 @@ export function appendDelta(text) {
 
     streamingMessageEl = document.createElement('div');
     streamingMessageEl.className = 'message assistant';
+    // Set data-index for context menu handlers (will be the next index after current messages)
+    streamingMessageEl.dataset.index = state.getAllMessages().length;
 
     wrapper.appendChild(avatar);
     wrapper.appendChild(streamingMessageEl);
@@ -325,9 +327,10 @@ export function finalizeMessage(data) {
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>${actionBtns}`;
     enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
-  attachTimestampHandlers();
-  attachImageHandlers();
+    attachTimestampHandlers();
+    attachImageHandlers();
     attachRegenHandlers();
+    attachMessageActions();
     state.setStreamingMessageEl(null);
     state.setStreamingText('');
     state.scrollToBottom();
