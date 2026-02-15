@@ -40,6 +40,25 @@ export function initConversations(elements) {
   searchInput = elements.searchInput;
   filterRow = elements.filterRow;
   filterModelSelect = elements.filterModelSelect;
+
+  // ESC key handler for collapsing expanded fork stacks
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      // Only handle if in list view (not chat view)
+      if (chatView.classList.contains('slide-in')) return;
+      // Find any expanded stacks and collapse them
+      const expandedStacks = conversationList?.querySelectorAll('.fork-stack.expanded');
+      if (expandedStacks && expandedStacks.length > 0) {
+        e.stopPropagation();
+        // Collapse all expanded stacks
+        expandedStacks.forEach(stack => {
+          const rootId = stack.dataset.rootId;
+          state.setStackExpanded(rootId, false);
+        });
+        renderConversationList();
+      }
+    }
+  });
 }
 
 export async function loadConversations() {
@@ -205,6 +224,46 @@ export async function searchConversations(query, filters = {}) {
   return res.json();
 }
 
+/**
+ * Find the root conversation ID by traversing parentId chain.
+ * @param {Array} list - Array of conversations
+ * @param {string} id - Starting conversation ID
+ * @returns {string} - Root conversation ID
+ */
+function findRootId(list, id) {
+  const byId = new Map(list.map(c => [c.id, c]));
+  let current = byId.get(id);
+  while (current && current.parentId && byId.has(current.parentId)) {
+    current = byId.get(current.parentId);
+  }
+  return current ? current.id : id;
+}
+
+/**
+ * Build fork families from a list of conversations.
+ * Returns a Map of rootId → array of conversations (root + all forks).
+ * Standalone conversations (no forks) have a family of size 1.
+ * @param {Array} convs - Array of conversations
+ * @returns {Map<string, Array>} - Map of rootId → family array
+ */
+function buildForkFamilies(convs) {
+  const families = new Map();
+  for (const c of convs) {
+    const rootId = findRootId(convs, c.id);
+    if (!families.has(rootId)) families.set(rootId, []);
+    families.get(rootId).push(c);
+  }
+  // Sort each family: root first (no parentId), then by createdAt
+  for (const [rootId, family] of families) {
+    family.sort((a, b) => {
+      if (a.id === rootId) return -1;
+      if (b.id === rootId) return 1;
+      return a.createdAt - b.createdAt;
+    });
+  }
+  return families;
+}
+
 export function renderConversationList(items) {
   const list = items || state.conversations;
   const isSearch = !!items;
@@ -290,6 +349,78 @@ export function renderConversationList(items) {
     `;
   }
 
+  // Render a fork stack (collapsed or expanded)
+  function renderStack(rootId, family) {
+    // Single conversation - no stack needed
+    if (family.length === 1) {
+      return renderCard(family[0]);
+    }
+
+    const isExpanded = state.isStackExpanded(rootId);
+    const mostRecent = family.reduce((a, b) => {
+      const aTime = a.lastMessage?.timestamp || a.createdAt;
+      const bTime = b.lastMessage?.timestamp || b.createdAt;
+      return bTime > aTime ? b : a;
+    });
+    const forkCount = family.length - 1; // Exclude root from count
+
+    if (isExpanded) {
+      // Expanded: show all cards in a grouped container
+      // Mark the root card with a label
+      const cardsHtml = family.map(c => {
+        const cardHtml = renderCard(c);
+        if (c.id === rootId) {
+          // Inject root label before the closing </div></div>
+          return cardHtml.replace(
+            /<\/div>\s*<\/div>\s*<\/div>\s*$/,
+            '<div class="fork-root-label">root conversation</div></div></div></div>'
+          );
+        }
+        return cardHtml;
+      }).join('');
+
+      return `
+        <div class="fork-stack expanded" data-root-id="${rootId}">
+          <div class="stack-header" data-root-id="${rootId}">
+            <span>⑂ Fork family (${family.length})</span>
+            <span class="stack-collapse-icon">&times;</span>
+          </div>
+          ${cardsHtml}
+        </div>
+      `;
+    } else {
+      // Collapsed: show most recent card with stack shadow effect
+      return `
+        <div class="fork-stack" data-root-id="${rootId}">
+          ${renderCard(mostRecent)}
+          <div class="stack-shadow-1"></div>
+          <div class="stack-shadow-2"></div>
+          <span class="stack-count">+${forkCount}</span>
+        </div>
+      `;
+    }
+  }
+
+  // Render conversations within a scope, grouping forks into stacks
+  function renderScopeItems(convs) {
+    const families = buildForkFamilies(convs);
+    // Sort families by most recent activity (most recent family first)
+    const sortedFamilies = Array.from(families.entries()).sort((a, b) => {
+      const aRecent = a[1].reduce((max, c) => Math.max(max, c.lastMessage?.timestamp || c.createdAt), 0);
+      const bRecent = b[1].reduce((max, c) => Math.max(max, c.lastMessage?.timestamp || c.createdAt), 0);
+      return bRecent - aRecent;
+    });
+    // Pinned conversations should bubble to top
+    sortedFamilies.sort((a, b) => {
+      const aPinned = a[1].some(c => c.pinned);
+      const bPinned = b[1].some(c => c.pinned);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+    return sortedFamilies.map(([rootId, family]) => renderStack(rootId, family)).join('');
+  }
+
   // Search: flat list without headers
   if (isSearch) {
     conversationList.innerHTML = list.map(renderCard).join('');
@@ -310,7 +441,7 @@ export function renderConversationList(items) {
             <button class="scope-add-btn" data-scope="${escapeHtml(scope)}" aria-label="New chat in this folder">+</button>
           </div>
           <div class="scope-items${collapsed ? ' hidden' : ''}">
-            ${convs.map(renderCard).join('')}
+            ${renderScopeItems(convs)}
           </div>
         </div>
       `;
@@ -337,6 +468,27 @@ export function renderConversationList(items) {
         openNewChatModal(scope);
       });
     });
+
+    // Fork stack handlers - collapsed stacks expand on click
+    conversationList.querySelectorAll('.fork-stack:not(.expanded)').forEach(stack => {
+      stack.addEventListener('click', (e) => {
+        // Don't expand if clicking on a card action (swipe, etc.)
+        if (e.target.closest('.swipe-action-btn')) return;
+        const rootId = stack.dataset.rootId;
+        state.setStackExpanded(rootId, true);
+        renderConversationList();
+      });
+    });
+
+    // Fork stack header handlers - entire header collapses the stack
+    conversationList.querySelectorAll('.fork-stack.expanded .stack-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rootId = header.dataset.rootId;
+        state.setStackExpanded(rootId, false);
+        renderConversationList();
+      });
+    });
   }
 
   // Attach swipe + click + long-press handlers
@@ -353,6 +505,10 @@ export function renderConversationList(items) {
     card.addEventListener('click', (_e) => {
       // Don't navigate if card is swiped open
       if (Math.abs(parseFloat(card.style.transform?.replace(/[^0-9.-]/g, '') || 0)) > 10) return;
+
+      // Don't navigate if inside a collapsed stack (let stack handler expand it)
+      const collapsedStack = wrapper.closest('.fork-stack:not(.expanded)');
+      if (collapsedStack) return;
 
       // Handle selection mode
       if (state.getSelectionMode()) {

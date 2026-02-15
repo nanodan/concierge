@@ -61,6 +61,9 @@ export let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages') 
 // Scope grouping collapsed state
 export let collapsedScopes = JSON.parse(localStorage.getItem('collapsedScopes') || '{}');
 
+// Fork stack expanded state (Set of root IDs)
+export let expandedStacks = new Set(JSON.parse(localStorage.getItem('expandedStacks') || '[]'));
+
 // Unread conversations
 export const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConversations') || '[]'));
 
@@ -334,6 +337,29 @@ export function getCollapsedScopes() {
 export function toggleCollapsedScope(scope, isCollapsed) {
   collapsedScopes[scope] = isCollapsed;
   localStorage.setItem('collapsedScopes', JSON.stringify(collapsedScopes));
+}
+
+export function isStackExpanded(rootId) {
+  return expandedStacks.has(rootId);
+}
+
+export function toggleExpandedStack(rootId) {
+  if (expandedStacks.has(rootId)) {
+    expandedStacks.delete(rootId);
+  } else {
+    expandedStacks.add(rootId);
+  }
+  localStorage.setItem('expandedStacks', JSON.stringify([...expandedStacks]));
+  return expandedStacks.has(rootId);
+}
+
+export function setStackExpanded(rootId, expanded) {
+  if (expanded) {
+    expandedStacks.add(rootId);
+  } else {
+    expandedStacks.delete(rootId);
+  }
+  localStorage.setItem('expandedStacks', JSON.stringify([...expandedStacks]));
 }
 
 export function addUnread(id) {
