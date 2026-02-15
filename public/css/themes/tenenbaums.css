@@ -43,7 +43,7 @@
   --accent-secondary: var(--palette-forest);
 
   /* === Semantic: Status === */
-  --danger: var(--palette-burgundy);
+  --danger: #B54A4A;
   --success: var(--palette-forest);
   --warning: var(--palette-camel);
 

@@ -51,7 +51,7 @@
 
   /* === Semantic: Message Bubbles === */
   --user-bubble: var(--palette-olive);
-  --user-bubble-end: var(--palette-brown-dark);
+  --user-bubble-end: #4A5D40;
   --assistant-bubble: var(--palette-forest-mid);
 
   /* === Alpha Variants === */

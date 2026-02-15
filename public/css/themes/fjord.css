@@ -101,7 +101,7 @@
   --syntax-comment: #6B7A8A;
   --syntax-function: var(--palette-slate-light);
   --syntax-type: var(--palette-coral-light);
-  --syntax-variable: var(--palette-coral-deep);
+  --syntax-variable: var(--palette-slate-light);
   --syntax-operator: var(--palette-cream-muted);
 
   /* === Component: Code Blocks === */
@@ -169,7 +169,7 @@ html[data-theme="light"] {
   --syntax-comment: #8B9095;
   --syntax-function: #5A7585;
   --syntax-type: #D47840;
-  --syntax-variable: #A0584D;
+  --syntax-variable: #5A7585;
   --syntax-operator: #5A6570;
 
   /* === Scrollbar === */
@@ -216,7 +216,7 @@ html[data-theme="light"] {
     --syntax-comment: #8B9095;
     --syntax-function: #5A7585;
     --syntax-type: #D47840;
-    --syntax-variable: #A0584D;
+    --syntax-variable: #5A7585;
     --syntax-operator: #5A6570;
     --scrollbar-thumb: rgba(0, 0, 0, 0.15);
     --theme-color: #F5F2EF;
