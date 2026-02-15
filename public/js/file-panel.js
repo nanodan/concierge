@@ -2,7 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import * as state from './state.js';
-import { getFileIcon, FILE_ICONS } from './file-utils.js';
+import { getFileIcon, FILE_ICONS, IMAGE_EXTS } from './file-utils.js';
 
 // DOM elements
 let filePanel = null;
