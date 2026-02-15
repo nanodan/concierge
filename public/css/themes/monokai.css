@@ -115,6 +115,10 @@
   --mesh-color-2: var(--terracotta-alpha-6);
   --mesh-color-3: var(--teal-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-pink);
+  --brand-gradient: linear-gradient(135deg, var(--palette-pink-light) 0%, var(--palette-green) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #1E1E1E;
 }

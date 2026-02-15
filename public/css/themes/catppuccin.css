@@ -127,6 +127,10 @@
   --mesh-color-2: rgba(245, 194, 231, 0.04);
   --mesh-color-3: var(--teal-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-mauve);
+  --brand-gradient: linear-gradient(135deg, var(--palette-lavender) 0%, var(--palette-mauve) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #1e1e2e;
 }

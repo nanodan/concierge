@@ -116,6 +116,10 @@
   --mesh-color-2: var(--khaki-alpha-6);
   --mesh-color-3: var(--olive-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-mustard);
+  --brand-gradient: linear-gradient(135deg, var(--palette-mustard-light) 0%, var(--palette-olive-light) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #1A1F18;
 }

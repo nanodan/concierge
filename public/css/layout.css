@@ -69,12 +69,27 @@
   z-index: 10;
 }
 
+/* Brand container */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--brand-icon-color, var(--accent));
+  flex-shrink: 0;
+  transition: width 0.2s var(--smooth), height 0.2s var(--smooth);
+}
+
 .top-bar h1 {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  background: linear-gradient(135deg, var(--text), var(--accent-light));
+  background: var(--brand-gradient, linear-gradient(135deg, var(--accent-light), var(--accent)));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -90,6 +105,11 @@
 
 .top-bar.compact h1 {
   font-size: 17px;
+}
+
+.top-bar.compact .brand-icon {
+  width: 20px;
+  height: 20px;
 }
 
 /* Chat Header */

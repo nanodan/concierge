@@ -108,6 +108,10 @@
   --mesh-color-2: rgba(107, 196, 184, 0.06);
   --mesh-color-3: rgba(232, 192, 96, 0.06);
 
+  /* === Component: Brand === */
+  --brand-icon-color: #E8707E;
+  --brand-gradient: linear-gradient(135deg, #F0909A 0%, #E0A850 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #18100F;
 }
@@ -167,6 +171,10 @@ html[data-theme="light"] {
   /* === Scrollbar === */
   --scrollbar-thumb: rgba(198, 93, 123, 0.3);
 
+  /* === Component: Brand === */
+  --brand-icon-color: #C65D7B;
+  --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #F5E6E0;
 }
@@ -205,6 +213,8 @@ html[data-theme="light"] {
     --syntax-operator: #7D4E57;
     --status-disconnected: #DDB8B8;
     --scrollbar-thumb: rgba(198, 93, 123, 0.3);
+    --brand-icon-color: #C65D7B;
+    --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
     --theme-color: #F5E6E0;
   }
 }

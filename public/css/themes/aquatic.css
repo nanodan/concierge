@@ -115,6 +115,10 @@
   --mesh-color-2: var(--coral-alpha-6);
   --mesh-color-3: var(--ocean-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-teal);
+  --brand-gradient: linear-gradient(135deg, var(--palette-teal-light) 0%, var(--palette-coral) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #0F1A28;
 }
