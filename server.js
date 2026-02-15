@@ -99,6 +99,24 @@ function handleCancel(ws, msg) {
   }
 }
 
+/**
+ * Reset conversation status to idle on error.
+ * Best-effort save and broadcast - if save fails, we still try to broadcast.
+ * @param {string} conversationId - The conversation ID to reset
+ */
+async function resetConversationOnError(conversationId) {
+  const conv = conversations.get(conversationId);
+  if (conv) {
+    conv.status = 'idle';
+    try {
+      await saveConversation(conversationId);
+    } catch (saveErr) {
+      console.error('[WS] Failed to save conversation state after error:', saveErr);
+    }
+    broadcastStatus(conversationId, 'idle');
+  }
+}
+
 async function handleMessage(ws, msg) {
   const { conversationId, text, attachments } = msg;
   try {
@@ -131,13 +149,7 @@ async function handleMessage(ws, msg) {
   } catch (err) {
     console.error('[WS] handleMessage error:', err);
     ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Internal server error' }));
-    // Reset conversation status to idle on error
-    const conv = conversations.get(conversationId);
-    if (conv) {
-      conv.status = 'idle';
-      try { await saveConversation(conversationId); } catch (_e) { /* best effort */ }
-      broadcastStatus(conversationId, 'idle');
-    }
+    await resetConversationOnError(conversationId);
   }
 }
 
@@ -180,13 +192,7 @@ async function handleRegenerate(ws, msg) {
   } catch (err) {
     console.error('[WS] handleRegenerate error:', err);
     ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Internal server error' }));
-    // Reset conversation status to idle on error
-    const conv = conversations.get(conversationId);
-    if (conv) {
-      conv.status = 'idle';
-      try { await saveConversation(conversationId); } catch (_e) { /* best effort */ }
-      broadcastStatus(conversationId, 'idle');
-    }
+    await resetConversationOnError(conversationId);
   }
 }
 
@@ -262,13 +268,7 @@ async function handleEdit(ws, msg) {
     console.error('[WS] handleEdit error:', err);
     const errorConvId = newId || conversationId;
     ws.send(JSON.stringify({ type: 'error', conversationId: errorConvId, error: 'Internal server error' }));
-    // Reset conversation status to idle on error
-    const conv = conversations.get(errorConvId);
-    if (conv) {
-      conv.status = 'idle';
-      try { await saveConversation(errorConvId); } catch (_e) { /* best effort */ }
-      broadcastStatus(errorConvId, 'idle');
-    }
+    await resetConversationOnError(errorConvId);
   }
 }
 

@@ -117,13 +117,16 @@ async function updateConversation(id, patch) {
 }
 
 // Soft delete with undo - hides immediately, deletes after timeout unless undone
-let pendingDelete = null;
+// Use a Map to track multiple pending deletes simultaneously
+const pendingDeletes = new Map();
 
 export function softDeleteConversation(id) {
-  // Cancel any existing pending delete
-  if (pendingDelete) {
-    clearTimeout(pendingDelete.timeout);
-    pendingDelete.toast?.cancel?.();
+  // Cancel any existing pending delete for this specific conversation
+  const existing = pendingDeletes.get(id);
+  if (existing) {
+    clearTimeout(existing.timeout);
+    existing.toast?.cancel?.();
+    pendingDeletes.delete(id);
   }
 
   const conv = state.conversations.find(c => c.id === id);
@@ -143,9 +146,10 @@ export function softDeleteConversation(id) {
     action: 'Undo',
     onAction: () => {
       // Restore conversation
-      if (pendingDelete && pendingDelete.id === id) {
-        clearTimeout(pendingDelete.timeout);
-        pendingDelete = null;
+      const pending = pendingDeletes.get(id);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        pendingDeletes.delete(id);
         loadConversations(); // Reload to restore
         showToast('Restored');
       }
@@ -154,13 +158,13 @@ export function softDeleteConversation(id) {
 
   // Schedule actual deletion
   const timeout = setTimeout(async () => {
-    if (pendingDelete && pendingDelete.id === id) {
+    if (pendingDeletes.has(id)) {
+      pendingDeletes.delete(id);
       await apiFetch(`/api/conversations/${id}`, { method: 'DELETE', silent: true });
-      pendingDelete = null;
     }
   }, DELETE_UNDO_TIMEOUT);
 
-  pendingDelete = { id, timeout, toast };
+  pendingDeletes.set(id, { timeout, toast });
 }
 
 export async function archiveConversation(id, archived) {
@@ -253,7 +257,7 @@ export function renderConversationList(items) {
     }
 
     const cwdHtml = showCwdOnCards && c.cwd
-      ? `<div class="conv-card-cwd">${escapeHtml(c.cwd.replace(/^\/Users\/[^/]+/, '~'))}</div>`
+      ? `<div class="conv-card-cwd">${escapeHtml(c.cwd.replace(/^\/(?:Users|home)\/[^/]+/, '~'))}</div>`
       : '';
 
     const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
@@ -291,7 +295,8 @@ export function renderConversationList(items) {
     conversationList.innerHTML = list.map(renderCard).join('');
   } else {
     // Always show scope headers (even with single folder)
-    const shortPath = (p) => p.replace(/^\/Users\/[^/]+/, '~');
+    // Handle both macOS (/Users/) and Linux (/home/) home directories
+    const shortPath = (p) => p.replace(/^\/(?:Users|home)\/[^/]+/, '~');
     conversationList.innerHTML = Array.from(groups.entries()).map(([scope, convs]) => {
       const collapsed = collapsedScopes[scope];
       return `

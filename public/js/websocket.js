@@ -104,12 +104,10 @@ const messageHandlers = {
     }
   },
 
-  edit_forked(data) {
-    loadConversations().then(() => {
-      import('./conversations.js').then(c => {
-        c.openConversation(data.conversationId);
-      });
-    });
+  async edit_forked(data) {
+    await loadConversations();
+    const { openConversation } = await import('./conversations.js');
+    openConversation(data.conversationId);
     showToast('Edited in new fork');
   },
 

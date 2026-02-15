@@ -221,24 +221,28 @@ export function setupLongPressHandler(element, handlers) {
     clearTimeout(pressTimer);
   };
 
+  // Store handler references for proper cleanup
+  const mouseUpHandler = () => endPress();
+  const touchEndHandler = (e) => endPress(e, true);
+
   // Mouse events
   element.addEventListener('mousedown', startPress);
-  element.addEventListener('mouseup', () => endPress());
+  element.addEventListener('mouseup', mouseUpHandler);
   element.addEventListener('mouseleave', cancelPress);
 
   // Touch events
   element.addEventListener('touchstart', startPress, { passive: true });
-  element.addEventListener('touchend', (e) => endPress(e, true));
+  element.addEventListener('touchend', touchEndHandler);
   element.addEventListener('touchcancel', cancelPress);
   element.addEventListener('touchmove', cancelPress, { passive: true });
 
-  // Return cleanup function
+  // Return cleanup function using stored references
   return () => {
     element.removeEventListener('mousedown', startPress);
-    element.removeEventListener('mouseup', () => endPress());
+    element.removeEventListener('mouseup', mouseUpHandler);
     element.removeEventListener('mouseleave', cancelPress);
     element.removeEventListener('touchstart', startPress);
-    element.removeEventListener('touchend', (e) => endPress(e, true));
+    element.removeEventListener('touchend', touchEndHandler);
     element.removeEventListener('touchcancel', cancelPress);
     element.removeEventListener('touchmove', cancelPress);
   };
