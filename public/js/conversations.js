@@ -99,6 +99,23 @@ export async function deleteConversation(id) {
   return true;
 }
 
+/**
+ * Generic helper to update a conversation via PATCH.
+ * @param {string} id - Conversation ID
+ * @param {Object} patch - Object with fields to update (e.g., { archived: true })
+ * @returns {Promise<boolean>} - True if successful, false otherwise
+ */
+async function updateConversation(id, patch) {
+  const res = await apiFetch(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res) return false;
+  await loadConversations();
+  return true;
+}
+
 // Soft delete with undo - hides immediately, deletes after timeout unless undone
 let pendingDelete = null;
 
@@ -147,35 +164,15 @@ export function softDeleteConversation(id) {
 }
 
 export async function archiveConversation(id, archived) {
-  const res = await apiFetch(`/api/conversations/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ archived }),
-  });
-  if (!res) return false;
-  await loadConversations();
-  return true;
+  return updateConversation(id, { archived });
 }
 
 export async function renameConversation(id, name) {
-  const res = await apiFetch(`/api/conversations/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  });
-  if (!res) return;
-  await loadConversations();
+  return updateConversation(id, { name });
 }
 
 export async function pinConversation(id, pinned) {
-  const res = await apiFetch(`/api/conversations/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pinned }),
-  });
-  if (!res) return false;
-  await loadConversations();
-  return true;
+  return updateConversation(id, { pinned });
 }
 
 export async function forkConversation(fromMessageIndex) {

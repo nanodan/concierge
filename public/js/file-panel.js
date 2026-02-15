@@ -1063,7 +1063,9 @@ function renderChangeItem(file, type) {
     '?': 'untracked'
   };
   const statusLabel = statusLabels[file.status] || file.status;
-  const filename = file.path.split('/').pop();
+  // Handle directories (paths ending with /) by removing trailing slash first
+  const normalizedPath = file.path.replace(/\/$/, '');
+  const filename = normalizedPath.split('/').pop() + (file.path.endsWith('/') ? '/' : '');
 
   return `
     <div class="changes-item" data-path="${escapeHtml(file.path)}" data-type="${type}">

@@ -3,12 +3,12 @@ import { showToast } from './utils.js';
 import { appendDelta, finalizeMessage, renderMessages } from './render.js';
 import { loadConversations } from './conversations.js';
 import * as state from './state.js';
+import { WS_RECONNECT_MAX_DELAY } from './constants.js';
 
 let ws = null;
 let reconnectTimer = null;
 let wsHasConnected = false;
 let reconnectAttempt = 0;
-const MAX_RECONNECT_DELAY = 30000;
 
 // Elements set by init
 let reconnectBanner = null;
@@ -52,7 +52,7 @@ export function connectWS() {
   };
 
   ws.onclose = () => {
-    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt), WS_RECONNECT_MAX_DELAY);
     const jitter = baseDelay * (0.5 + Math.random()); // 50-150% of base delay
     reconnectAttempt++;
     reconnectTimer = setTimeout(connectWS, jitter);
@@ -65,79 +65,80 @@ export function connectWS() {
   };
 }
 
-function handleWSMessage(data) {
-  const currentConversationId = state.getCurrentConversationId();
+// Handler map for WebSocket message types
+const messageHandlers = {
+  delta(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      appendDelta(data.text);
+    }
+  },
 
-  switch (data.type) {
-    case 'delta':
-      if (data.conversationId === currentConversationId) {
-        appendDelta(data.text);
-      }
-      break;
+  result(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      finalizeMessage(data);
+      const conv = state.conversations.find(c => c.id === data.conversationId);
+      state.notifyCompletion(conv?.name);
+    } else if (data.conversationId) {
+      state.addUnread(data.conversationId);
+      const conv = state.conversations.find(c => c.id === data.conversationId);
+      state.notifyCompletion(conv?.name);
+    }
+    loadConversations();
+  },
 
-    case 'result':
-      if (data.conversationId === currentConversationId) {
-        finalizeMessage(data);
-        // Notify if tab is hidden
-        const conv = state.conversations.find(c => c.id === data.conversationId);
-        state.notifyCompletion(conv?.name);
-      } else if (data.conversationId) {
-        state.addUnread(data.conversationId);
-        // Notify for background conversations too
-        const conv = state.conversations.find(c => c.id === data.conversationId);
-        state.notifyCompletion(conv?.name);
-      }
-      // Update conversation list in background
-      loadConversations();
-      break;
+  status(data) {
+    state.updateStatus(data.conversationId, data.status);
+  },
 
-    case 'status':
-      state.updateStatus(data.conversationId, data.status);
-      break;
+  error(data, currentConversationId) {
+    if (data.conversationId === currentConversationId || !data.conversationId) {
+      state.showError(data.error);
+      state.setThinking(false);
+    }
+  },
 
-    case 'error':
-      if (data.conversationId === currentConversationId || !data.conversationId) {
-        state.showError(data.error);
-        state.setThinking(false);
-      }
-      break;
+  messages_updated(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      renderMessages(data.messages);
+      state.setThinking(true);
+    }
+  },
 
-    case 'messages_updated':
-      if (data.conversationId === currentConversationId) {
-        renderMessages(data.messages);
-        state.setThinking(true);
-      }
-      break;
-
-    case 'edit_forked':
-      // Switch to the forked conversation
-      loadConversations().then(() => {
-        import('./conversations.js').then(c => {
-          c.openConversation(data.conversationId);
-        });
+  edit_forked(data) {
+    loadConversations().then(() => {
+      import('./conversations.js').then(c => {
+        c.openConversation(data.conversationId);
       });
-      showToast('Edited in new fork');
-      break;
+    });
+    showToast('Edited in new fork');
+  },
 
-    case 'stderr':
-      break;
+  stderr() {
+    // No-op: stderr messages are ignored
+  },
 
-    case 'thinking':
-      if (data.conversationId === currentConversationId) {
-        state.updateThinkingText(data.text);
-      }
-      break;
+  thinking(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      state.updateThinkingText(data.text);
+    }
+  },
 
-    case 'tool_start':
-      if (data.conversationId === currentConversationId) {
-        state.updateToolStatus(data.tool);
-      }
-      break;
+  tool_start(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      state.updateToolStatus(data.tool);
+    }
+  },
 
-    case 'tool_result':
-      if (data.conversationId === currentConversationId) {
-        state.clearToolStatus();
-      }
-      break;
+  tool_result(data, currentConversationId) {
+    if (data.conversationId === currentConversationId) {
+      state.clearToolStatus();
+    }
+  },
+};
+
+function handleWSMessage(data) {
+  const handler = messageHandlers[data.type];
+  if (handler) {
+    handler(data, state.getCurrentConversationId());
   }
 }

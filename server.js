@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-const { setupRoutes } = require('./lib/routes');
+const { setupRoutes } = require('./lib/routes/index');
 const {
   UPLOAD_DIR,
   conversations,
