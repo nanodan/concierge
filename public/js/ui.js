@@ -2,7 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
 import { getWS } from './websocket.js';
-import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch } from './conversations.js';
+import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
 import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
@@ -1329,8 +1329,12 @@ export function setupEventListeners(createConversation) {
     // Escape always works
     if (e.key === 'Escape') {
       const lightbox = document.getElementById('lightbox');
-      // Close theme dropdowns first
-      if (themeDropdown && !themeDropdown.classList.contains('hidden')) {
+      // Close action popups first (long-press/right-click menus)
+      if (actionPopupOverlay && !actionPopupOverlay.classList.contains('hidden')) {
+        hideActionPopup();
+        hideMsgActionPopup();
+      // Close theme dropdowns
+      } else if (themeDropdown && !themeDropdown.classList.contains('hidden')) {
         closeThemeDropdown();
       } else if (colorThemeDropdown && !colorThemeDropdown.classList.contains('hidden')) {
         closeColorThemeDropdown();
