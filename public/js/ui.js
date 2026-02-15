@@ -2,7 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
 import { getWS } from './websocket.js';
-import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup } from './conversations.js';
+import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
 import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
@@ -140,6 +140,7 @@ let fileBrowserModal = null;
 let capabilitiesBtn = null;
 let capabilitiesModal = null;
 let memoryView = null;
+let chatName = null;
 
 export function initUI(elements) {
   messagesContainer = elements.messagesContainer;
@@ -203,6 +204,31 @@ export function initUI(elements) {
   capabilitiesBtn = document.getElementById('capabilities-btn');
   capabilitiesModal = document.getElementById('capabilities-modal');
   memoryView = document.getElementById('memory-view');
+  chatName = elements.chatName;
+
+  // Chat name click to rename
+  if (chatName) {
+    chatName.style.cursor = 'pointer';
+    chatName.addEventListener('click', async () => {
+      const currentId = state.getCurrentConversationId();
+      if (!currentId) return;
+      const currentName = chatName.textContent || '';
+      const newName = await showDialog({
+        title: 'Rename conversation',
+        input: true,
+        defaultValue: currentName,
+        placeholder: 'Conversation name',
+        confirmLabel: 'Rename'
+      });
+      if (newName && newName.trim() && newName.trim() !== currentName) {
+        const success = await renameConversation(currentId, newName.trim());
+        if (success) {
+          chatName.textContent = newName.trim();
+          showToast('Conversation renamed');
+        }
+      }
+    });
+  }
 
   // Initialize notifications label
   updateNotificationsLabel();
