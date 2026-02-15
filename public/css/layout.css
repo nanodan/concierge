@@ -134,6 +134,13 @@
   min-width: 0;
 }
 
+/* Ensure all chat header items align consistently */
+.chat-title > * {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .chat-title span:first-child {
   font-family: var(--font-display);
   font-weight: 600;
