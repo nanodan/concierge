@@ -1362,7 +1362,7 @@ function attachCommitActionListeners() {
 async function handleUndoCommit() {
   const confirmed = await showDialog({
     title: 'Undo last commit?',
-    message: 'The commit will be removed but changes will remain staged.',
+    message: 'The commit will be removed but changes will remain staged. Use this to amend the last commit or combine with other changes.',
     confirmLabel: 'Undo',
     danger: true
   });
@@ -1393,7 +1393,7 @@ async function handleUndoCommit() {
 async function handleRevert(hash) {
   const confirmed = await showDialog({
     title: 'Revert commit?',
-    message: `This will create a new commit that undoes the changes from ${hash.slice(0, 7)}.`,
+    message: `This will create a new commit that undoes the changes from ${hash.slice(0, 7)}. This is safe — it keeps history intact and can be easily undone.`,
     confirmLabel: 'Revert',
     danger: true
   });
@@ -1430,7 +1430,7 @@ async function handleReset(hash) {
   if (mode === 'hard') {
     const confirmed = await showDialog({
       title: 'Hard reset?',
-      message: 'This will PERMANENTLY DELETE all uncommitted changes. This cannot be undone.',
+      message: 'This will PERMANENTLY DELETE all uncommitted changes — both staged and unstaged files will be lost. This cannot be undone.',
       danger: true,
       confirmLabel: 'Delete changes and reset'
     });
@@ -1473,21 +1473,21 @@ function showResetModeDialog(hash) {
               <input type="radio" name="reset-mode" value="soft" checked>
               <div class="reset-mode-info">
                 <span class="reset-mode-name">Soft</span>
-                <span class="reset-mode-desc">Keep changes staged</span>
+                <span class="reset-mode-desc">Moves HEAD back. Changes stay staged, ready to commit again.</span>
               </div>
             </label>
             <label class="reset-mode-option">
               <input type="radio" name="reset-mode" value="mixed">
               <div class="reset-mode-info">
                 <span class="reset-mode-name">Mixed</span>
-                <span class="reset-mode-desc">Keep changes unstaged</span>
+                <span class="reset-mode-desc">Moves HEAD back. Changes become unstaged (in working directory).</span>
               </div>
             </label>
             <label class="reset-mode-option">
               <input type="radio" name="reset-mode" value="hard">
               <div class="reset-mode-info">
                 <span class="reset-mode-name">Hard</span>
-                <span class="reset-mode-desc danger-text">Discard all changes</span>
+                <span class="reset-mode-desc danger-text">Moves HEAD back. All changes are permanently deleted.</span>
               </div>
             </label>
           </div>
@@ -1525,6 +1525,79 @@ function showResetModeDialog(hash) {
     });
   });
 }
+
+function showGitLegendPopover(anchorBtn) {
+  // Remove any existing legend popover
+  const existing = document.querySelector('.git-legend-popover');
+  if (existing) {
+    existing.remove();
+    return; // Toggle off if already open
+  }
+
+  const popover = document.createElement('div');
+  popover.className = 'git-legend-popover';
+  popover.innerHTML = `
+    <div class="git-legend-title">Commit Actions</div>
+    <div class="git-legend-item">
+      <span class="git-legend-icon">↶</span>
+      <div class="git-legend-content">
+        <span class="git-legend-name">Undo</span>
+        <span class="git-legend-desc">Remove last commit, keep changes staged (soft reset HEAD~1)</span>
+      </div>
+    </div>
+    <div class="git-legend-item">
+      <span class="git-legend-icon">↩</span>
+      <div class="git-legend-content">
+        <span class="git-legend-name">Revert</span>
+        <span class="git-legend-desc">Create new commit that undoes changes (safe, keeps history)</span>
+      </div>
+    </div>
+    <div class="git-legend-item">
+      <span class="git-legend-icon danger">⟲</span>
+      <div class="git-legend-content">
+        <span class="git-legend-name">Reset</span>
+        <span class="git-legend-desc">Move branch to this commit (choose mode)</span>
+      </div>
+    </div>
+  `;
+
+  // Position relative to the anchor button
+  const rect = anchorBtn.getBoundingClientRect();
+  popover.style.top = `${rect.bottom + 4}px`;
+  popover.style.right = `${window.innerWidth - rect.right}px`;
+
+  document.body.appendChild(popover);
+  anchorBtn.classList.add('active');
+
+  const closePopover = () => {
+    popover.remove();
+    anchorBtn.classList.remove('active');
+    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('keydown', handleKeydown, true);
+  };
+
+  // Close on outside click
+  const handleOutsideClick = (e) => {
+    if (!popover.contains(e.target) && e.target !== anchorBtn) {
+      closePopover();
+    }
+  };
+
+  // Close on Escape key (capture phase to intercept before other handlers)
+  const handleKeydown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      closePopover();
+    }
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeydown, true); // capture phase
+  }, 0);
+}
+
 
 // === Diff Viewer ===
 
@@ -1643,6 +1716,13 @@ function renderHistoryView() {
 
   let html = '';
 
+  // History header with help button
+  html += `
+    <div class="history-header">
+      <span class="history-title">Commits</span>
+      <button class="history-help-btn" aria-label="Show action legend" title="Action legend">?</button>
+    </div>`;
+
   // Show unpushed commits header if there are any
   if (unpushedCount > 0) {
     html += `
@@ -1675,6 +1755,15 @@ function renderHistoryView() {
   }).join('');
 
   historyList.innerHTML = html;
+
+  // Attach help button listener for legend popover
+  const helpBtn = historyList.querySelector('.history-help-btn');
+  if (helpBtn) {
+    helpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showGitLegendPopover(helpBtn);
+    });
+  }
 
   // Attach click handlers for viewing diffs
   historyList.querySelectorAll('.commit-item').forEach(item => {
