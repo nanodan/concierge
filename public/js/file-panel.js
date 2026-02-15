@@ -414,6 +414,12 @@ export function openFilePanel() {
 
   // Show panel
   filePanel.classList.remove('hidden');
+
+  // Preserve scroll position when panel opens (desktop only)
+  // We save distance from bottom because content may reflow (text wraps to more lines)
+  const messages = document.getElementById('messages');
+  const distanceFromBottom = messages ? messages.scrollHeight - messages.scrollTop : 0;
+
   setTimeout(() => {
     filePanel.classList.add('open');
     if (isMobile()) {
@@ -421,6 +427,12 @@ export function openFilePanel() {
       filePanelBackdrop.classList.add('visible');
     } else {
       chatView.classList.add('file-panel-open');
+      // After layout change, restore scroll position based on distance from bottom
+      if (messages) {
+        requestAnimationFrame(() => {
+          messages.scrollTop = messages.scrollHeight - distanceFromBottom;
+        });
+      }
     }
   }, 10);
 
@@ -434,7 +446,19 @@ export function closeFilePanel() {
   isOpen = false;
   filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90');
   filePanelBackdrop.classList.remove('visible');
+
+  // Preserve scroll position when panel closes (desktop only)
+  const messages = document.getElementById('messages');
+  const distanceFromBottom = messages ? messages.scrollHeight - messages.scrollTop : 0;
+
   chatView.classList.remove('file-panel-open');
+
+  // Restore scroll position after layout change
+  if (messages && !isMobile()) {
+    requestAnimationFrame(() => {
+      messages.scrollTop = messages.scrollHeight - distanceFromBottom;
+    });
+  }
 
   setTimeout(() => {
     filePanel.classList.add('hidden');
