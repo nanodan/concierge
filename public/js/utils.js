@@ -1,6 +1,7 @@
 // --- Utility functions ---
+import { HAPTIC_LIGHT, TOAST_DURATION_DEFAULT } from './constants.js';
 
-export function haptic(ms = 10) {
+export function haptic(ms = HAPTIC_LIGHT) {
   navigator.vibrate?.(ms);
 }
 
@@ -51,7 +52,7 @@ export function initToast(container) {
   toastContainer = container;
 }
 
-export function showToast(message, { variant = 'default', duration = 3000, action, onAction } = {}) {
+export function showToast(message, { variant = 'default', duration = TOAST_DURATION_DEFAULT, action, onAction } = {}) {
   if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${variant}`;

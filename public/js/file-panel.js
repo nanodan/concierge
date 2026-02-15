@@ -2,6 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import * as state from './state.js';
+import { getFileIcon, FILE_ICONS } from './file-utils.js';
 
 // DOM elements
 let filePanel = null;
@@ -64,13 +65,11 @@ let searchTimeout = null;
 // Snap points for mobile (percentage of viewport height)
 const SNAP_POINTS = [30, 60, 90];
 
-// Icons
+// UI-specific icons (not part of file type icons in file-utils.js)
 const ICONS = {
-  folder: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
-  file: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>',
-  code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-  image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
-  document: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  // File type icons - reference from FILE_ICONS
+  ...FILE_ICONS,
+  // Additional UI icons
   emptyFolder: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
   error: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
   openExternal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
@@ -78,27 +77,6 @@ const ICONS = {
 
 // Previewable binary files (can open in browser)
 const PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
-
-// File extension categories
-const CODE_EXTS = new Set(['js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'swift', 'kt', 'php', 'pl', 'sh', 'bash', 'zsh', 'sql', 'html', 'htm', 'xml', 'css', 'scss', 'less', 'sass', 'json', 'yaml', 'yml', 'toml', 'md', 'vue', 'svelte']);
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
-const DOC_EXTS = new Set(['md', 'txt', 'pdf', 'doc', 'docx', 'rtf']);
-
-function getFileIcon(entry) {
-  if (entry.type === 'directory') {
-    return { class: 'directory', svg: ICONS.folder };
-  }
-  if (CODE_EXTS.has(entry.ext)) {
-    return { class: 'code', svg: ICONS.code };
-  }
-  if (IMAGE_EXTS.has(entry.ext)) {
-    return { class: 'image', svg: ICONS.image };
-  }
-  if (DOC_EXTS.has(entry.ext)) {
-    return { class: 'document', svg: ICONS.document };
-  }
-  return { class: '', svg: ICONS.file };
-}
 
 function isMobile() {
   return window.innerWidth < 768;

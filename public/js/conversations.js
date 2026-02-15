@@ -4,6 +4,12 @@ import { formatTime, setLoading, showToast, showDialog, haptic, apiFetch, trunca
 import { openNewChatModal } from './ui.js';
 import { renderMessages } from './render.js';
 import * as state from './state.js';
+import {
+  SWIPE_THRESHOLD,
+  DELETE_UNDO_TIMEOUT,
+  LONG_PRESS_DURATION,
+  HAPTIC_LIGHT,
+} from './constants.js';
 
 // DOM elements (set by init)
 let listView = null;
@@ -115,7 +121,7 @@ export function softDeleteConversation(id) {
 
   // Show toast with undo
   const toast = showToast(`"${convName}" deleted`, {
-    duration: 5000,
+    duration: DELETE_UNDO_TIMEOUT,
     action: 'Undo',
     onAction: () => {
       // Restore conversation
@@ -134,7 +140,7 @@ export function softDeleteConversation(id) {
       await apiFetch(`/api/conversations/${id}`, { method: 'DELETE', silent: true });
       pendingDelete = null;
     }
-  }, 5000);
+  }, DELETE_UNDO_TIMEOUT);
 
   pendingDelete = { id, timeout, toast };
 }
@@ -380,7 +386,6 @@ function setupSwipe(wrapper, card) {
   let swiping = false;
   let directionLocked = false;
   let isHorizontal = false;
-  const THRESHOLD = 60;
   const ACTION_WIDTH = 144; // 2 buttons * 72px
 
   card.addEventListener('touchstart', (e) => {
@@ -429,11 +434,11 @@ function setupSwipe(wrapper, card) {
     swiping = false;
     card.classList.remove('swiping');
 
-    if (currentX < -THRESHOLD) {
+    if (currentX < -SWIPE_THRESHOLD) {
       // Snap open
       card.style.transform = `translateX(-${ACTION_WIDTH}px)`;
       state.setActiveSwipeCard(card);
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
     } else {
       // Snap closed
       card.style.transform = 'translateX(0)';
@@ -455,7 +460,7 @@ function setupLongPress(card, id) {
     state.setLongPressTimer(setTimeout(() => {
       haptic(15);
       showActionPopup(e.touches[0].clientX, e.touches[0].clientY, id);
-    }, 500));
+    }, LONG_PRESS_DURATION));
   }, { passive: true });
 
   card.addEventListener('touchmove', () => {

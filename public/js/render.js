@@ -2,6 +2,11 @@
 import { escapeHtml, renderMarkdown } from './markdown.js';
 import { formatTime, formatTokens, haptic, showToast } from './utils.js';
 import * as state from './state.js';
+import {
+  HAPTIC_LIGHT,
+  COPY_FEEDBACK_DURATION,
+  SCROLL_NEAR_BOTTOM_THRESHOLD,
+} from './constants.js';
 
 // Claude avatar SVG (sparkle/AI icon)
 export const CLAUDE_AVATAR_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>`;
@@ -35,10 +40,10 @@ export function enhanceCodeBlocks(container) {
     btn.className = 'copy-btn';
     btn.textContent = 'Copy';
     btn.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       navigator.clipboard.writeText(el.textContent).then(() => {
         btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        setTimeout(() => { btn.textContent = 'Copy'; }, COPY_FEEDBACK_DURATION);
         showToast('Copied to clipboard');
       });
     });
@@ -246,7 +251,7 @@ export function appendDelta(text) {
     state.setStreamingText('');
     state.setPendingDelta('');
     state.setIsStreaming(true);
-    state.setUserHasScrolledUp(!state.isNearBottom(150));
+    state.setUserHasScrolledUp(!state.isNearBottom(SCROLL_NEAR_BOTTOM_THRESHOLD));
   }
 
   state.appendPendingDelta(text);
@@ -312,7 +317,7 @@ export function finalizeMessage(data) {
     state.scrollToBottom();
     if (state.getUserHasScrolledUp() && jumpToBottomBtn) {
       jumpToBottomBtn.classList.add('flash');
-      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), 1500);
+      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), COPY_FEEDBACK_DURATION);
     }
   }
 
@@ -386,7 +391,7 @@ export function renderReactionsForMessage(msgIndex) {
     pill.className = 'reaction-pill active';
     pill.innerHTML = `${emoji}`;
     pill.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       toggleReaction(msgIndex, emoji);
     });
     reactionsDiv.appendChild(pill);
@@ -424,7 +429,7 @@ export function showReactionPicker(x, y, msgIndex, hideMsgActionPopup, actionPop
     btn.className = 'reaction-picker-btn';
     btn.textContent = emoji;
     btn.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       toggleReaction(msgIndex, emoji);
       picker.remove();
       actionPopupOverlay.classList.add('hidden');
@@ -512,7 +517,7 @@ export function openLightbox(src) {
   lightboxImg.src = src;
   lightboxDownload.href = src;
   lightbox.classList.remove('hidden');
-  haptic(10);
+  haptic(HAPTIC_LIGHT);
 }
 
 export function closeLightbox() {
