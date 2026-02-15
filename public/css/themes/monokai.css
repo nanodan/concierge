@@ -1,0 +1,250 @@
+/*
+ * Monokai Theme
+ * Classic dark theme with vibrant syntax-inspired accents
+ */
+
+/* ========== DARK MODE (default) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-pink: #F92672;
+  --palette-pink-light: #FF5A8D;
+  --palette-green: #A6E22E;
+  --palette-yellow: #E6DB74;
+  --palette-orange: #FD971F;
+  --palette-purple: #AE81FF;
+  --palette-cyan: #66D9EF;
+  --palette-white: #F8F8F2;
+  --palette-white-muted: #C0BFB8;
+  --palette-gray: #75715E;
+  --palette-charcoal-dark: #1E1E1E;
+  --palette-charcoal-mid: #272822;
+  --palette-charcoal-light: #3E3D32;
+  --palette-charcoal-lighter: #49483E;
+  --palette-charcoal-border: #5A5850;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-charcoal-dark);
+  --bg-secondary: var(--palette-charcoal-mid);
+  --bg-tertiary: var(--palette-charcoal-lighter);
+  --surface: var(--palette-charcoal-light);
+  --input-bg: var(--palette-charcoal-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-white);
+  --text-secondary: var(--palette-white-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-pink);
+  --accent-light: var(--palette-pink-light);
+  --accent-secondary: var(--palette-cyan);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-pink);
+  --success: var(--palette-green);
+  --warning: var(--palette-orange);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-charcoal-border);
+  --glass-bg: rgba(39, 40, 34, 0.85);
+  --glass-border: rgba(248, 248, 242, 0.12);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-pink);
+  --user-bubble-end: #C41858;
+  --assistant-bubble: var(--palette-charcoal-mid);
+
+  /* === Alpha Variants (for animations, shadows, glows) === */
+  --accent-alpha-8: rgba(249, 38, 114, 0.08);
+  --accent-alpha-12: rgba(249, 38, 114, 0.12);
+  --accent-alpha-15: rgba(249, 38, 114, 0.15);
+  --accent-alpha-20: rgba(249, 38, 114, 0.2);
+  --accent-alpha-25: rgba(249, 38, 114, 0.25);
+  --accent-alpha-30: rgba(249, 38, 114, 0.3);
+  --accent-alpha-35: rgba(249, 38, 114, 0.35);
+  --accent-alpha-50: rgba(249, 38, 114, 0.5);
+
+  --danger-alpha-15: rgba(249, 38, 114, 0.15);
+  --danger-alpha-40: rgba(249, 38, 114, 0.4);
+
+  --teal-alpha-6: rgba(102, 217, 239, 0.06);
+  --teal-alpha-25: rgba(102, 217, 239, 0.25);
+
+  --terracotta-alpha-6: rgba(253, 151, 31, 0.06);
+  --terracotta-alpha-10: rgba(253, 151, 31, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-green);
+  --status-thinking: var(--palette-yellow);
+  --status-disconnected: var(--palette-charcoal-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-cyan);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-pink);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-pink);
+  --syntax-string: var(--palette-yellow);
+  --syntax-number: var(--palette-purple);
+  --syntax-comment: var(--palette-gray);
+  --syntax-function: var(--palette-green);
+  --syntax-type: var(--palette-cyan);
+  --syntax-variable: var(--palette-orange);
+  --syntax-operator: var(--palette-pink);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh (list view background) === */
+  --mesh-color-1: var(--accent-alpha-8);
+  --mesh-color-2: var(--terracotta-alpha-6);
+  --mesh-color-3: var(--teal-alpha-6);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #1E1E1E;
+}
+
+/* ========== LIGHT MODE ========== */
+html[data-theme="light"] {
+  /* === Core Palette Overrides === */
+  --palette-charcoal-dark: #FAFAFA;
+  --palette-charcoal-mid: #F0F0F0;
+  --palette-charcoal-light: #FFFFFF;
+  --palette-charcoal-lighter: #E5E5E5;
+  --palette-charcoal-border: #D0D0D0;
+  --palette-white: #272822;
+  --palette-white-muted: #5A5850;
+
+  /* Adjust colors for light bg */
+  --palette-pink: #D81B60;
+  --palette-green: #558B2F;
+  --palette-cyan: #0097A7;
+
+  /* === Backgrounds === */
+  --bg: #FAFAFA;
+  --bg-secondary: #F0F0F0;
+  --bg-tertiary: #E5E5E5;
+  --surface: #FFFFFF;
+  --input-bg: #FFFFFF;
+
+  /* === Text === */
+  --text: #272822;
+  --text-secondary: #5A5850;
+
+  /* === Accent === */
+  --accent: #D81B60;
+  --accent-light: #E91E78;
+
+  /* === Borders === */
+  --border: #D0D0D0;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(39, 40, 34, 0.12);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: #F0F0F0;
+
+  /* === Alpha Variants (light mode adjustments) === */
+  --accent-alpha-8: rgba(216, 27, 96, 0.08);
+  --accent-alpha-12: rgba(216, 27, 96, 0.12);
+  --accent-alpha-15: rgba(216, 27, 96, 0.15);
+  --accent-alpha-20: rgba(216, 27, 96, 0.2);
+  --accent-alpha-25: rgba(216, 27, 96, 0.25);
+
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: #F0F0F0;
+  --code-header-bg: #E5E5E5;
+  --code-inline-bg: rgba(216, 27, 96, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(216, 27, 96, 0.06);
+  --mesh-color-2: rgba(253, 151, 31, 0.04);
+  --mesh-color-3: rgba(0, 151, 167, 0.05);
+
+  /* === Syntax Highlighting === */
+  --syntax-keyword: #D81B60;
+  --syntax-string: #7B6C1E;
+  --syntax-number: #7B1FA2;
+  --syntax-comment: #757575;
+  --syntax-function: #558B2F;
+  --syntax-type: #0097A7;
+  --syntax-variable: #E65100;
+  --syntax-operator: #D81B60;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #FAFAFA;
+}
+
+/* Auto theme via media query (when no explicit data-theme) */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-charcoal-dark: #FAFAFA;
+    --palette-charcoal-mid: #F0F0F0;
+    --palette-charcoal-light: #FFFFFF;
+    --palette-charcoal-lighter: #E5E5E5;
+    --palette-charcoal-border: #D0D0D0;
+    --palette-white: #272822;
+    --palette-white-muted: #5A5850;
+    --palette-pink: #D81B60;
+    --palette-green: #558B2F;
+    --palette-cyan: #0097A7;
+
+    --bg: #FAFAFA;
+    --bg-secondary: #F0F0F0;
+    --bg-tertiary: #E5E5E5;
+    --surface: #FFFFFF;
+    --input-bg: #FFFFFF;
+    --text: #272822;
+    --text-secondary: #5A5850;
+    --accent: #D81B60;
+    --accent-light: #E91E78;
+    --border: #D0D0D0;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(39, 40, 34, 0.12);
+    --assistant-bubble: #F0F0F0;
+
+    --accent-alpha-8: rgba(216, 27, 96, 0.08);
+    --accent-alpha-12: rgba(216, 27, 96, 0.12);
+    --accent-alpha-15: rgba(216, 27, 96, 0.15);
+    --accent-alpha-20: rgba(216, 27, 96, 0.2);
+    --accent-alpha-25: rgba(216, 27, 96, 0.25);
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #F0F0F0;
+    --code-header-bg: #E5E5E5;
+    --code-inline-bg: rgba(216, 27, 96, 0.1);
+    --mesh-color-1: rgba(216, 27, 96, 0.06);
+    --mesh-color-2: rgba(253, 151, 31, 0.04);
+    --mesh-color-3: rgba(0, 151, 167, 0.05);
+    --syntax-keyword: #D81B60;
+    --syntax-string: #7B6C1E;
+    --syntax-number: #7B1FA2;
+    --syntax-comment: #757575;
+    --syntax-function: #558B2F;
+    --syntax-type: #0097A7;
+    --syntax-variable: #E65100;
+    --syntax-operator: #D81B60;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #FAFAFA;
+  }
+}

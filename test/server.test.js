@@ -170,13 +170,15 @@ describe('processStreamEvent', () => {
   });
 
   it('handles result events', () => {
-    const conv = { claudeSessionId: null, messages: [], status: 'thinking' };
+    const conv = { claudeSessionId: null, messages: [], status: 'thinking', model: 'sonnet' };
     const event = {
       type: 'result',
       result: 'Final answer',
       session_id: 'sess-final',
       total_cost_usd: 0.05,
       duration_ms: 1200,
+      total_input_tokens: 10000,
+      total_output_tokens: 2000,
     };
     // Note: assistantText return value stays as the streaming accumulator,
     // result text goes to conv.messages and WebSocket
@@ -186,12 +188,13 @@ describe('processStreamEvent', () => {
     assert.equal(conv.messages.length, 1);
     assert.equal(conv.messages[0].role, 'assistant');
     assert.equal(conv.messages[0].text, 'Final answer');
-    assert.equal(conv.messages[0].cost, 0.05);
+    // Cost is computed from tokens: (10000 * $3/M) + (2000 * $15/M) = $0.03 + $0.03 = $0.06
+    assert.equal(conv.messages[0].cost, 0.06);
 
     const resultMsg = sent.find(m => m.type === 'result');
     assert.ok(resultMsg);
     assert.equal(resultMsg.text, 'Final answer');
-    assert.equal(resultMsg.cost, 0.05);
+    assert.equal(resultMsg.cost, 0.06);
     assert.equal(resultMsg.duration, 1200);
   });
 

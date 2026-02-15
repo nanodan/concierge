@@ -1,0 +1,224 @@
+/*
+ * Fjord Theme
+ * Inspired by Norwegian sunsets - warm coral accents with cool slate backgrounds
+ */
+
+/* ========== DARK MODE (default) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-coral: #E08B6D;
+  --palette-coral-light: #F0A08A;
+  --palette-coral-deep: #C47058;
+  --palette-salmon: #D4776A;
+  --palette-slate: #8B9EAD;
+  --palette-slate-light: #A8B8C5;
+  --palette-cream: #F0E8E0;
+  --palette-cream-muted: #C4B8AC;
+  --palette-navy-dark: #1A1E24;
+  --palette-navy-mid: #242A32;
+  --palette-navy-light: #2E363F;
+  --palette-navy-lighter: #3A434D;
+  --palette-navy-border: #4A5562;
+  --palette-mint: #7CBBA8;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-navy-dark);
+  --bg-secondary: var(--palette-navy-mid);
+  --bg-tertiary: var(--palette-navy-lighter);
+  --surface: var(--palette-navy-light);
+  --input-bg: var(--palette-navy-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-cream);
+  --text-secondary: var(--palette-cream-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-coral);
+  --accent-light: var(--palette-coral-light);
+  --accent-secondary: var(--palette-slate);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-salmon);
+  --success: var(--palette-mint);
+  --warning: var(--palette-coral);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-navy-border);
+  --glass-bg: rgba(36, 42, 50, 0.85);
+  --glass-border: rgba(240, 232, 224, 0.12);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-coral);
+  --user-bubble-end: var(--palette-coral-deep);
+  --assistant-bubble: var(--palette-navy-mid);
+
+  /* === Alpha Variants (for animations, shadows, glows) === */
+  --accent-alpha-8: rgba(224, 139, 109, 0.08);
+  --accent-alpha-12: rgba(224, 139, 109, 0.12);
+  --accent-alpha-15: rgba(224, 139, 109, 0.15);
+  --accent-alpha-20: rgba(224, 139, 109, 0.2);
+  --accent-alpha-25: rgba(224, 139, 109, 0.25);
+  --accent-alpha-30: rgba(224, 139, 109, 0.3);
+  --accent-alpha-35: rgba(224, 139, 109, 0.35);
+  --accent-alpha-50: rgba(224, 139, 109, 0.5);
+
+  --danger-alpha-15: rgba(212, 119, 106, 0.15);
+  --danger-alpha-40: rgba(212, 119, 106, 0.4);
+
+  --teal-alpha-6: rgba(124, 187, 168, 0.06);
+  --teal-alpha-25: rgba(124, 187, 168, 0.25);
+
+  --terracotta-alpha-6: rgba(196, 112, 88, 0.06);
+  --terracotta-alpha-10: rgba(196, 112, 88, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-mint);
+  --status-thinking: var(--palette-coral);
+  --status-disconnected: var(--palette-navy-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-mint);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-coral);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-coral);
+  --syntax-string: var(--palette-mint);
+  --syntax-number: var(--palette-salmon);
+  --syntax-comment: #6B7A8A;
+  --syntax-function: var(--palette-slate-light);
+  --syntax-type: var(--palette-coral-light);
+  --syntax-variable: var(--palette-coral-deep);
+  --syntax-operator: var(--palette-cream-muted);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh (list view background) === */
+  --mesh-color-1: var(--accent-alpha-8);
+  --mesh-color-2: var(--terracotta-alpha-6);
+  --mesh-color-3: var(--teal-alpha-6);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #1A1E24;
+}
+
+/* ========== LIGHT MODE ========== */
+html[data-theme="light"] {
+  /* === Core Palette Overrides === */
+  --palette-navy-dark: #F5F2EF;
+  --palette-navy-mid: #EBE6E0;
+  --palette-navy-light: #FFFCF8;
+  --palette-navy-lighter: #E0D8D0;
+  --palette-navy-border: #D4CCC2;
+  --palette-cream: #2E363F;
+  --palette-cream-muted: #5A6570;
+
+  /* === Backgrounds === */
+  --bg: #F5F2EF;
+  --bg-secondary: #EBE6E0;
+  --bg-tertiary: #E0D8D0;
+  --surface: #FFFCF8;
+  --input-bg: #FFFCF8;
+
+  /* === Text === */
+  --text: #2E363F;
+  --text-secondary: #5A6570;
+
+  /* === Borders === */
+  --border: #D4CCC2;
+  --glass-bg: rgba(255, 252, 248, 0.85);
+  --glass-border: rgba(46, 54, 63, 0.12);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: #F5F2EF;
+
+  /* === Alpha Variants (light mode adjustments) === */
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: #EBE6E0;
+  --code-header-bg: #E0D8D0;
+  --code-inline-bg: rgba(224, 139, 109, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(224, 139, 109, 0.06);
+  --mesh-color-2: rgba(196, 112, 88, 0.04);
+  --mesh-color-3: rgba(124, 187, 168, 0.05);
+
+  /* === Syntax Highlighting (warmer for light bg) === */
+  --syntax-keyword: #C47058;
+  --syntax-string: #3D8A7A;
+  --syntax-number: #A0584D;
+  --syntax-comment: #8B9095;
+  --syntax-function: #5A7585;
+  --syntax-type: #D47840;
+  --syntax-variable: #A0584D;
+  --syntax-operator: #5A6570;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #F5F2EF;
+}
+
+/* Auto theme via media query (when no explicit data-theme) */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-navy-dark: #F5F2EF;
+    --palette-navy-mid: #EBE6E0;
+    --palette-navy-light: #FFFCF8;
+    --palette-navy-lighter: #E0D8D0;
+    --palette-navy-border: #D4CCC2;
+    --palette-cream: #2E363F;
+    --palette-cream-muted: #5A6570;
+
+    --bg: #F5F2EF;
+    --bg-secondary: #EBE6E0;
+    --bg-tertiary: #E0D8D0;
+    --surface: #FFFCF8;
+    --input-bg: #FFFCF8;
+    --text: #2E363F;
+    --text-secondary: #5A6570;
+    --border: #D4CCC2;
+    --glass-bg: rgba(255, 252, 248, 0.85);
+    --glass-border: rgba(46, 54, 63, 0.12);
+    --assistant-bubble: #F5F2EF;
+
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #EBE6E0;
+    --code-header-bg: #E0D8D0;
+    --code-inline-bg: rgba(224, 139, 109, 0.1);
+    --mesh-color-1: rgba(224, 139, 109, 0.06);
+    --mesh-color-2: rgba(196, 112, 88, 0.04);
+    --mesh-color-3: rgba(124, 187, 168, 0.05);
+    --syntax-keyword: #C47058;
+    --syntax-string: #3D8A7A;
+    --syntax-number: #A0584D;
+    --syntax-comment: #8B9095;
+    --syntax-function: #5A7585;
+    --syntax-type: #D47840;
+    --syntax-variable: #A0584D;
+    --syntax-operator: #5A6570;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #F5F2EF;
+  }
+}

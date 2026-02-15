@@ -19,7 +19,11 @@ export const COLOR_THEMES = {
   claude: { name: 'Claude', icon: '\u{1F49C}' },
   budapest: { name: 'Budapest', icon: '\u{1F3E8}' },
   moonrise: { name: 'Moonrise', icon: '\u{1F3D5}' },
-  aquatic: { name: 'Aquatic', icon: '\u{1F6A2}' }
+  aquatic: { name: 'Aquatic', icon: '\u{1F6A2}' },
+  fjord: { name: 'Fjord', icon: '\u{1F3D4}' },
+  tenenbaums: { name: 'Tenenbaums', icon: '\u{1F3E0}' },
+  monokai: { name: 'Monokai', icon: '\u{1F4BB}' },
+  catppuccin: { name: 'Catppuccin', icon: '\u{1F431}' }
 };
 
 export function initTheme(elements) {
@@ -78,19 +82,31 @@ export function selectTheme(newTheme) {
 export function updateThemeIcon() {
   const currentTheme = state.getCurrentTheme();
   const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+  const svgPaths = {
+    auto: '<circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 1 0 20"/>',
+    light: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+  };
 
-  // Update the more menu icon and label
+  // Update the more menu icon and label (home page)
   if (moreThemeIcon) {
-    const svgPaths = {
-      auto: '<circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 1 0 20"/>',
-      light: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
-      dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
-    };
     moreThemeIcon.innerHTML = svgPaths[currentTheme] || svgPaths.auto;
   }
 
   if (moreThemeLabel) {
     moreThemeLabel.textContent = labels[currentTheme] || 'Auto';
+  }
+
+  // Update the chat more menu icon and label
+  const chatMoreThemeIcon = document.getElementById('chat-more-theme-icon');
+  const chatMoreThemeLabel = document.getElementById('chat-more-theme-label');
+
+  if (chatMoreThemeIcon) {
+    chatMoreThemeIcon.innerHTML = svgPaths[currentTheme] || svgPaths.auto;
+  }
+
+  if (chatMoreThemeLabel) {
+    chatMoreThemeLabel.textContent = labels[currentTheme] || 'Auto';
   }
 
   // Update active state in dropdown
@@ -129,20 +145,25 @@ function closeMoreMenuOnOutsideClick(e) {
   }
 }
 
-export function toggleThemeDropdown() {
+export function toggleThemeDropdown(anchorBtn = null, closeMenuCallback = null) {
   if (!themeDropdown) return;
   const isHidden = themeDropdown.classList.contains('hidden');
 
   // Get position before closing more menu
   let top = 60;
   let right = 12;
-  if (moreMenuBtn) {
-    const rect = moreMenuBtn.getBoundingClientRect();
+  const anchor = anchorBtn || moreMenuBtn;
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect();
     top = rect.bottom + 4;
     right = window.innerWidth - rect.right;
   }
 
-  closeMoreMenu();
+  if (closeMenuCallback) {
+    closeMenuCallback();
+  } else {
+    closeMoreMenu();
+  }
   if (isHidden) {
     closeColorThemeDropdown();
     themeDropdown.style.top = `${top}px`;
@@ -190,20 +211,25 @@ export function applyColorTheme(animate = false) {
   }
 }
 
-export function toggleColorThemeDropdown() {
+export function toggleColorThemeDropdown(anchorBtn = null, closeMenuCallback = null) {
   if (!colorThemeDropdown) return;
   const isHidden = colorThemeDropdown.classList.contains('hidden');
 
   // Get position before closing more menu
   let top = 60;
   let right = 12;
-  if (moreMenuBtn) {
-    const rect = moreMenuBtn.getBoundingClientRect();
+  const anchor = anchorBtn || moreMenuBtn;
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect();
     top = rect.bottom + 4;
     right = window.innerWidth - rect.right;
   }
 
-  closeMoreMenu();
+  if (closeMenuCallback) {
+    closeMenuCallback();
+  } else {
+    closeMoreMenu();
+  }
   if (isHidden) {
     closeThemeDropdown();
     colorThemeDropdown.style.top = `${top}px`;

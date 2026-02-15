@@ -18,6 +18,8 @@ import {
   closeMoreMenu,
   closeThemeDropdown,
   closeColorThemeDropdown,
+  toggleColorThemeDropdown,
+  toggleThemeDropdown,
   setupThemeEventListeners,
 } from './ui/theme.js';
 
@@ -1302,6 +1304,24 @@ export function setupEventListeners(createConversation) {
       closeChatMoreMenu();
       haptic();
       if (deleteBtn) deleteBtn.click();
+    });
+  }
+
+  // Chat more menu theme items
+  const chatMoreColorTheme = document.getElementById('chat-more-color-theme');
+  const chatMoreThemeToggle = document.getElementById('chat-more-theme-toggle');
+
+  if (chatMoreColorTheme) {
+    chatMoreColorTheme.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleColorThemeDropdown(chatMoreBtn, closeChatMoreMenu);
+    });
+  }
+
+  if (chatMoreThemeToggle) {
+    chatMoreThemeToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleThemeDropdown(chatMoreBtn, closeChatMoreMenu);
     });
   }
 
