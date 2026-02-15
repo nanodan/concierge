@@ -1,5 +1,10 @@
 // --- Shared state module ---
 // This module holds all mutable state that's shared across modules
+import {
+  MESSAGES_PER_PAGE as MESSAGES_PER_PAGE_CONST,
+  SCROLL_NEAR_BOTTOM_THRESHOLD,
+  THINKING_TEXT_TRUNCATE,
+} from './constants.js';
 
 // Conversations
 export let conversations = [];
@@ -26,7 +31,7 @@ export let isStreaming = false;
 export let userHasScrolledUp = false;
 
 // Virtual scrolling
-export const MESSAGES_PER_PAGE = 100;
+export const MESSAGES_PER_PAGE = MESSAGES_PER_PAGE_CONST;
 export let allMessages = [];
 export let messagesOffset = 0;
 
@@ -542,7 +547,7 @@ export function updateThinkingText(text) {
     typingIndicator.appendChild(statusEl);
   }
   // Show truncated thinking text
-  const truncated = text.length > 50 ? text.slice(-50) + '...' : text;
+  const truncated = text.length > THINKING_TEXT_TRUNCATE ? text.slice(-THINKING_TEXT_TRUNCATE) + '...' : text;
   statusEl.textContent = truncated;
 }
 
@@ -572,7 +577,7 @@ export function showError(error) {
   scrollToBottom();
 }
 
-export function isNearBottom(threshold = 150) {
+export function isNearBottom(threshold = SCROLL_NEAR_BOTTOM_THRESHOLD) {
   if (!messagesContainer) return true;
   const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
   return scrollHeight - scrollTop - clientHeight < threshold;

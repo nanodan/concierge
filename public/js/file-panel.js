@@ -1,7 +1,8 @@
 // --- File Panel (Project Mode) ---
 import { escapeHtml } from './markdown.js';
-import { haptic, showToast, showDialog, apiFetch } from './utils.js';
+import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import * as state from './state.js';
+import { getFileIcon, FILE_ICONS, IMAGE_EXTS } from './file-utils.js';
 
 // DOM elements
 let filePanel = null;
@@ -64,13 +65,11 @@ let searchTimeout = null;
 // Snap points for mobile (percentage of viewport height)
 const SNAP_POINTS = [30, 60, 90];
 
-// Icons
+// UI-specific icons (not part of file type icons in file-utils.js)
 const ICONS = {
-  folder: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
-  file: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>',
-  code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-  image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
-  document: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  // File type icons - reference from FILE_ICONS
+  ...FILE_ICONS,
+  // Additional UI icons
   emptyFolder: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
   error: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
   openExternal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
@@ -78,33 +77,6 @@ const ICONS = {
 
 // Previewable binary files (can open in browser)
 const PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
-
-// File extension categories
-const CODE_EXTS = new Set(['js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'swift', 'kt', 'php', 'pl', 'sh', 'bash', 'zsh', 'sql', 'html', 'htm', 'xml', 'css', 'scss', 'less', 'sass', 'json', 'yaml', 'yml', 'toml', 'md', 'vue', 'svelte']);
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
-const DOC_EXTS = new Set(['md', 'txt', 'pdf', 'doc', 'docx', 'rtf']);
-
-function getFileIcon(entry) {
-  if (entry.type === 'directory') {
-    return { class: 'directory', svg: ICONS.folder };
-  }
-  if (CODE_EXTS.has(entry.ext)) {
-    return { class: 'code', svg: ICONS.code };
-  }
-  if (IMAGE_EXTS.has(entry.ext)) {
-    return { class: 'image', svg: ICONS.image };
-  }
-  if (DOC_EXTS.has(entry.ext)) {
-    return { class: 'document', svg: ICONS.document };
-  }
-  return { class: '', svg: ICONS.file };
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
 
 function isMobile() {
   return window.innerWidth < 768;
@@ -156,7 +128,7 @@ function setupEventListeners() {
   // Close button
   if (filePanelClose) {
     filePanelClose.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFilePanel();
     });
   }
@@ -164,7 +136,7 @@ function setupEventListeners() {
   // Backdrop click (mobile)
   if (filePanelBackdrop) {
     filePanelBackdrop.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFilePanel();
     });
   }
@@ -182,7 +154,7 @@ function setupEventListeners() {
   // File viewer close
   if (fileViewerClose) {
     fileViewerClose.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       closeFileViewer();
     });
   }
@@ -222,7 +194,7 @@ function setupEventListeners() {
   // Refresh button
   if (gitRefreshBtn) {
     gitRefreshBtn.addEventListener('click', () => {
-      haptic(10);
+      haptic();
       loadGitStatus();
       loadBranches();
     });
@@ -322,6 +294,8 @@ let resizeHandle = null;
 let isResizing = false;
 let resizeStartX = 0;
 let resizeStartWidth = 0;
+let resizeScrollDistance = 0;
+let resizeMessages = null;
 
 function setupDesktopResize() {
   // Create resize handle if it doesn't exist
@@ -340,6 +314,12 @@ function setupDesktopResize() {
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
+
+    // Save scroll position for preservation during resize
+    resizeMessages = document.getElementById('messages');
+    if (resizeMessages) {
+      resizeScrollDistance = resizeMessages.scrollHeight - resizeMessages.scrollTop;
+    }
   });
 
   document.addEventListener('mousemove', (e) => {
@@ -349,6 +329,11 @@ function setupDesktopResize() {
     filePanel.style.width = newWidth + 'px';
     // Update CSS variable for margin adjustments
     document.documentElement.style.setProperty('--file-panel-width', newWidth + 'px');
+
+    // Preserve scroll position as content reflows
+    if (resizeMessages) {
+      resizeMessages.scrollTop = resizeMessages.scrollHeight - resizeScrollDistance;
+    }
   });
 
   document.addEventListener('mouseup', () => {
@@ -356,6 +341,7 @@ function setupDesktopResize() {
       isResizing = false;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      resizeMessages = null;
     }
   });
 }
@@ -442,6 +428,12 @@ export function openFilePanel() {
 
   // Show panel
   filePanel.classList.remove('hidden');
+
+  // Preserve scroll position when panel opens (desktop only)
+  // We save distance from bottom because content may reflow (text wraps to more lines)
+  const messages = document.getElementById('messages');
+  const distanceFromBottom = messages ? messages.scrollHeight - messages.scrollTop : 0;
+
   setTimeout(() => {
     filePanel.classList.add('open');
     if (isMobile()) {
@@ -449,6 +441,12 @@ export function openFilePanel() {
       filePanelBackdrop.classList.add('visible');
     } else {
       chatView.classList.add('file-panel-open');
+      // After layout change, restore scroll position based on distance from bottom
+      if (messages) {
+        requestAnimationFrame(() => {
+          messages.scrollTop = messages.scrollHeight - distanceFromBottom;
+        });
+      }
     }
   }, 10);
 
@@ -462,7 +460,19 @@ export function closeFilePanel() {
   isOpen = false;
   filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90');
   filePanelBackdrop.classList.remove('visible');
+
+  // Preserve scroll position when panel closes (desktop only)
+  const messages = document.getElementById('messages');
+  const distanceFromBottom = messages ? messages.scrollHeight - messages.scrollTop : 0;
+
   chatView.classList.remove('file-panel-open');
+
+  // Restore scroll position after layout change
+  if (messages && !isMobile()) {
+    requestAnimationFrame(() => {
+      messages.scrollTop = messages.scrollHeight - distanceFromBottom;
+    });
+  }
 
   setTimeout(() => {
     filePanel.classList.add('hidden');
@@ -775,7 +785,7 @@ function renderSearchResults() {
 }
 
 async function openFileAtLine(filePath, line) {
-  haptic(10);
+  haptic();
   await viewFile(filePath);
 
   // Scroll to line after content loads
@@ -1053,7 +1063,9 @@ function renderChangeItem(file, type) {
     '?': 'untracked'
   };
   const statusLabel = statusLabels[file.status] || file.status;
-  const filename = file.path.split('/').pop();
+  // Handle directories (paths ending with /) by removing trailing slash first
+  const normalizedPath = file.path.replace(/\/$/, '');
+  const filename = normalizedPath.split('/').pop() + (file.path.endsWith('/') ? '/' : '');
 
   return `
     <div class="changes-item" data-path="${escapeHtml(file.path)}" data-type="${type}">
@@ -1098,7 +1110,7 @@ function attachChangeItemListeners() {
       const item = btn.closest('.changes-item');
       const filePath = item.dataset.path;
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'stage') {
         await stageFiles([filePath]);
@@ -1126,7 +1138,7 @@ function attachChangeItemListeners() {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      haptic(10);
+      haptic();
 
       const action = btn.dataset.action;
       if (action === 'unstage-all' && gitStatus?.staged) {
@@ -1187,7 +1199,7 @@ function attachStashListeners() {
       const item = btn.closest('.stash-item');
       const index = parseInt(item.dataset.index, 10);
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'pop') {
         await handleStashPop(index);
@@ -1212,7 +1224,7 @@ function attachStashListeners() {
 }
 
 async function handleStash() {
-  haptic(10);
+  haptic();
 
   const message = await showDialog({
     title: 'Stash changes',
@@ -1331,7 +1343,7 @@ function attachCommitActionListeners() {
       const item = btn.closest('.commit-item');
       const hash = item.dataset.hash;
       const action = btn.dataset.action;
-      haptic(10);
+      haptic();
 
       if (action === 'undo') {
         await handleUndoCommit();
@@ -1681,7 +1693,7 @@ async function viewCommitDiff(hash) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  haptic(10);
+  haptic();
 
   // Show loading state in viewer
   fileViewerName.textContent = `${hash.slice(0, 7)}`;

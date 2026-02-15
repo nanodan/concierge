@@ -1,6 +1,7 @@
 // --- Utility functions ---
+import { HAPTIC_LIGHT, HAPTIC_MEDIUM, TOAST_DURATION_DEFAULT, LONG_PRESS_DURATION } from './constants.js';
 
-export function haptic(ms = 10) {
+export function haptic(ms = HAPTIC_LIGHT) {
   navigator.vibrate?.(ms);
 }
 
@@ -38,6 +39,12 @@ export function setLoading(view, loading) {
   view.classList.toggle('loading', loading);
 }
 
+export function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
 // --- Toast notifications ---
 let toastContainer = null;
 
@@ -45,7 +52,7 @@ export function initToast(container) {
   toastContainer = container;
 }
 
-export function showToast(message, { variant = 'default', duration = 3000, action, onAction } = {}) {
+export function showToast(message, { variant = 'default', duration = TOAST_DURATION_DEFAULT, action, onAction } = {}) {
   if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${variant}`;
@@ -162,6 +169,83 @@ export function getDialogOverlay() {
 
 export function getDialogCancel() {
   return dialogCancel;
+}
+
+// --- Long-press gesture handler ---
+// Reusable helper for elements that need short-tap vs long-press behavior
+
+/**
+ * Sets up long-press detection on an element with separate handlers for tap vs long-press.
+ * Works on both mouse and touch devices.
+ * @param {HTMLElement} element - The element to attach handlers to
+ * @param {Object} handlers - Handler functions
+ * @param {Function} handlers.onTap - Called on short tap (no movement, short duration)
+ * @param {Function} handlers.onLongPress - Called after long-press threshold
+ * @param {number} [handlers.duration=500] - Long-press duration in ms
+ * @param {boolean} [handlers.tapHaptic=true] - Whether to trigger haptic on tap
+ * @param {boolean} [handlers.longPressHaptic=true] - Whether to trigger haptic on long-press
+ */
+export function setupLongPressHandler(element, handlers) {
+  const {
+    onTap,
+    onLongPress,
+    duration = LONG_PRESS_DURATION,
+    tapHaptic = true,
+    longPressHaptic = true,
+  } = handlers;
+
+  let pressTimer = null;
+  let longPressed = false;
+
+  const startPress = () => {
+    longPressed = false;
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      if (longPressHaptic) haptic(HAPTIC_MEDIUM);
+      onLongPress?.();
+    }, duration);
+  };
+
+  const endPress = (event, preventDefault = false) => {
+    clearTimeout(pressTimer);
+    if (!longPressed) {
+      if (preventDefault && event) {
+        event.preventDefault();
+      }
+      if (tapHaptic) haptic(HAPTIC_LIGHT);
+      onTap?.();
+    }
+  };
+
+  const cancelPress = () => {
+    clearTimeout(pressTimer);
+  };
+
+  // Store handler references for proper cleanup
+  const mouseUpHandler = () => endPress();
+  const touchEndHandler = (e) => endPress(e, true);
+
+  // Mouse events
+  element.addEventListener('mousedown', startPress);
+  element.addEventListener('mouseup', mouseUpHandler);
+  element.addEventListener('mouseleave', cancelPress);
+
+  // Touch events
+  element.addEventListener('touchstart', startPress, { passive: true });
+  element.addEventListener('touchend', touchEndHandler);
+  element.addEventListener('touchcancel', cancelPress);
+  element.addEventListener('touchmove', cancelPress, { passive: true });
+
+  // Return cleanup function using stored references
+  return () => {
+    element.removeEventListener('mousedown', startPress);
+    element.removeEventListener('mouseup', mouseUpHandler);
+    element.removeEventListener('mouseleave', cancelPress);
+    element.removeEventListener('touchstart', startPress);
+    element.removeEventListener('touchend', touchEndHandler);
+    element.removeEventListener('touchcancel', cancelPress);
+    element.removeEventListener('touchmove', cancelPress);
+  };
 }
 
 // --- API Fetch wrapper ---

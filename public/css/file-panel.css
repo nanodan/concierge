@@ -39,6 +39,7 @@
   }
 
   /* Adjust chat view when panel is open */
+  /* Note: No transition on margin - instant change allows scroll position preservation */
   #chat-view.file-panel-open #messages {
     margin-right: var(--file-panel-width);
   }

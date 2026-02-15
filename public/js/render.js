@@ -2,12 +2,59 @@
 import { escapeHtml, renderMarkdown } from './markdown.js';
 import { formatTime, formatTokens, haptic, showToast } from './utils.js';
 import * as state from './state.js';
+import {
+  HAPTIC_LIGHT,
+  COPY_FEEDBACK_DURATION,
+  SCROLL_NEAR_BOTTOM_THRESHOLD,
+} from './constants.js';
 
 // Claude avatar SVG (sparkle/AI icon)
 export const CLAUDE_AVATAR_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.5 9.5L2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5L12 2z"/></svg>`;
 
 // Reaction emojis
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
+
+// Shared SVG icons for message action buttons
+const TTS_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const REGEN_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+
+/**
+ * Build metadata string for a message (timestamp, cost, duration, tokens).
+ * @param {Object} msg - Message object with optional cost, duration, inputTokens, outputTokens
+ * @returns {string} - HTML string for the meta line
+ */
+function buildMessageMeta(msg) {
+  const timestamp = msg.timestamp || Date.now();
+  let meta = formatTime(timestamp);
+  if (msg.cost != null) {
+    meta += ` &middot; $${msg.cost.toFixed(4)}`;
+  }
+  if (msg.duration != null) {
+    meta += ` &middot; ${(msg.duration / 1000).toFixed(1)}s`;
+  }
+  if (msg.inputTokens != null) {
+    meta += ` &middot; ${formatTokens(msg.inputTokens)} in / ${formatTokens(msg.outputTokens)} out`;
+  }
+  return meta;
+}
+
+/**
+ * Build action buttons HTML for assistant messages.
+ * @param {Object} options - Options for which buttons to include
+ * @param {boolean} options.includeTTS - Include TTS button (default: true if speechSynthesis available)
+ * @param {boolean} options.includeRegen - Include regenerate button
+ * @returns {string} - HTML string for action buttons container
+ */
+function buildActionButtons({ includeTTS = true, includeRegen = false } = {}) {
+  const ttsBtn = (includeTTS && window.speechSynthesis)
+    ? `<button class="msg-action-btn tts-btn" aria-label="Read aloud">${TTS_ICON_SVG}</button>`
+    : '';
+  const regenBtn = includeRegen
+    ? `<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate">${REGEN_ICON_SVG}</button>`
+    : '';
+  if (!ttsBtn && !regenBtn) return '';
+  return `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>`;
+}
 
 export function enhanceCodeBlocks(container) {
   container.querySelectorAll('pre code').forEach(el => {
@@ -35,10 +82,10 @@ export function enhanceCodeBlocks(container) {
     btn.className = 'copy-btn';
     btn.textContent = 'Copy';
     btn.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       navigator.clipboard.writeText(el.textContent).then(() => {
         btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+        setTimeout(() => { btn.textContent = 'Copy'; }, COPY_FEEDBACK_DURATION);
         showToast('Copied to clipboard');
       });
     });
@@ -156,16 +203,7 @@ export function renderMessageSlice(messages, startIndex) {
       ? renderMarkdown(m.text)
       : escapeHtml(m.text);
     const timestamp = m.timestamp || Date.now();
-    let meta = formatTime(timestamp);
-    if (m.cost != null) {
-      meta += ` &middot; $${m.cost.toFixed(4)}`;
-    }
-    if (m.duration != null) {
-      meta += ` &middot; ${(m.duration / 1000).toFixed(1)}s`;
-    }
-    if (m.inputTokens != null) {
-      meta += ` &middot; ${formatTokens(m.inputTokens)} in / ${formatTokens(m.outputTokens)} out`;
-    }
+    const meta = buildMessageMeta(m);
     let attachHtml = '';
     if (m.attachments && m.attachments.length > 0) {
       attachHtml = '<div class="msg-attachments">' + m.attachments.map(a =>
@@ -175,13 +213,9 @@ export function renderMessageSlice(messages, startIndex) {
       ).join('') + '</div>';
     }
     const isLastAssistant = cls === 'assistant' && globalIndex === allMessages.length - 1;
-    const regenBtn = isLastAssistant
-      ? '<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>'
+    const actionBtns = cls === 'assistant'
+      ? buildActionButtons({ includeTTS: !isSummarized, includeRegen: isLastAssistant })
       : '';
-    const ttsBtn = (cls === 'assistant' && window.speechSynthesis && !isSummarized)
-      ? '<button class="msg-action-btn tts-btn" aria-label="Read aloud"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>'
-      : '';
-    const actionBtns = (ttsBtn || regenBtn) ? `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>` : '';
 
     const summarizedClass = isSummarized ? ' summarized' : '';
 
@@ -246,7 +280,7 @@ export function appendDelta(text) {
     state.setStreamingText('');
     state.setPendingDelta('');
     state.setIsStreaming(true);
-    state.setUserHasScrolledUp(!state.isNearBottom(150));
+    state.setUserHasScrolledUp(!state.isNearBottom(SCROLL_NEAR_BOTTOM_THRESHOLD));
   }
 
   state.appendPendingDelta(text);
@@ -286,21 +320,8 @@ export function finalizeMessage(data) {
 
   if (streamingMessageEl) {
     const finalText = data.text || state.getStreamingText();
-    let meta = formatTime(Date.now());
-    if (data.cost != null) {
-      meta += ` &middot; $${data.cost.toFixed(4)}`;
-    }
-    if (data.duration != null) {
-      meta += ` &middot; ${(data.duration / 1000).toFixed(1)}s`;
-    }
-    if (data.inputTokens != null) {
-      meta += ` &middot; ${formatTokens(data.inputTokens)} in / ${formatTokens(data.outputTokens)} out`;
-    }
-    const ttsBtn = window.speechSynthesis
-      ? '<button class="msg-action-btn tts-btn" aria-label="Read aloud"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg></button>'
-      : '';
-    const regenBtn = '<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>';
-    const actionBtns = `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>`;
+    const meta = buildMessageMeta({ timestamp: Date.now(), ...data });
+    const actionBtns = buildActionButtons({ includeTTS: true, includeRegen: true });
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>${actionBtns}`;
     enhanceCodeBlocks(streamingMessageEl);
     attachTTSHandlers();
@@ -312,7 +333,7 @@ export function finalizeMessage(data) {
     state.scrollToBottom();
     if (state.getUserHasScrolledUp() && jumpToBottomBtn) {
       jumpToBottomBtn.classList.add('flash');
-      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), 1500);
+      setTimeout(() => jumpToBottomBtn.classList.remove('flash'), COPY_FEEDBACK_DURATION);
     }
   }
 
@@ -386,7 +407,7 @@ export function renderReactionsForMessage(msgIndex) {
     pill.className = 'reaction-pill active';
     pill.innerHTML = `${emoji}`;
     pill.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       toggleReaction(msgIndex, emoji);
     });
     reactionsDiv.appendChild(pill);
@@ -424,7 +445,7 @@ export function showReactionPicker(x, y, msgIndex, hideMsgActionPopup, actionPop
     btn.className = 'reaction-picker-btn';
     btn.textContent = emoji;
     btn.addEventListener('click', () => {
-      haptic(10);
+      haptic(HAPTIC_LIGHT);
       toggleReaction(msgIndex, emoji);
       picker.remove();
       actionPopupOverlay.classList.add('hidden');
@@ -512,7 +533,7 @@ export function openLightbox(src) {
   lightboxImg.src = src;
   lightboxDownload.href = src;
   lightbox.classList.remove('hidden');
-  haptic(10);
+  haptic(HAPTIC_LIGHT);
 }
 
 export function closeLightbox() {

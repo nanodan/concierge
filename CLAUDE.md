@@ -34,8 +34,8 @@ npm test           # Run all unit tests
 npm run lint       # Run ESLint
 
 Test files:
-- `test/server.test.js` — `convMeta`, `atomicWrite`, `processStreamEvent`
-- `test/claude.test.js` — Stream event handling, tool calls, thinking, tokens
+- `test/server.test.js` — `convMeta`, `atomicWrite`
+- `test/claude.test.js` — `processStreamEvent`, stream event handling, tool calls, thinking, tokens
 - `test/data.test.js` — Data layer, stats cache
 - `test/markdown.test.js` — Markdown rendering, XSS prevention
 - `test/utils.test.js` — `formatTime`, `formatTokens`, `truncate`
@@ -84,7 +84,7 @@ Test helpers in `test/helpers/*.cjs` provide CommonJS wrappers for ES modules.
 ### Tests (`test/`)
 | File | Purpose |
 |------|---------|
-| `server.test.js` | Core server functions: convMeta, atomicWrite, processStreamEvent |
+| `server.test.js` | Core server functions: convMeta, atomicWrite |
 | `claude.test.js` | Stream event handling: tool calls, thinking, tokens |
 | `data.test.js` | Data layer: convMeta edge cases, stats cache |
 | `markdown.test.js` | Markdown rendering, XSS prevention |

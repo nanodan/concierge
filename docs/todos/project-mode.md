@@ -48,6 +48,11 @@
 - [x] Reset to a previous commit (soft/mixed/hard)
 - [x] Undo last commit (keep changes staged)
 
+### Git Action Legends
+- [ ] Add tooltips/descriptions for commit actions (revert, reset, undo)
+- [ ] Explain reset modes (soft/mixed/hard) in the dialog
+- [ ] Help text for destructive actions
+
 ### Conflict Resolution
 - [ ] Detect merge conflicts
 - [ ] Visual conflict editor (ours/theirs/both)
