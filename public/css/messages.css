@@ -7,6 +7,25 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
+}
+
+/* Atmospheric gradient emanating from input area */
+.messages::before {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: radial-gradient(ellipse at 50% 100%, var(--accent-alpha-8) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.messages > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Message bubbles */
@@ -276,6 +295,33 @@ html[data-theme="light"] .code-block::before {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* Language-specific badge colors */
+.code-lang-badge[data-lang="javascript"],
+.code-lang-badge[data-lang="js"] { color: #F7DF1E; }
+.code-lang-badge[data-lang="typescript"],
+.code-lang-badge[data-lang="ts"] { color: #3178C6; }
+.code-lang-badge[data-lang="python"],
+.code-lang-badge[data-lang="py"] { color: #3776AB; }
+.code-lang-badge[data-lang="rust"],
+.code-lang-badge[data-lang="rs"] { color: #DEA584; }
+.code-lang-badge[data-lang="go"] { color: #00ADD8; }
+.code-lang-badge[data-lang="ruby"],
+.code-lang-badge[data-lang="rb"] { color: #CC342D; }
+.code-lang-badge[data-lang="bash"],
+.code-lang-badge[data-lang="sh"],
+.code-lang-badge[data-lang="shell"],
+.code-lang-badge[data-lang="zsh"] { color: #4EAA25; }
+.code-lang-badge[data-lang="css"] { color: #264DE4; }
+.code-lang-badge[data-lang="html"] { color: #E34F26; }
+.code-lang-badge[data-lang="json"] { color: #CB8C15; }
+.code-lang-badge[data-lang="sql"] { color: #E38C00; }
+.code-lang-badge[data-lang="java"] { color: #ED8B00; }
+.code-lang-badge[data-lang="c"],
+.code-lang-badge[data-lang="cpp"],
+.code-lang-badge[data-lang="c++"] { color: #00599C; }
+.code-lang-badge[data-lang="swift"] { color: #FA7343; }
+.code-lang-badge[data-lang="kotlin"] { color: #7F52FF; }
 
 .message.assistant pre {
   background: var(--code-bg);

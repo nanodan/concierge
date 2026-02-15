@@ -66,9 +66,13 @@
   flex-direction: column;
 }
 
-.conv-card:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-alpha-20);
+@media (hover: hover) {
+  .conv-card:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-alpha-20);
+    transform: translateX(4px);
+    box-shadow: -2px 4px 12px var(--black-alpha-15);
+  }
 }
 
 .conv-card:active {

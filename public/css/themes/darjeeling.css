@@ -109,10 +109,10 @@
   --code-header-bg: var(--bg-tertiary);
   --code-inline-bg: var(--accent-alpha-15);
 
-  /* === Component: Gradient Mesh (list view background) === */
-  --mesh-color-1: var(--accent-alpha-8);
-  --mesh-color-2: var(--terracotta-alpha-6);
-  --mesh-color-3: var(--teal-alpha-6);
+  /* === Component: Gradient (list view background) === */
+  --mesh-color-1: rgba(232, 150, 58, 0.12);
+  --mesh-color-2: rgba(199, 91, 57, 0.08);
+  --mesh-color-3: rgba(74, 155, 155, 0.06);
 
   /* === PWA: Theme Colors === */
   --theme-color: #1F1A16;
@@ -158,7 +158,7 @@ html[data-theme="light"] {
   --code-inline-bg: rgba(232, 150, 58, 0.1);
 
   /* === Gradient Mesh === */
-  --mesh-color-1: rgba(232, 150, 58, 0.06);
+  --mesh-color-1: rgba(232, 150, 58, 0.25);
   --mesh-color-2: rgba(199, 91, 57, 0.04);
   --mesh-color-3: rgba(74, 155, 155, 0.05);
 
@@ -207,7 +207,7 @@ html[data-theme="light"] {
     --code-bg: #EBE4D6;
     --code-header-bg: #DDD5C4;
     --code-inline-bg: rgba(232, 150, 58, 0.1);
-    --mesh-color-1: rgba(232, 150, 58, 0.06);
+    --mesh-color-1: rgba(232, 150, 58, 0.25);
     --mesh-color-2: rgba(199, 91, 57, 0.04);
     --mesh-color-3: rgba(74, 155, 155, 0.05);
     --syntax-keyword: #C75B39;

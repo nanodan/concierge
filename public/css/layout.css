@@ -1,29 +1,18 @@
-/* Animated gradient mesh background for list view */
+/* Gradient background for list view */
 #list-view {
   position: relative;
-  overflow: hidden;
 }
 
 #list-view::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
+  inset: 0;
   background:
     radial-gradient(ellipse at 20% 20%, var(--mesh-color-1) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 80%, var(--mesh-color-2) 0%, transparent 50%),
     radial-gradient(ellipse at 60% 30%, var(--mesh-color-3) 0%, transparent 40%);
-  animation: gradient-drift 20s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
-}
-
-@keyframes gradient-drift {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  33% { transform: translate(2%, 1%) rotate(1deg); }
-  66% { transform: translate(-1%, 2%) rotate(-1deg); }
 }
 
 #list-view > *:not(.fab) {
@@ -161,12 +150,27 @@
   background: var(--border);
   flex-shrink: 0;
   transition: background 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .status-dot.thinking {
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent-alpha-50);
   animation: pulse 1s ease-in-out infinite;
+}
+
+.status-dot.thinking::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: status-ripple 1.2s ease-out infinite;
+}
+
+@keyframes status-ripple {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
 }
 
 .status-dot.idle {
