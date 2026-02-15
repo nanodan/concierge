@@ -11,16 +11,16 @@
   --palette-gold: #C4A35A;
   --palette-cream: #F0E4E0;
   --palette-muted: #C4AAB0;
-  --palette-claret: #251A1C;
-  --palette-wine: #3A2428;
-  --palette-burgundy: #4D3338;
+  --palette-claret: #18100F;
+  --palette-wine: #2A1E1E;
+  --palette-burgundy: #3D2D2D;
 
   /* === Semantic: Backgrounds === */
-  --bg: #251A1C;
-  --bg-secondary: #2E2024;
-  --bg-tertiary: #3A2428;
-  --surface: #2E2024;
-  --input-bg: #2E2024;
+  --bg: #18100F;
+  --bg-secondary: #221818;
+  --bg-tertiary: #2A1E1E;
+  --surface: #322424;
+  --input-bg: #2A1E1E;
 
   /* === Semantic: Text === */
   --text: #F0E4E0;
@@ -37,14 +37,14 @@
   --warning: #E0A850;
 
   /* === Semantic: Borders === */
-  --border: rgba(77, 51, 56, 0.8);
-  --glass-bg: rgba(37, 26, 28, 0.95);
-  --glass-border: rgba(201, 145, 154, 0.15);
+  --border: rgba(80, 55, 55, 0.7);
+  --glass-bg: rgba(24, 16, 15, 0.95);
+  --glass-border: rgba(232, 112, 126, 0.12);
 
   /* === Semantic: Message Bubbles === */
   --user-bubble: #E8707E;
   --user-bubble-end: #C85060;
-  --assistant-bubble: #362A2C;
+  --assistant-bubble: #2A1E1E;
 
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(232, 112, 126, 0.08);
@@ -78,9 +78,9 @@
   --black-alpha-50: rgba(0, 0, 0, 0.5);
 
   /* === Component: Status Indicators === */
-  --status-idle: #7DB87D;
-  --status-thinking: #C4A35A;
-  --status-disconnected: #4D3338;
+  --status-idle: #6BC4B8;
+  --status-thinking: #E0A850;
+  --status-disconnected: #3D2D2D;
 
   /* === Component: Mode Badges === */
   --mode-autopilot-bg: rgba(107, 196, 184, 0.25);
@@ -99,8 +99,8 @@
   --syntax-operator: #D0B8B8;
 
   /* === Component: Code Blocks === */
-  --code-bg: #1E1517;
-  --code-header-bg: #362A2C;
+  --code-bg: #140E0D;
+  --code-header-bg: #2A1E1E;
   --code-inline-bg: rgba(232, 112, 126, 0.18);
 
   /* === Component: Gradient Mesh === */
@@ -109,7 +109,7 @@
   --mesh-color-3: rgba(232, 192, 96, 0.06);
 
   /* === PWA: Theme Colors === */
-  --theme-color: #251A1C;
+  --theme-color: #18100F;
 }
 
 /* ========== LIGHT MODE - Lobby Rose ========== */
