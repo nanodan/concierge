@@ -91,11 +91,12 @@ export async function createConversation(name, cwd, autopilot, model) {
 
 export async function deleteConversation(id) {
   const res = await apiFetch(`/api/conversations/${id}`, { method: 'DELETE' });
-  if (!res) return;
+  if (!res) return false;
   if (state.getCurrentConversationId() === id) {
     showListView();
   }
   await loadConversations();
+  return true;
 }
 
 // Soft delete with undo - hides immediately, deletes after timeout unless undone
@@ -151,8 +152,9 @@ export async function archiveConversation(id, archived) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ archived }),
   });
-  if (!res) return;
+  if (!res) return false;
   await loadConversations();
+  return true;
 }
 
 export async function renameConversation(id, name) {
@@ -171,8 +173,9 @@ export async function pinConversation(id, pinned) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ pinned }),
   });
-  if (!res) return;
+  if (!res) return false;
   await loadConversations();
+  return true;
 }
 
 export async function forkConversation(fromMessageIndex) {
@@ -371,8 +374,10 @@ export function renderConversationList(items) {
         softDeleteConversation(id);
       } else if (action === 'archive') {
         const conv = state.conversations.find(c => c.id === id);
-        archiveConversation(id, !conv?.archived);
-        showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
+        const success = await archiveConversation(id, !conv?.archived);
+        if (success) {
+          showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
+        }
       }
     });
   });
@@ -507,12 +512,16 @@ export function setupActionPopupHandlers(hideMsgActionPopup) {
 
       if (action === 'pin') {
         const conv = state.conversations.find(c => c.id === id);
-        pinConversation(id, !conv?.pinned);
-        showToast(conv?.pinned ? 'Conversation unpinned' : 'Conversation pinned');
+        const success = await pinConversation(id, !conv?.pinned);
+        if (success) {
+          showToast(conv?.pinned ? 'Conversation unpinned' : 'Conversation pinned');
+        }
       } else if (action === 'archive') {
         const conv = state.conversations.find(c => c.id === id);
-        archiveConversation(id, !conv?.archived);
-        showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
+        const success = await archiveConversation(id, !conv?.archived);
+        if (success) {
+          showToast(conv?.archived ? 'Conversation unarchived' : 'Conversation archived');
+        }
       } else if (action === 'delete') {
         softDeleteConversation(id);
       } else if (action === 'rename') {
