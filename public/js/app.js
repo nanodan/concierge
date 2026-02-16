@@ -13,7 +13,9 @@ import {
   exitSelectionMode,
   selectAllConversations,
   bulkArchive,
-  bulkDelete
+  bulkDelete,
+  showListView,
+  openConversation
 } from './conversations.js';
 import {
   initUI,
@@ -434,4 +436,34 @@ if (branchesBtn) {
   branchesBtn.addEventListener('click', () => {
     openBranchesFromChat();
   });
+}
+
+// --- Browser history for Android back button support ---
+// Set initial state
+history.replaceState({ view: 'list' }, '', location.hash || '#');
+
+// Handle back button (popstate)
+window.addEventListener('popstate', (e) => {
+  const currentView = e.state?.view;
+
+  if (currentView === 'list' || !currentView) {
+    // Going back to list view
+    if (state.getCurrentConversationId()) {
+      showListView(true); // true = skip history update
+    }
+  } else if (currentView === 'chat' && e.state?.conversationId) {
+    // Going forward to chat view (rare, but handle it)
+    openConversation(e.state.conversationId);
+  }
+});
+
+// Handle initial load with hash (direct link to conversation)
+if (location.hash && location.hash.length > 1) {
+  const convId = location.hash.slice(1);
+  // Defer to let conversations load first
+  setTimeout(() => {
+    if (state.conversations.some(c => c.id === convId)) {
+      openConversation(convId);
+    }
+  }, 500);
 }

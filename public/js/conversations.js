@@ -788,9 +788,14 @@ export function showChatView() {
   if (!('ontouchstart' in window)) {
     messageInput.focus({ preventScroll: true });
   }
+  // Push history state so Android back button works
+  const convId = state.getCurrentConversationId();
+  if (convId && (!history.state || history.state.view !== 'chat')) {
+    history.pushState({ view: 'chat', conversationId: convId }, '', `#${convId}`);
+  }
 }
 
-export function showListView() {
+export function showListView(skipHistoryUpdate = false) {
   chatView.classList.remove('slide-in');
   listView.classList.remove('slide-out');
   document.querySelector('.views-container').scrollLeft = 0;
@@ -800,6 +805,10 @@ export function showListView() {
   if (jumpToBottomBtn) jumpToBottomBtn.classList.remove('visible');
   if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
   loadConversations();
+  // Update history (unless triggered by popstate)
+  if (!skipHistoryUpdate && history.state?.view === 'chat') {
+    history.pushState({ view: 'list' }, '', '#');
+  }
 }
 
 // --- Bulk Selection ---
