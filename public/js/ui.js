@@ -78,6 +78,124 @@ export {
 // Re-export memory API functions
 export { fetchMemories, createMemory, updateMemoryAPI, deleteMemoryAPI } from './ui/memory.js';
 
+// --- Bell easter egg quotes by theme ---
+const bellQuotes = {
+  budapest: [
+    "A lobby boy is completely invisible, yet always in sight.",
+    "There are still faint glimmers of civilization left.",
+    "Rudeness is merely an expression of fear.",
+    "You see, there are still faint glimmers of civilization left in this barbaric slaughterhouse.",
+    "I must say, I find that girl utterly delightful.",
+    "Keep your hands off my lobby boy!",
+    "To be frank, I think his world had vanished long before he ever entered it.",
+    "A word from the wise: start with the caviar.",
+    "You're looking so well, darling, you really are.",
+    "We must be confident, not arrogant.",
+  ],
+  darjeeling: [
+    "I wonder if the three of us could've been friends in real life.",
+    "Let's make an agreement to love each other.",
+    "I want us to be brothers again like we used to be.",
+    "The train is lost. We haven't located us yet.",
+    "I had a meltdown. Can I stay here a while?",
+    "Sweet lime. It's very tasty.",
+    "I guess I've still got some prior unfulfilled business.",
+    "What's wrong with you? Nothing's wrong with me.",
+    "We could be like brothers again. Like we used to be.",
+    "The characters are all fictional.",
+  ],
+  moonrise: [
+    "I love you, but you don't know what you're talking about.",
+    "We're in love. We just want to be together. What's wrong with that?",
+    "I always wished I was an orphan. Most of my favorite characters are.",
+    "I feel I'm in a different world with you.",
+    "Was he a good dog? Who's to say.",
+    "Jiminy Cricket, he flew the coop!",
+    "What kind of bird are YOU?",
+    "I'm on your side, by the way.",
+    "We wrote to each other once a week for a year.",
+    "It's possible I may wet the bed. I'm a very anxious person.",
+  ],
+  aquatic: [
+    "This is an adventure.",
+    "I wonder if it remembers me.",
+    "Let me tell you about my boat.",
+    "Out here, we're all equals.",
+    "Be still, Cody.",
+    "We're in the middle of a lightning strike rescue.",
+    "I'm right on top of that.",
+    "This is supposed to be a happy occasion!",
+    "That's an endangered species at most.",
+    "You know I'm not good with those things.",
+  ],
+  monokai: [
+    "Hello, World!",
+    "// TODO: ring bell",
+    "It works on my machine.",
+    "Have you tried turning it off and on again?",
+    "git commit -m 'ding'",
+    "console.log('ring ring');",
+    "Works in production.",
+    "It's not a bug, it's a feature.",
+    "Ship it!",
+    "LGTM.",
+  ],
+  catppuccin: [
+    "*purrs contentedly*",
+    "Meow?",
+    "*stretches lazily*",
+    "Time for a nap...",
+    "*blinks slowly*",
+    "Cozy vibes only.",
+    "*curls up*",
+    "Warm and fuzzy.",
+    "*kneads blanket*",
+    "Purrfect.",
+  ],
+  fjord: [
+    "Velkommen.",
+    "Take your time.",
+    "Breathe deeply.",
+    "The mountains are calling.",
+    "Find your calm.",
+    "Slow and steady.",
+    "Nature knows best.",
+    "Peace and quiet.",
+    "Stay cozy.",
+    "The fjords await.",
+  ],
+};
+
+// Bell ring handler
+function ringBell(bellElement) {
+  // Get current theme
+  const themeLink = document.getElementById('color-theme-link');
+  const themePath = themeLink?.href || '';
+  const themeMatch = themePath.match(/themes\/([^.]+)\.css/);
+  const theme = themeMatch ? themeMatch[1] : 'darjeeling';
+
+  // Get quotes for this theme (fallback to darjeeling)
+  const quotes = bellQuotes[theme] || bellQuotes.darjeeling;
+  const quote = quotes[Math.floor(Math.random() * quotes.length)];
+
+  // Trigger animation
+  bellElement.classList.remove('bell-ringing');
+  // Force reflow to restart animation
+  void bellElement.offsetWidth;
+  bellElement.classList.add('bell-ringing');
+
+  // Haptic feedback
+  haptic();
+
+  // Show toast with quote
+  showToast(quote, { duration: 3000 });
+
+  // Remove animation class when done
+  bellElement.addEventListener('animationend', () => {
+    bellElement.classList.remove('bell-ringing');
+  }, { once: true });
+}
+
 // DOM elements (set by init)
 let messagesContainer = null;
 let messageInput = null;
@@ -907,6 +1025,26 @@ function closeChatMoreMenu() {
 
 // --- Setup all event listeners ---
 export function setupEventListeners(createConversation) {
+  // Bell easter egg - header icon
+  const brandIcon = document.querySelector('.brand-icon');
+  if (brandIcon) {
+    brandIcon.style.cursor = 'pointer';
+    brandIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ringBell(brandIcon);
+    });
+  }
+
+  // Bell easter egg - empty state icon
+  const emptyStateIcon = document.querySelector('.chat-empty-icon svg');
+  if (emptyStateIcon) {
+    emptyStateIcon.style.cursor = 'pointer';
+    emptyStateIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ringBell(emptyStateIcon);
+    });
+  }
+
   // Setup submodule event listeners
   setupThemeEventListeners();
   setupVoiceEventListeners();

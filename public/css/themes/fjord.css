@@ -52,6 +52,12 @@
   --user-bubble-end: var(--palette-coral-deep);
   --assistant-bubble: var(--palette-navy-mid);
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-coral);
+  --card-border: rgba(224, 139, 109, 0.5);
+  --pinned-border: rgba(224, 139, 109, 0.55);
+  --pinned-bg: rgba(224, 139, 109, 0.1);
+
   /* === Alpha Variants (for animations, shadows, glows) === */
   --accent-alpha-8: rgba(224, 139, 109, 0.08);
   --accent-alpha-12: rgba(224, 139, 109, 0.12);
@@ -101,7 +107,7 @@
   --syntax-comment: #6B7A8A;
   --syntax-function: var(--palette-slate-light);
   --syntax-type: var(--palette-coral-light);
-  --syntax-variable: var(--palette-coral-deep);
+  --syntax-variable: var(--palette-slate-light);
   --syntax-operator: var(--palette-cream-muted);
 
   /* === Component: Code Blocks === */
@@ -113,6 +119,10 @@
   --mesh-color-1: var(--accent-alpha-8);
   --mesh-color-2: var(--terracotta-alpha-6);
   --mesh-color-3: var(--teal-alpha-6);
+
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-coral);
+  --brand-gradient: linear-gradient(135deg, var(--palette-coral-light) 0%, var(--palette-mint) 100%);
 
   /* === PWA: Theme Colors === */
   --theme-color: #1A1E24;
@@ -148,6 +158,12 @@ html[data-theme="light"] {
   /* === Message Bubbles === */
   --assistant-bubble: #F5F2EF;
 
+  /* === Semantic: List View === */
+  --scope-header-color: #C47058;
+  --card-border: rgba(196, 112, 88, 0.5);
+  --pinned-border: rgba(196, 112, 88, 0.55);
+  --pinned-bg: rgba(196, 112, 88, 0.1);
+
   /* === Alpha Variants (light mode adjustments) === */
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
@@ -169,7 +185,7 @@ html[data-theme="light"] {
   --syntax-comment: #8B9095;
   --syntax-function: #5A7585;
   --syntax-type: #D47840;
-  --syntax-variable: #A0584D;
+  --syntax-variable: #5A7585;
   --syntax-operator: #5A6570;
 
   /* === Scrollbar === */
@@ -202,6 +218,11 @@ html[data-theme="light"] {
     --glass-border: rgba(46, 54, 63, 0.12);
     --assistant-bubble: #F5F2EF;
 
+    --scope-header-color: #C47058;
+    --card-border: rgba(196, 112, 88, 0.5);
+    --pinned-border: rgba(196, 112, 88, 0.55);
+    --pinned-bg: rgba(196, 112, 88, 0.1);
+
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);
     --code-bg: #EBE6E0;
@@ -216,7 +237,7 @@ html[data-theme="light"] {
     --syntax-comment: #8B9095;
     --syntax-function: #5A7585;
     --syntax-type: #D47840;
-    --syntax-variable: #A0584D;
+    --syntax-variable: #5A7585;
     --syntax-operator: #5A6570;
     --scrollbar-thumb: rgba(0, 0, 0, 0.15);
     --theme-color: #F5F2EF;

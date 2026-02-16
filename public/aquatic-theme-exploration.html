@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Aquatic Theme Exploration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-display: 'Playfair Display', serif;
+      --font-body: 'Outfit', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: #0F1A28;
+      min-height: 100vh;
+      color: #E8D5B5;
+    }
+
+    /* Retro film grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      z-index: 1000;
+    }
+
+    header {
+      padding: 3rem 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 2px solid #354A60;
+      background: linear-gradient(180deg, #162233 0%, #0F1A28 100%);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 600;
+      color: #E8D5B5;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    h1 span {
+      color: #E25C45;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #A89880;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* Palette selector */
+    .palette-nav {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 1.5rem 1rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      border-bottom: 1px solid #263A50;
+    }
+
+    .palette-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      background: #1E2D40;
+      color: #A89880;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .palette-btn:hover {
+      background: #263A50;
+      color: #E8D5B5;
+    }
+
+    .palette-btn.active {
+      border-color: #4A9B9B;
+      background: #1E3A5F;
+      color: #E8D5B5;
+    }
+
+    .palette-swatch {
+      display: flex;
+      gap: 2px;
+    }
+
+    .palette-swatch span {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .mode-btn {
+      padding: 0.4rem 1rem;
+      border: 1px solid #354A60;
+      border-radius: 4px;
+      background: transparent;
+      color: #A89880;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: #1E3A5F;
+      border-color: #4A9B9B;
+      color: #E8D5B5;
+    }
+
+    /* Preview container */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 1rem 1.5rem 3rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .preview-card {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #354A60;
+      background: #162233;
+    }
+
+    .preview-label {
+      padding: 0.75rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: #1E2D40;
+      color: #A89880;
+      border-bottom: 1px solid #354A60;
+    }
+
+    /* Phone frame */
+    .phone-frame {
+      width: 100%;
+      aspect-ratio: 9/16;
+      max-height: 580px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Chat view styles */
+    .chat-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .chat-header {
+      padding: 0.9rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .back-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .chat-title {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .header-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .message {
+      max-width: 82%;
+      padding: 0.75rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--user-bubble) 0%, var(--user-bubble-end) 100%);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--assistant-bubble);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .message .time {
+      font-size: 0.65rem;
+      opacity: 0.6;
+      margin-top: 0.3rem;
+    }
+
+    .chat-input-area {
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 0.65rem 0.9rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: var(--font-body);
+    }
+
+    .chat-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      font-size: 1rem;
+    }
+
+    /* List view styles */
+    .list-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .list-header {
+      padding: 0.9rem 1rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-header h2 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .list-header .count {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .search-bar {
+      margin: 0.75rem 1rem 0.5rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+      width: calc(100% - 2rem);
+      font-family: var(--font-body);
+    }
+
+    .search-bar::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .conversation-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.25rem 0 1rem;
+    }
+
+    .scope-header {
+      padding: 0.6rem 1rem 0.3rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+    }
+
+    .conv-card {
+      margin: 0.3rem 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      background: var(--surface);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .conv-card:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .conv-card.pinned {
+      border-color: var(--accent);
+      background: var(--accent-bg);
+    }
+
+    .conv-card .title {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .conv-card .pin-icon {
+      color: var(--accent);
+      font-size: 0.75rem;
+    }
+
+    .conv-card .preview {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conv-card .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.4rem;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .conv-card .badge {
+      background: var(--accent);
+      color: #fff;
+      padding: 0.1rem 0.45rem;
+      border-radius: 100px;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    /* ============ PALETTE DEFINITIONS ============ */
+
+    /* ORIGINAL - Current theme colors */
+    .palette-original {
+      --bg: #0F1A28;
+      --bg-secondary: #162233;
+      --bg-tertiary: #263A50;
+      --surface: #1E2D40;
+      --input-bg: #162233;
+      --text: #E8D5B5;
+      --text-secondary: #A89880;
+      --accent: #4A9B9B;
+      --accent-bg: rgba(74, 155, 155, 0.1);
+      --border: #354A60;
+      --user-bubble: #E25C45;
+      --user-bubble-end: #B84535;
+      --assistant-bubble: #162233;
+    }
+
+    .palette-original.light {
+      --bg: #F0F5FA;
+      --bg-secondary: #E5EBF2;
+      --bg-tertiary: #D5DEE8;
+      --surface: #FAFCFF;
+      --input-bg: #FAFCFF;
+      --text: #1E2D40;
+      --text-secondary: #4A5A6A;
+      --border: #C0CCD8;
+      --assistant-bubble: #F0F5FA;
+      --accent-bg: rgba(74, 155, 155, 0.08);
+    }
+
+    /* YELLOW SUBMARINE - Bright yellow accent */
+    .palette-yellow-submarine {
+      --bg: #0F1A28;
+      --bg-secondary: #162233;
+      --bg-tertiary: #263A50;
+      --surface: #1E2D40;
+      --input-bg: #162233;
+      --text: #E8D5B5;
+      --text-secondary: #A89880;
+      --accent: #E8C547;
+      --accent-bg: rgba(232, 197, 71, 0.12);
+      --border: #354A60;
+      --user-bubble: #E8C547;
+      --user-bubble-end: #C4A030;
+      --assistant-bubble: #162233;
+    }
+
+    .palette-yellow-submarine.light {
+      --bg: #FFFCF0;
+      --bg-secondary: #FFF8E0;
+      --bg-tertiary: #F5ECCC;
+      --surface: #FFFFFF;
+      --input-bg: #FFFFFF;
+      --text: #2A2518;
+      --text-secondary: #6A5F45;
+      --border: #E5DCC5;
+      --assistant-bubble: #FFF8E0;
+      --accent: #B89530;
+      --accent-bg: rgba(184, 149, 48, 0.1);
+      --user-bubble: #B89530;
+      --user-bubble-end: #9A7A20;
+    }
+
+    /* CORAL COMMANDER - Strong coral/red focus */
+    .palette-coral-commander {
+      --bg: #1A1215;
+      --bg-secondary: #261A1E;
+      --bg-tertiary: #3A2830;
+      --surface: #2E2025;
+      --input-bg: #261A1E;
+      --text: #F0E0E2;
+      --text-secondary: #B8A0A5;
+      --accent: #E25C45;
+      --accent-bg: rgba(226, 92, 69, 0.12);
+      --border: #4A3540;
+      --user-bubble: #E25C45;
+      --user-bubble-end: #B84535;
+      --assistant-bubble: #261A1E;
+    }
+
+    .palette-coral-commander.light {
+      --bg: #FFF5F3;
+      --bg-secondary: #FFE8E5;
+      --bg-tertiary: #F5D5D0;
+      --surface: #FFFFFF;
+      --input-bg: #FFFFFF;
+      --text: #2A1A18;
+      --text-secondary: #7A5550;
+      --border: #E8C8C2;
+      --assistant-bubble: #FFE8E5;
+      --accent: #C04535;
+      --accent-bg: rgba(192, 69, 53, 0.1);
+    }
+
+    /* SEAFOAM MUTED - Softer, desaturated tones */
+    .palette-seafoam-muted {
+      --bg: #141A1E;
+      --bg-secondary: #1A2228;
+      --bg-tertiary: #252F38;
+      --surface: #1E2830;
+      --input-bg: #1A2228;
+      --text: #D5DDE0;
+      --text-secondary: #8A9BA5;
+      --accent: #7BC4B8;
+      --accent-bg: rgba(123, 196, 184, 0.1);
+      --border: #354550;
+      --user-bubble: #5A8A82;
+      --user-bubble-end: #4A7268;
+      --assistant-bubble: #1A2228;
+    }
+
+    .palette-seafoam-muted.light {
+      --bg: #F5F8F7;
+      --bg-secondary: #E8F0EE;
+      --bg-tertiary: #D8E5E2;
+      --surface: #FFFFFF;
+      --input-bg: #FFFFFF;
+      --text: #1E2D2A;
+      --text-secondary: #5A7570;
+      --border: #C5D5D0;
+      --assistant-bubble: #E8F0EE;
+      --accent: #4A8A80;
+      --accent-bg: rgba(74, 138, 128, 0.08);
+      --user-bubble: #4A8A80;
+      --user-bubble-end: #3A7268;
+    }
+
+    /* DEEP DIVE - Darker, more contrast */
+    .palette-deep-dive {
+      --bg: #080E14;
+      --bg-secondary: #0E1820;
+      --bg-tertiary: #1A2835;
+      --surface: #121E28;
+      --input-bg: #0E1820;
+      --text: #E8D5B5;
+      --text-secondary: #8A7A65;
+      --accent: #5FBDBD;
+      --accent-bg: rgba(95, 189, 189, 0.1);
+      --border: #2A3A4A;
+      --user-bubble: #E25C45;
+      --user-bubble-end: #A83828;
+      --assistant-bubble: #0E1820;
+    }
+
+    .palette-deep-dive.light {
+      --bg: #F0F5FA;
+      --bg-secondary: #E0EAF2;
+      --bg-tertiary: #C8D8E5;
+      --surface: #FAFCFF;
+      --input-bg: #FAFCFF;
+      --text: #0E1820;
+      --text-secondary: #4A5A6A;
+      --border: #B0C0D0;
+      --assistant-bubble: #E0EAF2;
+      --accent: #3A9595;
+      --accent-bg: rgba(58, 149, 149, 0.1);
+    }
+
+    /* WARM SAND - Warmer, sandier tones */
+    .palette-warm-sand {
+      --bg: #1A1612;
+      --bg-secondary: #24201A;
+      --bg-tertiary: #352F25;
+      --surface: #2A2520;
+      --input-bg: #24201A;
+      --text: #F0E5D5;
+      --text-secondary: #B5A590;
+      --accent: #4A9B9B;
+      --accent-bg: rgba(74, 155, 155, 0.12);
+      --border: #45403A;
+      --user-bubble: #C87A55;
+      --user-bubble-end: #A56245;
+      --assistant-bubble: #24201A;
+    }
+
+    .palette-warm-sand.light {
+      --bg: #FAF5EF;
+      --bg-secondary: #F2EAE0;
+      --bg-tertiary: #E5DDD0;
+      --surface: #FFFCF8;
+      --input-bg: #FFFCF8;
+      --text: #2A2520;
+      --text-secondary: #6A6055;
+      --border: #D5CCBF;
+      --assistant-bubble: #F2EAE0;
+      --accent: #3A8585;
+      --accent-bg: rgba(58, 133, 133, 0.1);
+      --user-bubble: #B06A45;
+      --user-bubble-end: #8A5235;
+    }
+
+    /* ZISSOU BLUE - Emphasis on ocean blue */
+    .palette-zissou-blue {
+      --bg: #0A1520;
+      --bg-secondary: #122235;
+      --bg-tertiary: #1E3A5F;
+      --surface: #162D48;
+      --input-bg: #122235;
+      --text: #E8D5B5;
+      --text-secondary: #A89880;
+      --accent: #4A9B9B;
+      --accent-bg: rgba(74, 155, 155, 0.12);
+      --border: #2A4A70;
+      --user-bubble: #1E3A5F;
+      --user-bubble-end: #152A45;
+      --assistant-bubble: #122235;
+    }
+
+    .palette-zissou-blue.light {
+      --bg: #EDF4FA;
+      --bg-secondary: #DBE8F5;
+      --bg-tertiary: #C5D8EB;
+      --surface: #F8FBFF;
+      --input-bg: #F8FBFF;
+      --text: #122235;
+      --text-secondary: #4A6580;
+      --border: #B5C8DA;
+      --assistant-bubble: #DBE8F5;
+      --accent: #2A7A7A;
+      --accent-bg: rgba(42, 122, 122, 0.1);
+      --user-bubble: #1E3A5F;
+      --user-bubble-end: #152A45;
+    }
+
+    /* BELAFONTE - Vintage, slightly faded */
+    .palette-belafonte {
+      --bg: #181818;
+      --bg-secondary: #222222;
+      --bg-tertiary: #333333;
+      --surface: #282828;
+      --input-bg: #222222;
+      --text: #D5C8B5;
+      --text-secondary: #9A9080;
+      --accent: #6AA59A;
+      --accent-bg: rgba(106, 165, 154, 0.12);
+      --border: #404040;
+      --user-bubble: #C86A55;
+      --user-bubble-end: #A55545;
+      --assistant-bubble: #222222;
+    }
+
+    .palette-belafonte.light {
+      --bg: #F5F2ED;
+      --bg-secondary: #EAE5DD;
+      --bg-tertiary: #DDD5C8;
+      --surface: #FCFAF7;
+      --input-bg: #FCFAF7;
+      --text: #282520;
+      --text-secondary: #6A6558;
+      --border: #CCC5B8;
+      --assistant-bubble: #EAE5DD;
+      --accent: #4A8580;
+      --accent-bg: rgba(74, 133, 128, 0.1);
+      --user-bubble: #B85A45;
+      --user-bubble-end: #954535;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>The <span>Life Aquatic</span> Palettes</h1>
+    <p class="subtitle">Exploring variations of the Zissou aesthetic</p>
+  </header>
+
+  <nav class="palette-nav">
+    <button class="palette-btn active" data-palette="original">
+      <span class="palette-swatch">
+        <span style="background: #0F1A28"></span>
+        <span style="background: #4A9B9B"></span>
+        <span style="background: #E25C45"></span>
+        <span style="background: #E8D5B5"></span>
+      </span>
+      Original
+    </button>
+    <button class="palette-btn" data-palette="yellow-submarine">
+      <span class="palette-swatch">
+        <span style="background: #0F1A28"></span>
+        <span style="background: #E8C547"></span>
+        <span style="background: #E25C45"></span>
+        <span style="background: #E8D5B5"></span>
+      </span>
+      Yellow Sub
+    </button>
+    <button class="palette-btn" data-palette="coral-commander">
+      <span class="palette-swatch">
+        <span style="background: #1A1215"></span>
+        <span style="background: #E25C45"></span>
+        <span style="background: #4A3540"></span>
+        <span style="background: #F0E0E2"></span>
+      </span>
+      Coral Cmdr
+    </button>
+    <button class="palette-btn" data-palette="seafoam-muted">
+      <span class="palette-swatch">
+        <span style="background: #141A1E"></span>
+        <span style="background: #7BC4B8"></span>
+        <span style="background: #5A8A82"></span>
+        <span style="background: #D5DDE0"></span>
+      </span>
+      Muted
+    </button>
+    <button class="palette-btn" data-palette="deep-dive">
+      <span class="palette-swatch">
+        <span style="background: #080E14"></span>
+        <span style="background: #5FBDBD"></span>
+        <span style="background: #E25C45"></span>
+        <span style="background: #E8D5B5"></span>
+      </span>
+      Deep Dive
+    </button>
+    <button class="palette-btn" data-palette="warm-sand">
+      <span class="palette-swatch">
+        <span style="background: #1A1612"></span>
+        <span style="background: #4A9B9B"></span>
+        <span style="background: #C87A55"></span>
+        <span style="background: #F0E5D5"></span>
+      </span>
+      Warm Sand
+    </button>
+    <button class="palette-btn" data-palette="zissou-blue">
+      <span class="palette-swatch">
+        <span style="background: #0A1520"></span>
+        <span style="background: #4A9B9B"></span>
+        <span style="background: #1E3A5F"></span>
+        <span style="background: #E8D5B5"></span>
+      </span>
+      Zissou Blue
+    </button>
+    <button class="palette-btn" data-palette="belafonte">
+      <span class="palette-swatch">
+        <span style="background: #181818"></span>
+        <span style="background: #6AA59A"></span>
+        <span style="background: #C86A55"></span>
+        <span style="background: #D5C8B5"></span>
+      </span>
+      Belafonte
+    </button>
+  </nav>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="both">Both</button>
+    <button class="mode-btn" data-mode="dark">Dark Only</button>
+    <button class="mode-btn" data-mode="light">Light Only</button>
+  </div>
+
+  <div class="preview-grid">
+    <!-- Dark Mode - List View -->
+    <div class="preview-card dark-card">
+      <div class="preview-label">Dark Mode - Conversation List</div>
+      <div class="phone-frame palette-original" id="dark-list">
+        <div class="list-view">
+          <div class="list-header">
+            <h2>Conversations <span class="count">(12)</span></h2>
+          </div>
+          <input type="text" class="search-bar" placeholder="Search conversations..." readonly>
+          <div class="conversation-list">
+            <div class="scope-header">~/Projects/belafonte</div>
+            <div class="conv-card pinned">
+              <div class="title"><span class="pin-icon">*</span> Jaguar shark tracking</div>
+              <div class="preview">The sonar equipment needs calibration before we...</div>
+              <div class="meta">
+                <span>2 min ago</span>
+                <span class="badge">Active</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Documentary footage</div>
+              <div class="preview">Let's review the underwater camera settings...</div>
+              <div class="meta">
+                <span>1 hour ago</span>
+                <span>14 msgs</span>
+              </div>
+            </div>
+            <div class="scope-header">~/Documents</div>
+            <div class="conv-card">
+              <div class="title">Expedition supplies</div>
+              <div class="preview">We need to order more dynamite and spearguns...</div>
+              <div class="meta">
+                <span>Yesterday</span>
+                <span>8 msgs</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Crew assignments</div>
+              <div class="preview">Klaus will handle the navigation while Pel&eacute;...</div>
+              <div class="meta">
+                <span>2 days ago</span>
+                <span>23 msgs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dark Mode - Chat View -->
+    <div class="preview-card dark-card">
+      <div class="preview-label">Dark Mode - Chat View</div>
+      <div class="phone-frame palette-original" id="dark-chat">
+        <div class="chat-view">
+          <div class="chat-header">
+            <div class="back-btn">&larr;</div>
+            <div class="chat-title">Jaguar shark tracking</div>
+            <div class="header-icon">*</div>
+          </div>
+          <div class="chat-messages">
+            <div class="message user">
+              We've picked up the jaguar shark on sonar. It's heading toward sector 7.
+              <div class="time">2:34 PM</div>
+            </div>
+            <div class="message assistant">
+              Understood, Steve. I'm adjusting the tracking parameters now. The creature appears to be moving at approximately 12 knots. Shall I plot an intercept course?
+              <div class="time">2:34 PM</div>
+            </div>
+            <div class="message user">
+              Yes. And prep the submarine. We're going down there.
+              <div class="time">2:35 PM</div>
+            </div>
+            <div class="message assistant">
+              Deep Search is ready. I've loaded the tranquilizer harpoons and checked the external cameras. Klaus is standing by at the helm. Estimated dive time: 47 minutes.
+              <div class="time">2:35 PM</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Type a message..." readonly>
+            <button class="send-btn">&rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Mode - List View -->
+    <div class="preview-card light-card" id="light-list-card">
+      <div class="preview-label">Light Mode - Conversation List</div>
+      <div class="phone-frame palette-original light" id="light-list">
+        <div class="list-view">
+          <div class="list-header">
+            <h2>Conversations <span class="count">(12)</span></h2>
+          </div>
+          <input type="text" class="search-bar" placeholder="Search conversations..." readonly>
+          <div class="conversation-list">
+            <div class="scope-header">~/Projects/belafonte</div>
+            <div class="conv-card pinned">
+              <div class="title"><span class="pin-icon">*</span> Jaguar shark tracking</div>
+              <div class="preview">The sonar equipment needs calibration before we...</div>
+              <div class="meta">
+                <span>2 min ago</span>
+                <span class="badge">Active</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Documentary footage</div>
+              <div class="preview">Let's review the underwater camera settings...</div>
+              <div class="meta">
+                <span>1 hour ago</span>
+                <span>14 msgs</span>
+              </div>
+            </div>
+            <div class="scope-header">~/Documents</div>
+            <div class="conv-card">
+              <div class="title">Expedition supplies</div>
+              <div class="preview">We need to order more dynamite and spearguns...</div>
+              <div class="meta">
+                <span>Yesterday</span>
+                <span>8 msgs</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Crew assignments</div>
+              <div class="preview">Klaus will handle the navigation while Pel&eacute;...</div>
+              <div class="meta">
+                <span>2 days ago</span>
+                <span>23 msgs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Mode - Chat View -->
+    <div class="preview-card light-card" id="light-chat-card">
+      <div class="preview-label">Light Mode - Chat View</div>
+      <div class="phone-frame palette-original light" id="light-chat">
+        <div class="chat-view">
+          <div class="chat-header">
+            <div class="back-btn">&larr;</div>
+            <div class="chat-title">Jaguar shark tracking</div>
+            <div class="header-icon">*</div>
+          </div>
+          <div class="chat-messages">
+            <div class="message user">
+              We've picked up the jaguar shark on sonar. It's heading toward sector 7.
+              <div class="time">2:34 PM</div>
+            </div>
+            <div class="message assistant">
+              Understood, Steve. I'm adjusting the tracking parameters now. The creature appears to be moving at approximately 12 knots. Shall I plot an intercept course?
+              <div class="time">2:34 PM</div>
+            </div>
+            <div class="message user">
+              Yes. And prep the submarine. We're going down there.
+              <div class="time">2:35 PM</div>
+            </div>
+            <div class="message assistant">
+              Deep Search is ready. I've loaded the tranquilizer harpoons and checked the external cameras. Klaus is standing by at the helm. Estimated dive time: 47 minutes.
+              <div class="time">2:35 PM</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Type a message..." readonly>
+            <button class="send-btn">&rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const paletteBtns = document.querySelectorAll('.palette-btn');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const darkList = document.getElementById('dark-list');
+    const darkChat = document.getElementById('dark-chat');
+    const lightList = document.getElementById('light-list');
+    const lightChat = document.getElementById('light-chat');
+    const darkCards = document.querySelectorAll('.dark-card');
+    const lightCards = document.querySelectorAll('.light-card');
+
+    let currentPalette = 'original';
+
+    function updatePalette(palette) {
+      currentPalette = palette;
+
+      // Update dark frames
+      darkList.className = `phone-frame palette-${palette}`;
+      darkChat.className = `phone-frame palette-${palette}`;
+
+      // Update light frames
+      lightList.className = `phone-frame palette-${palette} light`;
+      lightChat.className = `phone-frame palette-${palette} light`;
+
+      // Update active button
+      paletteBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.palette === palette);
+      });
+    }
+
+    function updateMode(mode) {
+      modeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      darkCards.forEach(card => {
+        card.style.display = (mode === 'light') ? 'none' : '';
+      });
+
+      lightCards.forEach(card => {
+        card.style.display = (mode === 'dark') ? 'none' : '';
+      });
+    }
+
+    paletteBtns.forEach(btn => {
+      btn.addEventListener('click', () => updatePalette(btn.dataset.palette));
+    });
+
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => updateMode(btn.dataset.mode));
+    });
+  </script>
+</body>
+</html>

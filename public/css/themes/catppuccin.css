@@ -65,6 +65,12 @@
   --user-bubble-end: #a87fd4;
   --assistant-bubble: var(--palette-mantle);
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-mauve);
+  --card-border: rgba(203, 166, 247, 0.5);
+  --pinned-border: rgba(203, 166, 247, 0.55);
+  --pinned-bg: rgba(203, 166, 247, 0.1);
+
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(203, 166, 247, 0.08);
   --accent-alpha-12: rgba(203, 166, 247, 0.12);
@@ -127,6 +133,10 @@
   --mesh-color-2: rgba(245, 194, 231, 0.04);
   --mesh-color-3: var(--teal-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-mauve);
+  --brand-gradient: linear-gradient(135deg, var(--palette-lavender) 0%, var(--palette-mauve) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #1e1e2e;
 }
@@ -183,6 +193,12 @@ html[data-theme="light"] {
 
   /* === Message Bubbles === */
   --assistant-bubble: var(--palette-mantle);
+
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-mauve);
+  --card-border: rgba(136, 57, 239, 0.45);
+  --pinned-border: rgba(136, 57, 239, 0.5);
+  --pinned-bg: rgba(136, 57, 239, 0.08);
 
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(136, 57, 239, 0.08);
@@ -263,6 +279,11 @@ html[data-theme="light"] {
     --glass-bg: rgba(239, 241, 245, 0.85);
     --glass-border: rgba(76, 79, 105, 0.12);
     --assistant-bubble: var(--palette-mantle);
+
+    --scope-header-color: var(--palette-mauve);
+    --card-border: rgba(136, 57, 239, 0.45);
+    --pinned-border: rgba(136, 57, 239, 0.5);
+    --pinned-bg: rgba(136, 57, 239, 0.08);
 
     --accent-alpha-8: rgba(136, 57, 239, 0.08);
     --accent-alpha-12: rgba(136, 57, 239, 0.12);

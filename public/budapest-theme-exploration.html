@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grand Budapest Theme Exploration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-display: 'Cormorant Garamond', serif;
+      --font-body: 'Outfit', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: #18100F;
+      min-height: 100vh;
+      color: #F0E4E0;
+    }
+
+    /* Art deco pattern overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(45deg, rgba(196, 163, 90, 0.03) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(196, 163, 90, 0.03) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(196, 163, 90, 0.03) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(196, 163, 90, 0.03) 75%);
+      background-size: 40px 40px;
+      background-position: 0 0, 0 20px, 20px -20px, -20px 0px;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 3rem 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 2px solid #3D2D2D;
+      background: linear-gradient(180deg, #221818 0%, #18100F 100%);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 600;
+      color: #F0E4E0;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 span {
+      color: #E8707E;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #C4AAB0;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    /* Palette selector */
+    .palette-nav {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 1.5rem 1rem;
+      max-width: 1000px;
+      margin: 0 auto;
+      border-bottom: 1px solid #2A1E1E;
+    }
+
+    .palette-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      background: #2A1E1E;
+      color: #C4AAB0;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .palette-btn:hover {
+      background: #3D2D2D;
+      color: #F0E4E0;
+    }
+
+    .palette-btn.active {
+      border-color: #C4A35A;
+      background: #322424;
+      color: #F0E4E0;
+    }
+
+    .palette-swatch {
+      display: flex;
+      gap: 2px;
+    }
+
+    .palette-swatch span {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .mode-btn {
+      padding: 0.4rem 1rem;
+      border: 1px solid #3D2D2D;
+      border-radius: 4px;
+      background: transparent;
+      color: #C4AAB0;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: #322424;
+      border-color: #C4A35A;
+      color: #F0E4E0;
+    }
+
+    /* Preview container */
+    .preview-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 1rem 1.5rem 3rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .preview-card {
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #3D2D2D;
+      background: #221818;
+    }
+
+    .preview-label {
+      padding: 0.75rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: #2A1E1E;
+      color: #C4AAB0;
+      border-bottom: 1px solid #3D2D2D;
+    }
+
+    /* Phone frame */
+    .phone-frame {
+      width: 100%;
+      aspect-ratio: 9/16;
+      max-height: 580px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Chat view styles */
+    .chat-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .chat-header {
+      padding: 0.9rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .back-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .chat-title {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .header-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .message {
+      max-width: 82%;
+      padding: 0.75rem 0.9rem;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: var(--user-bubble);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--assistant-bubble);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .message .time {
+      font-size: 0.65rem;
+      opacity: 0.6;
+      margin-top: 0.3rem;
+    }
+
+    .chat-input-area {
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 0.65rem 0.9rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: var(--font-body);
+    }
+
+    .chat-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      font-size: 1rem;
+    }
+
+    /* List view styles */
+    .list-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .list-header {
+      padding: 0.9rem 1rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .list-header h2 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.05em;
+    }
+
+    .list-header .count {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .search-bar {
+      margin: 0.75rem 1rem 0.5rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+      width: calc(100% - 2rem);
+      font-family: var(--font-body);
+    }
+
+    .search-bar::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .conversation-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.25rem 0 1rem;
+    }
+
+    .scope-header {
+      padding: 0.6rem 1rem 0.3rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .conv-card {
+      margin: 0.3rem 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .conv-card:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .conv-card.pinned {
+      border-color: var(--gold);
+      background: var(--accent-bg);
+    }
+
+    .conv-card .title {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .conv-card .pin-icon {
+      color: var(--gold);
+      font-size: 0.75rem;
+    }
+
+    .conv-card .preview {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conv-card .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.4rem;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .conv-card .badge {
+      background: var(--accent);
+      color: #fff;
+      padding: 0.1rem 0.45rem;
+      border-radius: 100px;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    /* ============ PALETTE DEFINITIONS ============ */
+
+    /* ORIGINAL - Current theme colors */
+    .palette-original {
+      --bg: #18100F;
+      --bg-secondary: #221818;
+      --bg-tertiary: #2A1E1E;
+      --surface: #322424;
+      --input-bg: #2A1E1E;
+      --text: #F0E4E0;
+      --text-secondary: #C4AAB0;
+      --accent: #E8707E;
+      --accent-bg: rgba(232, 112, 126, 0.1);
+      --gold: #C4A35A;
+      --border: rgba(80, 55, 55, 0.7);
+      --user-bubble: #E8707E;
+      --assistant-bubble: #2A1E1E;
+    }
+
+    .palette-original.light {
+      --bg: #F5E6E0;
+      --bg-secondary: #E8D0D0;
+      --bg-tertiary: #DDB8B8;
+      --surface: #FDF5F3;
+      --input-bg: #FDF5F3;
+      --text: #4A2C2A;
+      --text-secondary: #7D4E57;
+      --border: rgba(212, 165, 165, 0.5);
+      --assistant-bubble: #E8C4C4;
+      --accent: #C65D7B;
+      --accent-bg: rgba(198, 93, 123, 0.1);
+      --gold: #A08030;
+    }
+
+    /* MENDL'S - Pastel pink focus */
+    .palette-mendls {
+      --bg: #1A1214;
+      --bg-secondary: #251A1C;
+      --bg-tertiary: #302224;
+      --surface: #3A2A2C;
+      --input-bg: #251A1C;
+      --text: #F8E8EA;
+      --text-secondary: #D4A8B0;
+      --accent: #F0A0B0;
+      --accent-bg: rgba(240, 160, 176, 0.1);
+      --gold: #E8C878;
+      --border: rgba(90, 60, 65, 0.7);
+      --user-bubble: #F0A0B0;
+      --assistant-bubble: #251A1C;
+    }
+
+    .palette-mendls.light {
+      --bg: #FFF0F2;
+      --bg-secondary: #FFE0E5;
+      --bg-tertiary: #F8C8D0;
+      --surface: #FFFFFF;
+      --input-bg: #FFFFFF;
+      --text: #4A2028;
+      --text-secondary: #8A4858;
+      --border: rgba(240, 160, 176, 0.4);
+      --assistant-bubble: #FFE0E5;
+      --accent: #D87088;
+      --accent-bg: rgba(216, 112, 136, 0.1);
+      --gold: #B89030;
+    }
+
+    /* LOBBY BOY - Purple uniform accent */
+    .palette-lobbyboy {
+      --bg: #14101A;
+      --bg-secondary: #1C1624;
+      --bg-tertiary: #262030;
+      --surface: #302838;
+      --input-bg: #1C1624;
+      --text: #F0E8F4;
+      --text-secondary: #B8A8C8;
+      --accent: #9878C8;
+      --accent-bg: rgba(152, 120, 200, 0.1);
+      --gold: #D4B070;
+      --border: rgba(70, 55, 90, 0.7);
+      --user-bubble: #9878C8;
+      --assistant-bubble: #1C1624;
+    }
+
+    .palette-lobbyboy.light {
+      --bg: #F4F0F8;
+      --bg-secondary: #E8E0F0;
+      --bg-tertiary: #D8CCE8;
+      --surface: #FDFCFF;
+      --input-bg: #FDFCFF;
+      --text: #2A2040;
+      --text-secondary: #5A4878;
+      --border: rgba(152, 120, 200, 0.3);
+      --assistant-bubble: #E8E0F0;
+      --accent: #7858A8;
+      --accent-bg: rgba(120, 88, 168, 0.1);
+      --gold: #9A7828;
+    }
+
+    /* CONCIERGE - Deep burgundy, gold focus */
+    .palette-concierge {
+      --bg: #120A08;
+      --bg-secondary: #1C1210;
+      --bg-tertiary: #281C18;
+      --surface: #322420;
+      --input-bg: #1C1210;
+      --text: #F4E8E0;
+      --text-secondary: #C8A898;
+      --accent: #D4A050;
+      --accent-bg: rgba(212, 160, 80, 0.1);
+      --gold: #D4A050;
+      --border: rgba(80, 50, 40, 0.7);
+      --user-bubble: #D4A050;
+      --assistant-bubble: #1C1210;
+    }
+
+    .palette-concierge.light {
+      --bg: #F8F0E8;
+      --bg-secondary: #F0E0D0;
+      --bg-tertiary: #E0C8B8;
+      --surface: #FFFCF8;
+      --input-bg: #FFFCF8;
+      --text: #3A2820;
+      --text-secondary: #6A5040;
+      --border: rgba(180, 140, 100, 0.4);
+      --assistant-bubble: #F0E0D0;
+      --accent: #B08030;
+      --accent-bg: rgba(176, 128, 48, 0.1);
+      --gold: #B08030;
+    }
+
+    /* ALPINE - Cooler, teal secondary prominent */
+    .palette-alpine {
+      --bg: #0F1214;
+      --bg-secondary: #161A1C;
+      --bg-tertiary: #1E2426;
+      --surface: #282E30;
+      --input-bg: #161A1C;
+      --text: #E8F0F0;
+      --text-secondary: #A0B8B8;
+      --accent: #60B8B0;
+      --accent-bg: rgba(96, 184, 176, 0.1);
+      --gold: #C8A860;
+      --border: rgba(60, 75, 80, 0.7);
+      --user-bubble: #60B8B0;
+      --assistant-bubble: #161A1C;
+    }
+
+    .palette-alpine.light {
+      --bg: #EEF4F4;
+      --bg-secondary: #DEE8E8;
+      --bg-tertiary: #C8DCDC;
+      --surface: #FAFFFE;
+      --input-bg: #FAFFFE;
+      --text: #1A2828;
+      --text-secondary: #406060;
+      --border: rgba(96, 140, 140, 0.3);
+      --assistant-bubble: #DEE8E8;
+      --accent: #408880;
+      --accent-bg: rgba(64, 136, 128, 0.1);
+      --gold: #988838;
+    }
+
+    /* ZUBROWKA - Muted, aged film look */
+    .palette-zubrowka {
+      --bg: #141210;
+      --bg-secondary: #1C1A18;
+      --bg-tertiary: #282420;
+      --surface: #322C28;
+      --input-bg: #1C1A18;
+      --text: #E0D8D0;
+      --text-secondary: #A89890;
+      --accent: #C89080;
+      --accent-bg: rgba(200, 144, 128, 0.1);
+      --gold: #B8A068;
+      --border: rgba(70, 60, 50, 0.7);
+      --user-bubble: #C89080;
+      --assistant-bubble: #1C1A18;
+    }
+
+    .palette-zubrowka.light {
+      --bg: #F4F0EC;
+      --bg-secondary: #E8E0D8;
+      --bg-tertiary: #D8CCC0;
+      --surface: #FCFAF8;
+      --input-bg: #FCFAF8;
+      --text: #2A2420;
+      --text-secondary: #686058;
+      --border: rgba(140, 120, 100, 0.35);
+      --assistant-bubble: #E8E0D8;
+      --accent: #A07060;
+      --accent-bg: rgba(160, 112, 96, 0.1);
+      --gold: #907838;
+    }
+
+    /* SOCIETY - Rich jewel tones */
+    .palette-society {
+      --bg: #0E0A10;
+      --bg-secondary: #18121A;
+      --bg-tertiary: #241C28;
+      --surface: #302634;
+      --input-bg: #18121A;
+      --text: #F4E8F0;
+      --text-secondary: #C0A0B8;
+      --accent: #D86888;
+      --accent-bg: rgba(216, 104, 136, 0.1);
+      --gold: #D8B048;
+      --border: rgba(70, 50, 65, 0.7);
+      --user-bubble: #D86888;
+      --assistant-bubble: #18121A;
+    }
+
+    .palette-society.light {
+      --bg: #F8F0F4;
+      --bg-secondary: #F0E0E8;
+      --bg-tertiary: #E0C8D8;
+      --surface: #FFFCFE;
+      --input-bg: #FFFCFE;
+      --text: #2A1820;
+      --text-secondary: #6A4058;
+      --border: rgba(180, 120, 150, 0.35);
+      --assistant-bubble: #F0E0E8;
+      --accent: #B84868;
+      --accent-bg: rgba(184, 72, 104, 0.1);
+      --gold: #A88828;
+    }
+
+    /* GUSTAVE - Warm rose, classic */
+    .palette-gustave {
+      --bg: #161010;
+      --bg-secondary: #201616;
+      --bg-tertiary: #2C2020;
+      --surface: #382828;
+      --input-bg: #201616;
+      --text: #F8E8E4;
+      --text-secondary: #D0A8A0;
+      --accent: #E07878;
+      --accent-bg: rgba(224, 120, 120, 0.1);
+      --gold: #D8B860;
+      --border: rgba(85, 55, 55, 0.7);
+      --user-bubble: #E07878;
+      --assistant-bubble: #201616;
+    }
+
+    .palette-gustave.light {
+      --bg: #FBF2F0;
+      --bg-secondary: #F4E0DC;
+      --bg-tertiary: #E8C8C4;
+      --surface: #FFFAF8;
+      --input-bg: #FFFAF8;
+      --text: #3A2220;
+      --text-secondary: #7A4A48;
+      --border: rgba(200, 140, 140, 0.4);
+      --assistant-bubble: #F4E0DC;
+      --accent: #C05858;
+      --accent-bg: rgba(192, 88, 88, 0.1);
+      --gold: #A89030;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>The Grand <span>Budapest</span></h1>
+    <p class="subtitle">Variations on the Hotel Aesthetic</p>
+  </header>
+
+  <nav class="palette-nav">
+    <button class="palette-btn active" data-palette="original">
+      <span class="palette-swatch">
+        <span style="background: #18100F"></span>
+        <span style="background: #E8707E"></span>
+        <span style="background: #C4A35A"></span>
+        <span style="background: #F0E4E0"></span>
+      </span>
+      Original
+    </button>
+    <button class="palette-btn" data-palette="mendls">
+      <span class="palette-swatch">
+        <span style="background: #1A1214"></span>
+        <span style="background: #F0A0B0"></span>
+        <span style="background: #E8C878"></span>
+        <span style="background: #F8E8EA"></span>
+      </span>
+      Mendl's
+    </button>
+    <button class="palette-btn" data-palette="lobbyboy">
+      <span class="palette-swatch">
+        <span style="background: #14101A"></span>
+        <span style="background: #9878C8"></span>
+        <span style="background: #D4B070"></span>
+        <span style="background: #F0E8F4"></span>
+      </span>
+      Lobby Boy
+    </button>
+    <button class="palette-btn" data-palette="concierge">
+      <span class="palette-swatch">
+        <span style="background: #120A08"></span>
+        <span style="background: #D4A050"></span>
+        <span style="background: #D4A050"></span>
+        <span style="background: #F4E8E0"></span>
+      </span>
+      Concierge
+    </button>
+    <button class="palette-btn" data-palette="alpine">
+      <span class="palette-swatch">
+        <span style="background: #0F1214"></span>
+        <span style="background: #60B8B0"></span>
+        <span style="background: #C8A860"></span>
+        <span style="background: #E8F0F0"></span>
+      </span>
+      Alpine
+    </button>
+    <button class="palette-btn" data-palette="zubrowka">
+      <span class="palette-swatch">
+        <span style="background: #141210"></span>
+        <span style="background: #C89080"></span>
+        <span style="background: #B8A068"></span>
+        <span style="background: #E0D8D0"></span>
+      </span>
+      Zubrowka
+    </button>
+    <button class="palette-btn" data-palette="society">
+      <span class="palette-swatch">
+        <span style="background: #0E0A10"></span>
+        <span style="background: #D86888"></span>
+        <span style="background: #D8B048"></span>
+        <span style="background: #F4E8F0"></span>
+      </span>
+      Society
+    </button>
+    <button class="palette-btn" data-palette="gustave">
+      <span class="palette-swatch">
+        <span style="background: #161010"></span>
+        <span style="background: #E07878"></span>
+        <span style="background: #D8B860"></span>
+        <span style="background: #F8E8E4"></span>
+      </span>
+      Gustave
+    </button>
+  </nav>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" data-mode="both">Both</button>
+    <button class="mode-btn" data-mode="dark">Dark Only</button>
+    <button class="mode-btn" data-mode="light">Light Only</button>
+  </div>
+
+  <div class="preview-grid">
+    <!-- Dark Mode - List View -->
+    <div class="preview-card dark-card">
+      <div class="preview-label">Dark Mode - Conversation List</div>
+      <div class="phone-frame palette-original" id="dark-list">
+        <div class="list-view">
+          <div class="list-header">
+            <h2>Conversations <span class="count">(19)</span></h2>
+          </div>
+          <input type="text" class="search-bar" placeholder="Search conversations..." readonly>
+          <div class="conversation-list">
+            <div class="scope-header">~/Hotel/Concierge</div>
+            <div class="conv-card pinned">
+              <div class="title"><span class="pin-icon">*</span> Guest accommodations</div>
+              <div class="preview">Madame D. requires the suite on the third floor...</div>
+              <div class="meta">
+                <span>2 min ago</span>
+                <span class="badge">Active</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Mendl's order</div>
+              <div class="preview">We need 47 Courtesan au Chocolat for the...</div>
+              <div class="meta">
+                <span>1 hour ago</span>
+                <span>14 msgs</span>
+              </div>
+            </div>
+            <div class="scope-header">~/Personal</div>
+            <div class="conv-card">
+              <div class="title">Poetry draft</div>
+              <div class="preview">And so it was I entered the broken world...</div>
+              <div class="meta">
+                <span>Yesterday</span>
+                <span>8 msgs</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Society meeting</div>
+              <div class="preview">The crossed keys shall convene at midnight...</div>
+              <div class="meta">
+                <span>2 days ago</span>
+                <span>23 msgs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dark Mode - Chat View -->
+    <div class="preview-card dark-card">
+      <div class="preview-label">Dark Mode - Chat View</div>
+      <div class="phone-frame palette-original" id="dark-chat">
+        <div class="chat-view">
+          <div class="chat-header">
+            <div class="back-btn">&larr;</div>
+            <div class="chat-title">Guest accommodations</div>
+            <div class="header-icon">*</div>
+          </div>
+          <div class="chat-messages">
+            <div class="message user">
+              We have a situation. Madame D. has passed away under mysterious circumstances.
+              <div class="time">4:15 AM</div>
+            </div>
+            <div class="message assistant">
+              I see. This is most unfortunate. Have the authorities been notified? And more importantly, has the painting been secured?
+              <div class="time">4:15 AM</div>
+            </div>
+            <div class="message user">
+              The painting is safe. But Dmitri is making accusations.
+              <div class="time">4:16 AM</div>
+            </div>
+            <div class="message assistant">
+              Of course he is. Dmitri has never understood the subtleties of our profession. We must proceed with the utmost discretion. I recommend contacting M. Ivan at once.
+              <div class="time">4:16 AM</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Type a message..." readonly>
+            <button class="send-btn">&rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Mode - List View -->
+    <div class="preview-card light-card" id="light-list-card">
+      <div class="preview-label">Light Mode - Conversation List</div>
+      <div class="phone-frame palette-original light" id="light-list">
+        <div class="list-view">
+          <div class="list-header">
+            <h2>Conversations <span class="count">(19)</span></h2>
+          </div>
+          <input type="text" class="search-bar" placeholder="Search conversations..." readonly>
+          <div class="conversation-list">
+            <div class="scope-header">~/Hotel/Concierge</div>
+            <div class="conv-card pinned">
+              <div class="title"><span class="pin-icon">*</span> Guest accommodations</div>
+              <div class="preview">Madame D. requires the suite on the third floor...</div>
+              <div class="meta">
+                <span>2 min ago</span>
+                <span class="badge">Active</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Mendl's order</div>
+              <div class="preview">We need 47 Courtesan au Chocolat for the...</div>
+              <div class="meta">
+                <span>1 hour ago</span>
+                <span>14 msgs</span>
+              </div>
+            </div>
+            <div class="scope-header">~/Personal</div>
+            <div class="conv-card">
+              <div class="title">Poetry draft</div>
+              <div class="preview">And so it was I entered the broken world...</div>
+              <div class="meta">
+                <span>Yesterday</span>
+                <span>8 msgs</span>
+              </div>
+            </div>
+            <div class="conv-card">
+              <div class="title">Society meeting</div>
+              <div class="preview">The crossed keys shall convene at midnight...</div>
+              <div class="meta">
+                <span>2 days ago</span>
+                <span>23 msgs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Mode - Chat View -->
+    <div class="preview-card light-card" id="light-chat-card">
+      <div class="preview-label">Light Mode - Chat View</div>
+      <div class="phone-frame palette-original light" id="light-chat">
+        <div class="chat-view">
+          <div class="chat-header">
+            <div class="back-btn">&larr;</div>
+            <div class="chat-title">Guest accommodations</div>
+            <div class="header-icon">*</div>
+          </div>
+          <div class="chat-messages">
+            <div class="message user">
+              We have a situation. Madame D. has passed away under mysterious circumstances.
+              <div class="time">4:15 AM</div>
+            </div>
+            <div class="message assistant">
+              I see. This is most unfortunate. Have the authorities been notified? And more importantly, has the painting been secured?
+              <div class="time">4:15 AM</div>
+            </div>
+            <div class="message user">
+              The painting is safe. But Dmitri is making accusations.
+              <div class="time">4:16 AM</div>
+            </div>
+            <div class="message assistant">
+              Of course he is. Dmitri has never understood the subtleties of our profession. We must proceed with the utmost discretion. I recommend contacting M. Ivan at once.
+              <div class="time">4:16 AM</div>
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Type a message..." readonly>
+            <button class="send-btn">&rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const paletteBtns = document.querySelectorAll('.palette-btn');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const darkList = document.getElementById('dark-list');
+    const darkChat = document.getElementById('dark-chat');
+    const lightList = document.getElementById('light-list');
+    const lightChat = document.getElementById('light-chat');
+    const darkCards = document.querySelectorAll('.dark-card');
+    const lightCards = document.querySelectorAll('.light-card');
+
+    let currentPalette = 'original';
+
+    function updatePalette(palette) {
+      currentPalette = palette;
+
+      // Update dark frames
+      darkList.className = `phone-frame palette-${palette}`;
+      darkChat.className = `phone-frame palette-${palette}`;
+
+      // Update light frames
+      lightList.className = `phone-frame palette-${palette} light`;
+      lightChat.className = `phone-frame palette-${palette} light`;
+
+      // Update active button
+      paletteBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.palette === palette);
+      });
+    }
+
+    function updateMode(mode) {
+      modeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      darkCards.forEach(card => {
+        card.style.display = (mode === 'light') ? 'none' : '';
+      });
+
+      lightCards.forEach(card => {
+        card.style.display = (mode === 'dark') ? 'none' : '';
+      });
+    }
+
+    paletteBtns.forEach(btn => {
+      btn.addEventListener('click', () => updatePalette(btn.dataset.palette));
+    });
+
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => updateMode(btn.dataset.mode));
+    });
+  </script>
+</body>
+</html>

@@ -16,12 +16,10 @@ let colorThemeLink = null;
 // --- Color Theme Definitions ---
 export const COLOR_THEMES = {
   darjeeling: { name: 'Darjeeling', icon: '\u{1F3DC}' },
-  claude: { name: 'Claude', icon: '\u{1F49C}' },
   budapest: { name: 'Budapest', icon: '\u{1F3E8}' },
   moonrise: { name: 'Moonrise', icon: '\u{1F3D5}' },
   aquatic: { name: 'Aquatic', icon: '\u{1F6A2}' },
   fjord: { name: 'Fjord', icon: '\u{1F3D4}' },
-  tenenbaums: { name: 'Tenenbaums', icon: '\u{1F3E0}' },
   monokai: { name: 'Monokai', icon: '\u{1F4BB}' },
   catppuccin: { name: 'Catppuccin', icon: '\u{1F431}' }
 };

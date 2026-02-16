@@ -51,8 +51,14 @@
 
   /* === Semantic: Message Bubbles === */
   --user-bubble: var(--palette-olive);
-  --user-bubble-end: var(--palette-brown-dark);
+  --user-bubble-end: #4A5D40;
   --assistant-bubble: var(--palette-forest-mid);
+
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-mustard);
+  --card-border: rgba(212, 160, 58, 0.5);
+  --pinned-border: rgba(212, 160, 58, 0.55);
+  --pinned-bg: rgba(212, 160, 58, 0.1);
 
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(212, 160, 58, 0.08);
@@ -116,6 +122,10 @@
   --mesh-color-2: var(--khaki-alpha-6);
   --mesh-color-3: var(--olive-alpha-6);
 
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-mustard);
+  --brand-gradient: linear-gradient(135deg, var(--palette-mustard-light) 0%, var(--palette-olive-light) 100%);
+
   /* === PWA: Theme Colors === */
   --theme-color: #1A1F18;
 }
@@ -144,6 +154,12 @@ html[data-theme="light"] {
   --glass-border: rgba(92, 70, 51, 0.12);
 
   --assistant-bubble: #F5F3ED;
+
+  /* === Semantic: List View === */
+  --scope-header-color: #B8860B;
+  --card-border: rgba(184, 134, 11, 0.5);
+  --pinned-border: rgba(184, 134, 11, 0.55);
+  --pinned-bg: rgba(184, 134, 11, 0.1);
 
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
@@ -191,6 +207,11 @@ html[data-theme="light"] {
     --glass-bg: rgba(255, 254, 248, 0.85);
     --glass-border: rgba(92, 70, 51, 0.12);
     --assistant-bubble: #F5F3ED;
+
+    --scope-header-color: #B8860B;
+    --card-border: rgba(184, 134, 11, 0.5);
+    --pinned-border: rgba(184, 134, 11, 0.55);
+    --pinned-bg: rgba(184, 134, 11, 0.1);
 
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);

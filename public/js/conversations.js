@@ -271,21 +271,26 @@ export function renderConversationList(items) {
   const collapsedScopes = state.getCollapsedScopes();
 
   if (list.length === 0) {
-    const msg = isSearch
-      ? 'No matching conversations'
-      : showingArchived
-        ? 'No archived conversations'
-        : 'No conversations yet';
-    const sub = isSearch
-      ? ''
-      : showingArchived
-        ? ''
-        : '<p style="font-size: 13px; margin-top: 8px;">Tap + to start chatting with Claude</p>';
+    let icon, heading, sub;
+    if (isSearch) {
+      icon = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`;
+      heading = 'No matches found';
+      sub = '';
+    } else if (showingArchived) {
+      icon = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>`;
+      heading = 'Archive is empty';
+      sub = '';
+    } else {
+      icon = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
+      heading = 'Welcome to Concierge';
+      sub = `<span class="empty-state-sub">Tap <strong>+</strong> to ring the bell</span>`;
+    }
     conversationList.innerHTML = `
       <div class="empty-state">
-        <div class="icon">&#x1F4AC;</div>
-        <p>${msg}</p>
+        <div class="empty-state-icon">${icon}</div>
+        <p class="empty-state-heading">${heading}</p>
         ${sub}
+        <div class="empty-state-flourish">— ✦ —</div>
       </div>
     `;
     return;
@@ -325,8 +330,12 @@ export function renderConversationList(items) {
     const isSelected = state.getSelectedConversations().has(c.id);
     const isPinned = c.pinned;
     const pinIcon = isPinned ? '<svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>' : '';
+    // Recent: within last 24 hours
+    const lastActivity = c.lastMessage?.timestamp || c.createdAt;
+    const isRecent = lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 24 * 60 * 60 * 1000;
+    const wrapperClasses = [isPinned && 'pinned', isRecent && 'recent'].filter(Boolean).join(' ');
     return `
-      <div class="conv-card-wrapper${isPinned ? ' pinned' : ''}">
+      <div class="conv-card-wrapper${wrapperClasses ? ' ' + wrapperClasses : ''}">
         <div class="swipe-actions">
           <button class="swipe-action-btn ${archiveBtnClass}" data-id="${c.id}" data-action="archive">${archiveLabel}</button>
           <button class="swipe-action-btn delete-action-btn" data-id="${c.id}" data-action="delete">Delete</button>

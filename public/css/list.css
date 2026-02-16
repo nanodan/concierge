@@ -55,7 +55,7 @@
   border-radius: 14px;
   cursor: pointer;
   background: var(--surface);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -66,9 +66,13 @@
   flex-direction: column;
 }
 
-.conv-card:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-alpha-20);
+@media (hover: hover) {
+  .conv-card:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-alpha-20);
+    transform: translateX(4px);
+    box-shadow: -2px 4px 12px var(--black-alpha-15);
+  }
 }
 
 .conv-card:active {
@@ -86,6 +90,33 @@
   border-color: var(--accent-alpha-30);
 }
 
+/* Recency indicator - subtle left edge accent */
+.conv-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.conv-card-wrapper.recent .conv-card::before {
+  opacity: 0.6;
+}
+
+.conv-card-wrapper.pinned .conv-card::before {
+  opacity: 1;
+  background: var(--pinned-bg);
+}
+
+.conv-card-wrapper.pinned .conv-card {
+  border-color: var(--pinned-border);
+}
+
 .conv-card-top {
   display: flex;
   justify-content: space-between;
@@ -94,9 +125,10 @@
 }
 
 .conv-card-name {
+  font-family: var(--font-display);
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  letter-spacing: -0.005em;
 }
 
 /* Pin icon */
@@ -104,6 +136,7 @@
   color: var(--accent);
   margin-right: 4px;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 3px var(--accent-alpha-50));
 }
 
 .conv-card-wrapper.pinned {
@@ -417,7 +450,7 @@
   padding: 10px 16px;
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--scope-header-color);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -487,9 +520,14 @@
 /* Skeleton loaders */
 .skeleton-line {
   display: block;
-  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--surface) 50%, var(--bg-tertiary) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    color-mix(in srgb, var(--surface) 92%, var(--accent) 8%) 50%,
+    var(--bg-tertiary) 75%
+  );
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
   border-radius: 6px;
 }
 
@@ -730,7 +768,7 @@
   right: 4px;
   height: 14px;
   border-radius: 0 0 12px 12px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
   border: 1px solid var(--glass-border);
   border-top: none;
 }
@@ -738,7 +776,7 @@
 .stack-shadow-1 {
   bottom: 4px;
   z-index: 2;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .stack-shadow-2 {
@@ -746,7 +784,8 @@
   left: 8px;
   right: 8px;
   z-index: 1;
-  opacity: 0.4;
+  opacity: 0.45;
+  background: color-mix(in srgb, var(--surface) 90%, var(--accent) 10%);
 }
 
 /* Fork count badge - positioned bottom-right, outside the card */
@@ -787,7 +826,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px 4px;
-  color: var(--text-secondary);
+  color: var(--scope-header-color);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

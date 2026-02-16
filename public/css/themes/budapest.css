@@ -3,67 +3,73 @@
  * Concierge Burgundy (dark) / Lobby Rose (light)
  */
 
-/* ========== DARK MODE (default) - Concierge Burgundy ========== */
+/* ========== DARK MODE (default) - Wine Cellar ========== */
 :root {
   /* === Core Palette === */
-  --palette-rose: #D4838F;
-  --palette-rose-deep: #C65D7B;
-  --palette-gold: #D4AF37;
-  --palette-cream: #F5E6E8;
-  --palette-muted: #D4B8C0;
-  --palette-burgundy: #2D1F2D;
-  --palette-burgundy-mid: #422942;
-  --palette-burgundy-light: #5C3D5C;
+  --palette-rose: #C9919A;
+  --palette-rose-deep: #A8606E;
+  --palette-gold: #C4A35A;
+  --palette-cream: #F0E4E0;
+  --palette-muted: #C4AAB0;
+  --palette-claret: #18100F;
+  --palette-wine: #2A1E1E;
+  --palette-burgundy: #3D2D2D;
 
   /* === Semantic: Backgrounds === */
-  --bg: #2D1F2D;
-  --bg-secondary: #3A2A3A;
-  --bg-tertiary: #422942;
-  --surface: #3A2A3A;
-  --input-bg: #3A2A3A;
+  --bg: #18100F;
+  --bg-secondary: #221818;
+  --bg-tertiary: #2A1E1E;
+  --surface: #322424;
+  --input-bg: #2A1E1E;
 
   /* === Semantic: Text === */
-  --text: #F5E6E8;
-  --text-secondary: #D4B8C0;
+  --text: #F0E4E0;
+  --text-secondary: #C4AAB0;
 
   /* === Semantic: Accent === */
-  --accent: #D4838F;
-  --accent-light: #E8A8B0;
-  --accent-secondary: #D4AF37;
+  --accent: #E8707E;
+  --accent-light: #F0909A;
+  --accent-secondary: #6BC4B8;
 
   /* === Semantic: Status === */
-  --danger: #C65D7B;
-  --success: #7DB87D;
-  --warning: #D4AF37;
+  --danger: #E05868;
+  --success: #6BC4B8;
+  --warning: #E0A850;
 
   /* === Semantic: Borders === */
-  --border: rgba(90, 61, 90, 0.6);
-  --glass-bg: rgba(45, 31, 45, 0.95);
-  --glass-border: rgba(212, 131, 143, 0.15);
+  --border: rgba(80, 55, 55, 0.7);
+  --glass-bg: rgba(24, 16, 15, 0.95);
+  --glass-border: rgba(232, 112, 126, 0.12);
 
   /* === Semantic: Message Bubbles === */
-  --user-bubble: #D4838F;
-  --user-bubble-end: #C65D7B;
-  --assistant-bubble: #3A2A3A;
+  --user-bubble: #E8707E;
+  --user-bubble-end: #C85060;
+  --assistant-bubble: #2A1E1E;
+
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-gold);
+  --card-border: rgba(100, 70, 70, 0.5);
+  --pinned-border: rgba(196, 163, 90, 0.6);
+  --pinned-bg: rgba(196, 163, 90, 0.12);
 
   /* === Alpha Variants === */
-  --accent-alpha-8: rgba(212, 131, 143, 0.08);
-  --accent-alpha-12: rgba(212, 131, 143, 0.12);
-  --accent-alpha-15: rgba(212, 131, 143, 0.15);
-  --accent-alpha-20: rgba(212, 131, 143, 0.2);
-  --accent-alpha-25: rgba(212, 131, 143, 0.25);
-  --accent-alpha-30: rgba(212, 131, 143, 0.3);
-  --accent-alpha-35: rgba(212, 131, 143, 0.35);
-  --accent-alpha-50: rgba(212, 131, 143, 0.5);
+  --accent-alpha-8: rgba(232, 112, 126, 0.08);
+  --accent-alpha-12: rgba(232, 112, 126, 0.12);
+  --accent-alpha-15: rgba(232, 112, 126, 0.15);
+  --accent-alpha-20: rgba(232, 112, 126, 0.2);
+  --accent-alpha-25: rgba(232, 112, 126, 0.25);
+  --accent-alpha-30: rgba(232, 112, 126, 0.3);
+  --accent-alpha-35: rgba(232, 112, 126, 0.35);
+  --accent-alpha-50: rgba(232, 112, 126, 0.5);
 
-  --danger-alpha-15: rgba(198, 93, 123, 0.15);
-  --danger-alpha-40: rgba(198, 93, 123, 0.4);
+  --danger-alpha-15: rgba(184, 90, 104, 0.15);
+  --danger-alpha-40: rgba(184, 90, 104, 0.4);
 
-  --teal-alpha-6: rgba(212, 175, 55, 0.06);
-  --teal-alpha-25: rgba(212, 175, 55, 0.25);
+  --teal-alpha-6: rgba(107, 196, 184, 0.06);
+  --teal-alpha-25: rgba(107, 196, 184, 0.25);
 
-  --terracotta-alpha-6: rgba(198, 93, 123, 0.06);
-  --terracotta-alpha-10: rgba(198, 93, 123, 0.1);
+  --terracotta-alpha-6: rgba(168, 96, 110, 0.06);
+  --terracotta-alpha-10: rgba(168, 96, 110, 0.1);
 
   --white-alpha-6: rgba(255, 255, 255, 0.06);
   --white-alpha-10: rgba(255, 255, 255, 0.1);
@@ -78,72 +84,82 @@
   --black-alpha-50: rgba(0, 0, 0, 0.5);
 
   /* === Component: Status Indicators === */
-  --status-idle: #7DB87D;
-  --status-thinking: #D4AF37;
-  --status-disconnected: #5C3D5C;
+  --status-idle: #6BC4B8;
+  --status-thinking: #E0A850;
+  --status-disconnected: #3D2D2D;
 
   /* === Component: Mode Badges === */
-  --mode-autopilot-bg: var(--teal-alpha-25);
-  --mode-autopilot-text: #E8D080;
+  --mode-autopilot-bg: rgba(107, 196, 184, 0.25);
+  --mode-autopilot-text: #6BC4B8;
   --mode-readonly-bg: var(--accent-alpha-20);
-  --mode-readonly-text: #D4838F;
+  --mode-readonly-text: #E8707E;
 
   /* === Component: Syntax Highlighting === */
-  --syntax-keyword: #D4838F;
-  --syntax-string: #7DB87D;
-  --syntax-number: #D4AF37;
-  --syntax-comment: #9A7A85;
-  --syntax-function: #E8A8B0;
-  --syntax-type: #C65D7B;
-  --syntax-variable: #E8D080;
-  --syntax-operator: #D4B8C0;
+  --syntax-keyword: #E8707E;
+  --syntax-string: #8CD48C;
+  --syntax-number: #E8C060;
+  --syntax-comment: #7A6568;
+  --syntax-function: #6BC4B8;
+  --syntax-type: #E0A850;
+  --syntax-variable: #F0A070;
+  --syntax-operator: #D0B8B8;
 
   /* === Component: Code Blocks === */
-  --code-bg: #2D1F2D;
-  --code-header-bg: #422942;
-  --code-inline-bg: rgba(212, 131, 143, 0.15);
+  --code-bg: #140E0D;
+  --code-header-bg: #3D2D2D;
+  --code-inline-bg: rgba(232, 112, 126, 0.18);
 
   /* === Component: Gradient Mesh === */
-  --mesh-color-1: rgba(212, 131, 143, 0.08);
-  --mesh-color-2: rgba(212, 175, 55, 0.05);
-  --mesh-color-3: rgba(198, 93, 123, 0.08);
+  --mesh-color-1: rgba(232, 112, 126, 0.1);
+  --mesh-color-2: rgba(107, 196, 184, 0.06);
+  --mesh-color-3: rgba(232, 192, 96, 0.06);
+
+  /* === Component: Brand === */
+  --brand-icon-color: #E8707E;
+  --brand-gradient: linear-gradient(135deg, #F0909A 0%, #E0A850 100%);
 
   /* === PWA: Theme Colors === */
-  --theme-color: #2D1F2D;
+  --theme-color: #18100F;
 }
 
 /* ========== LIGHT MODE - Lobby Rose ========== */
 html[data-theme="light"] {
-  /* === Backgrounds === */
-  --bg: #F5E6E0;
-  --bg-secondary: #E8C4C4;
-  --bg-tertiary: #DDB8B8;
-  --surface: #FDF5F3;
-  --input-bg: #FDF5F3;
+  /* === Backgrounds - more contrast === */
+  --bg: #F8EDE8;
+  --bg-secondary: #EEDAD5;
+  --bg-tertiary: #E0C4BE;
+  --surface: #FFFAF8;
+  --input-bg: #FFFAF8;
 
-  /* === Text === */
-  --text: #4A2C2A;
-  --text-secondary: #7D4E57;
+  /* === Text - darker for contrast === */
+  --text: #3A2220;
+  --text-secondary: #6A4548;
 
   /* === Accent === */
   --accent: #C65D7B;
   --accent-light: #D4838F;
 
-  /* === Borders === */
-  --border: rgba(212, 165, 165, 0.5);
-  --glass-bg: rgba(245, 230, 224, 0.95);
-  --glass-border: rgba(198, 93, 123, 0.15);
+  /* === Borders - more visible === */
+  --border: rgba(180, 130, 130, 0.5);
+  --glass-bg: rgba(255, 250, 248, 0.95);
+  --glass-border: rgba(198, 93, 123, 0.18);
 
   /* === Message Bubbles === */
-  --assistant-bubble: #E8C4C4;
+  --assistant-bubble: #EEDAD5;
+
+  /* === List View === */
+  --scope-header-color: #A08030;
+  --card-border: rgba(180, 140, 140, 0.5);
+  --pinned-border: rgba(160, 128, 48, 0.6);
+  --pinned-bg: rgba(160, 128, 48, 0.1);
 
   /* === Alpha Variants === */
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
 
   /* === Code Blocks === */
-  --code-bg: #E8C4C4;
-  --code-header-bg: #DDB8B8;
+  --code-bg: #E8D0CC;
+  --code-header-bg: #E0C4BE;
   --code-inline-bg: rgba(198, 93, 123, 0.12);
 
   /* === Gradient Mesh === */
@@ -162,35 +178,43 @@ html[data-theme="light"] {
   --syntax-operator: #7D4E57;
 
   /* === Status === */
-  --status-disconnected: #DDB8B8;
+  --status-disconnected: #E0C4BE;
 
   /* === Scrollbar === */
   --scrollbar-thumb: rgba(198, 93, 123, 0.3);
 
+  /* === Component: Brand === */
+  --brand-icon-color: #C65D7B;
+  --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
+
   /* === PWA: Theme Colors === */
-  --theme-color: #F5E6E0;
+  --theme-color: #F8EDE8;
 }
 
 /* Auto theme via media query */
 @media (prefers-color-scheme: light) {
   html:not([data-theme="dark"]):not([data-theme="light"]) {
-    --bg: #F5E6E0;
-    --bg-secondary: #E8C4C4;
-    --bg-tertiary: #DDB8B8;
-    --surface: #FDF5F3;
-    --input-bg: #FDF5F3;
-    --text: #4A2C2A;
-    --text-secondary: #7D4E57;
+    --bg: #F8EDE8;
+    --bg-secondary: #EEDAD5;
+    --bg-tertiary: #E0C4BE;
+    --surface: #FFFAF8;
+    --input-bg: #FFFAF8;
+    --text: #3A2220;
+    --text-secondary: #6A4548;
     --accent: #C65D7B;
     --accent-light: #D4838F;
-    --border: rgba(212, 165, 165, 0.5);
-    --glass-bg: rgba(245, 230, 224, 0.95);
-    --glass-border: rgba(198, 93, 123, 0.15);
-    --assistant-bubble: #E8C4C4;
+    --border: rgba(180, 130, 130, 0.5);
+    --glass-bg: rgba(255, 250, 248, 0.95);
+    --glass-border: rgba(198, 93, 123, 0.18);
+    --assistant-bubble: #EEDAD5;
+    --scope-header-color: #A08030;
+    --card-border: rgba(180, 140, 140, 0.5);
+    --pinned-border: rgba(160, 128, 48, 0.6);
+    --pinned-bg: rgba(160, 128, 48, 0.1);
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);
-    --code-bg: #E8C4C4;
-    --code-header-bg: #DDB8B8;
+    --code-bg: #E8D0CC;
+    --code-header-bg: #E0C4BE;
     --code-inline-bg: rgba(198, 93, 123, 0.12);
     --mesh-color-1: rgba(212, 131, 143, 0.15);
     --mesh-color-2: rgba(201, 162, 39, 0.08);
@@ -203,8 +227,10 @@ html[data-theme="light"] {
     --syntax-type: #7D4E57;
     --syntax-variable: #A08030;
     --syntax-operator: #7D4E57;
-    --status-disconnected: #DDB8B8;
+    --status-disconnected: #E0C4BE;
     --scrollbar-thumb: rgba(198, 93, 123, 0.3);
-    --theme-color: #F5E6E0;
+    --brand-icon-color: #C65D7B;
+    --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
+    --theme-color: #F8EDE8;
   }
 }

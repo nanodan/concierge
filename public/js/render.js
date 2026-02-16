@@ -77,6 +77,7 @@ export function enhanceCodeBlocks(container) {
     const langBadge = document.createElement('span');
     langBadge.className = 'code-lang-badge';
     langBadge.textContent = lang || 'code';
+    langBadge.dataset.lang = (lang || 'code').toLowerCase();
 
     const btn = document.createElement('button');
     btn.className = 'copy-btn';
