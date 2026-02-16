@@ -42,10 +42,10 @@
 
 .message.user {
   align-self: flex-end;
-  background: linear-gradient(135deg, var(--accent), var(--user-bubble-end));
+  background: var(--user-bubble);
   color: white;
   border-bottom-right-radius: 6px;
-  box-shadow: 0 2px 12px var(--accent-alpha-30);
+  box-shadow: 0 2px 12px var(--black-alpha-25);
 }
 
 .message.assistant {
