@@ -45,6 +45,21 @@ let historyList = null;
 let commits = null;
 let unpushedCount = 0;
 
+// Preview tab elements
+let previewTab = null;
+let previewView = null;
+let previewEmpty = null;
+let previewRunning = null;
+let previewMessage = null;
+let previewStartBtn = null;
+let previewType = null;
+let previewUrl = null;
+let previewOpenBtn = null;
+let previewStopBtn = null;
+
+// Preview state (tracked for potential future use)
+let _previewState = { running: false, port: null, type: null, url: null };
+
 // Panel state
 let currentPath = '';
 let isOpen = false;
@@ -121,6 +136,18 @@ export function initFilePanel(elements) {
   historyView = elements.historyView;
   historyList = elements.historyList;
 
+  // Preview tab elements
+  previewTab = elements.previewTab;
+  previewView = elements.previewView;
+  previewEmpty = elements.previewEmpty;
+  previewRunning = elements.previewRunning;
+  previewMessage = elements.previewMessage;
+  previewStartBtn = elements.previewStartBtn;
+  previewType = elements.previewType;
+  previewUrl = elements.previewUrl;
+  previewOpenBtn = elements.previewOpenBtn;
+  previewStopBtn = elements.previewStopBtn;
+
   setupEventListeners();
 }
 
@@ -168,6 +195,17 @@ function setupEventListeners() {
   }
   if (historyTab) {
     historyTab.addEventListener('click', () => switchTab('history'));
+  }
+  if (previewTab) {
+    previewTab.addEventListener('click', () => switchTab('preview'));
+  }
+
+  // Preview actions
+  if (previewStartBtn) {
+    previewStartBtn.addEventListener('click', startPreview);
+  }
+  if (previewStopBtn) {
+    previewStopBtn.addEventListener('click', stopPreviewServer);
   }
 
   // Branch selector
@@ -829,11 +867,13 @@ function switchTab(tab) {
   if (filesTab) filesTab.classList.toggle('active', tab === 'files');
   if (changesTab) changesTab.classList.toggle('active', tab === 'changes');
   if (historyTab) historyTab.classList.toggle('active', tab === 'history');
+  if (previewTab) previewTab.classList.toggle('active', tab === 'preview');
 
   // Update views
   if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
   if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
   if (historyView) historyView.classList.toggle('hidden', tab !== 'history');
+  if (previewView) previewView.classList.toggle('hidden', tab !== 'preview');
 
   // Reset search state when switching to files tab
   if (tab === 'files') {
@@ -852,6 +892,8 @@ function switchTab(tab) {
     loadBranches();
   } else if (tab === 'history') {
     loadCommits();
+  } else if (tab === 'preview') {
+    loadPreviewStatus();
   }
 }
 
@@ -2114,6 +2156,128 @@ async function checkoutBranch(branch) {
   showToast(`Switched to ${branch}`);
   loadGitStatus();
   loadBranches();
+}
+
+// === Preview Functions ===
+
+async function loadPreviewStatus() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/preview/status`, { silent: true });
+  if (!res) {
+    renderPreviewState({ running: false });
+    return;
+  }
+
+  const data = await res.json();
+  _previewState = data;
+  renderPreviewState(data);
+}
+
+function renderPreviewState(data) {
+  if (!previewEmpty || !previewRunning) return;
+
+  if (data.running) {
+    previewEmpty.classList.add('hidden');
+    previewRunning.classList.remove('hidden');
+
+    if (previewType) previewType.textContent = data.type || 'dev';
+    if (previewUrl) previewUrl.textContent = data.url || `http://localhost:${data.port}`;
+    if (previewOpenBtn) previewOpenBtn.href = data.url || `http://localhost:${data.port}`;
+  } else {
+    previewEmpty.classList.remove('hidden');
+    previewRunning.classList.add('hidden');
+
+    if (previewMessage) {
+      previewMessage.textContent = data.error || 'Not running';
+    }
+  }
+}
+
+async function startPreview() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  haptic(15);
+
+  // Show loading state
+  if (previewStartBtn) {
+    previewStartBtn.disabled = true;
+    previewStartBtn.textContent = 'Starting...';
+  }
+  if (previewMessage) {
+    previewMessage.textContent = 'Starting preview server...';
+  }
+
+  const res = await apiFetch(`/api/conversations/${convId}/preview/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  // Reset button
+  if (previewStartBtn) {
+    previewStartBtn.disabled = false;
+    previewStartBtn.textContent = 'Start Preview';
+  }
+
+  if (!res) {
+    if (previewMessage) {
+      previewMessage.textContent = 'Failed to start preview';
+    }
+    showToast('Failed to start preview', 'error');
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.error) {
+    if (previewMessage) {
+      previewMessage.textContent = data.error;
+    }
+    showToast(data.error, 'error');
+    return;
+  }
+
+  _previewState = data;
+  renderPreviewState(data);
+  showToast(`Preview started on port ${data.port}`);
+
+  // Auto-open in new tab
+  if (data.url) {
+    window.open(data.url, '_blank');
+  }
+}
+
+async function stopPreviewServer() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  haptic(10);
+
+  if (previewStopBtn) {
+    previewStopBtn.disabled = true;
+    previewStopBtn.textContent = 'Stopping...';
+  }
+
+  const res = await apiFetch(`/api/conversations/${convId}/preview/stop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  if (previewStopBtn) {
+    previewStopBtn.disabled = false;
+    previewStopBtn.textContent = 'Stop';
+  }
+
+  if (!res) {
+    showToast('Failed to stop preview', 'error');
+    return;
+  }
+
+  _previewState = { running: false };
+  renderPreviewState({ running: false });
+  showToast('Preview stopped');
 }
 
 export function isFilePanelOpen() {

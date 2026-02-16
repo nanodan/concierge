@@ -211,6 +211,7 @@
           <button id="files-tab" class="file-panel-tab active" data-tab="files">Files</button>
           <button id="changes-tab" class="file-panel-tab" data-tab="changes">Changes</button>
           <button id="history-tab" class="file-panel-tab" data-tab="history">History</button>
+          <button id="preview-tab" class="file-panel-tab" data-tab="preview">Preview</button>
         </div>
         <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
       </div>
@@ -261,6 +262,28 @@
       <!-- History View (Git Commits) -->
       <div id="history-view" class="history-view hidden">
         <div id="history-list" class="history-list"></div>
+      </div>
+      <!-- Preview View (Live Preview) -->
+      <div id="preview-view" class="preview-view hidden">
+        <div class="preview-empty" id="preview-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <p id="preview-message">Not running</p>
+          <button id="preview-start-btn" class="preview-start-btn">Start Preview</button>
+        </div>
+        <div class="preview-running hidden" id="preview-running">
+          <div class="preview-info">
+            <span class="preview-type" id="preview-type">vite</span>
+            <span class="preview-url" id="preview-url">http://localhost:3600</span>
+          </div>
+          <div class="preview-actions">
+            <a id="preview-open-btn" class="preview-btn primary" href="#" target="_blank">Open Preview</a>
+            <button id="preview-stop-btn" class="preview-btn">Stop</button>
+          </div>
+        </div>
       </div>
       <!-- File Viewer (shared) -->
       <div id="file-viewer" class="file-viewer hidden">
