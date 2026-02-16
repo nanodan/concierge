@@ -55,5 +55,18 @@ export const CONTEXT_AUTO_PROMPT_THRESHOLD = 85; // Auto-prompt for compression 
 export const ANIMATION_DELAY_SHORT = 10;       // Short delay for CSS transitions
 export const ANIMATION_DELAY_MEDIUM = 50;      // Medium delay for animations
 
+// Debounce/processing timeouts (ms)
+export const DEBOUNCE_SEARCH = 300;            // Search input debounce
+export const BUTTON_PROCESSING_TIMEOUT = 300;  // Prevents double-click
+export const THEME_TRANSITION_DURATION = 350;  // Theme switch animation
+export const SLIDE_TRANSITION_DURATION = 300;  // Panel/viewer slide animation
+
+// Header compact thresholds
+export const HEADER_COMPACT_ENTER = 50;        // Scroll down to compact
+export const HEADER_COMPACT_EXIT = 20;         // Scroll up to restore
+
+// Input constraints
+export const MESSAGE_INPUT_MAX_HEIGHT = 120;   // Max auto-resize height (px)
+
 // Branch visualization
 export const BRANCH_NODE_HEIGHT = 50;          // Height of each branch node (px)
