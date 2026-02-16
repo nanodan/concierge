@@ -111,6 +111,13 @@ const messageHandlers = {
     showToast('Edited in new fork');
   },
 
+  async resend_forked(data) {
+    await loadConversations();
+    const { openConversation } = await import('./conversations.js');
+    openConversation(data.conversationId);
+    showToast('Resent in new fork');
+  },
+
   stderr() {
     // No-op: stderr messages are ignored
   },

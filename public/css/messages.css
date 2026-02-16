@@ -113,6 +113,22 @@
   color: var(--white-alpha-60);
 }
 
+/* Incomplete response indicator */
+.incomplete-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--warning);
+  opacity: 0.9;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.incomplete-indicator svg {
+  width: 12px;
+  height: 12px;
+}
+
 /* Message reactions */
 .message-reactions {
   display: flex;

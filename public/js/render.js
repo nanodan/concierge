@@ -17,6 +17,7 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 // Shared SVG icons for message action buttons
 const TTS_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 const REGEN_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+const INCOMPLETE_ICON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
 
 /**
  * Build metadata string for a message (timestamp, cost, duration, tokens).
@@ -34,6 +35,9 @@ function buildMessageMeta(msg) {
   }
   if (msg.inputTokens != null) {
     meta += ` &middot; ${formatTokens(msg.inputTokens)} in / ${formatTokens(msg.outputTokens)} out`;
+  }
+  if (msg.incomplete) {
+    meta += ` <span class="incomplete-indicator" title="Response ended without completion signal">${INCOMPLETE_ICON_SVG}</span>`;
   }
   return meta;
 }
@@ -351,6 +355,7 @@ export function finalizeMessage(data) {
     duration: data.duration,
     inputTokens: data.inputTokens,
     outputTokens: data.outputTokens,
+    incomplete: data.incomplete,
   });
 
   if (data.inputTokens != null) {

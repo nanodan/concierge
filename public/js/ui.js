@@ -631,6 +631,16 @@ function showMsgActionPopup(x, y, el, index, isUser) {
     editBtn.textContent = 'Edit';
     editBtn.addEventListener('click', () => { hideMsgActionPopup(); startEditMessage(el, index); });
     msgActionPopup.appendChild(editBtn);
+
+    const resendBtn = document.createElement('button');
+    resendBtn.className = 'action-popup-btn';
+    resendBtn.textContent = 'Resend';
+    resendBtn.addEventListener('click', () => {
+      haptic();
+      hideMsgActionPopup();
+      resendMessage(index);
+    });
+    msgActionPopup.appendChild(resendBtn);
   }
 
   const copyBtn = document.createElement('button');
@@ -749,6 +759,19 @@ export function regenerateMessage() {
 
   state.setThinking(true);
   ws.send(JSON.stringify({ type: 'regenerate', conversationId: currentConversationId }));
+}
+
+function resendMessage(messageIndex) {
+  const currentConversationId = state.getCurrentConversationId();
+  const ws = getWS();
+  if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  state.setThinking(true);
+  ws.send(JSON.stringify({
+    type: 'resend',
+    conversationId: currentConversationId,
+    messageIndex,
+  }));
 }
 
 // --- Model & Mode & Context Bar ---
