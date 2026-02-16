@@ -53,6 +53,12 @@
   --user-bubble-end: #B84535;
   --assistant-bubble: var(--palette-navy-mid);
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-teal);
+  --card-border: rgba(53, 74, 96, 0.7);
+  --pinned-border: rgba(74, 155, 155, 0.6);
+  --pinned-bg: rgba(74, 155, 155, 0.1);
+
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(74, 155, 155, 0.08);
   --accent-alpha-12: rgba(74, 155, 155, 0.12);
@@ -150,6 +156,12 @@ html[data-theme="light"] {
 
   --assistant-bubble: #E0E8F0;
 
+  /* List View */
+  --scope-header-color: #2A7A7A;
+  --card-border: rgba(120, 140, 160, 0.5);
+  --pinned-border: rgba(42, 122, 122, 0.55);
+  --pinned-bg: rgba(42, 122, 122, 0.08);
+
   --white-alpha-6: rgba(0, 0, 0, 0.04);
   --white-alpha-10: rgba(0, 0, 0, 0.08);
 
@@ -196,6 +208,10 @@ html[data-theme="light"] {
     --glass-bg: rgba(248, 250, 252, 0.9);
     --glass-border: rgba(15, 26, 40, 0.12);
     --assistant-bubble: #E0E8F0;
+    --scope-header-color: #2A7A7A;
+    --card-border: rgba(120, 140, 160, 0.5);
+    --pinned-border: rgba(42, 122, 122, 0.55);
+    --pinned-bg: rgba(42, 122, 122, 0.08);
 
     --white-alpha-6: rgba(0, 0, 0, 0.04);
     --white-alpha-10: rgba(0, 0, 0, 0.08);
@@ -215,74 +231,5 @@ html[data-theme="light"] {
     --syntax-operator: #3A4A5A;
     --scrollbar-thumb: rgba(0, 0, 0, 0.18);
     --theme-color: #EDF3F8;
-  }
-}
-
-/* ========== AQUATIC-SPECIFIC OVERRIDES ========== */
-/* Teal accents for scope headers and card borders */
-
-/* Scope headers and stack headers use teal instead of muted text */
-.scope-header,
-.stack-header {
-  color: #4A9B9B;
-}
-
-/* All conversation cards get visible borders */
-.conv-card {
-  border: 1px solid rgba(53, 74, 96, 0.7);
-}
-
-/* Pinned card border uses teal */
-.conv-card-wrapper.pinned .conv-card {
-  border: 1px solid rgba(74, 155, 155, 0.6);
-}
-
-.conv-card-wrapper.pinned .conv-card::before {
-  background: rgba(74, 155, 155, 0.1);
-}
-
-/* Pin icon uses teal */
-.pin-indicator {
-  color: #4A9B9B;
-}
-
-/* Light mode adjustments */
-html[data-theme="light"] .scope-header,
-html[data-theme="light"] .stack-header {
-  color: #2A7A7A;
-}
-
-html[data-theme="light"] .conv-card {
-  border: 1px solid rgba(120, 140, 160, 0.5);
-}
-
-html[data-theme="light"] .conv-card-wrapper.pinned .conv-card {
-  border: 1px solid rgba(42, 122, 122, 0.55);
-}
-
-html[data-theme="light"] .conv-card-wrapper.pinned .conv-card::before {
-  background: rgba(42, 122, 122, 0.08);
-}
-
-html[data-theme="light"] .pin-indicator {
-  color: #2A7A7A;
-}
-
-@media (prefers-color-scheme: light) {
-  html:not([data-theme="dark"]):not([data-theme="light"]) .scope-header,
-  html:not([data-theme="dark"]):not([data-theme="light"]) .stack-header {
-    color: #2A7A7A;
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card {
-    border: 1px solid rgba(120, 140, 160, 0.5);
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card-wrapper.pinned .conv-card {
-    border: 1px solid rgba(42, 122, 122, 0.55);
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .pin-indicator {
-    color: #2A7A7A;
   }
 }

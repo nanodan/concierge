@@ -55,7 +55,7 @@
   border-radius: 14px;
   cursor: pointer;
   background: var(--surface);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -109,8 +109,12 @@
 }
 
 .conv-card-wrapper.pinned .conv-card::before {
-  opacity: 0.8;
-  background: var(--accent-light);
+  opacity: 1;
+  background: var(--pinned-bg);
+}
+
+.conv-card-wrapper.pinned .conv-card {
+  border-color: var(--pinned-border);
 }
 
 .conv-card-top {
@@ -446,7 +450,7 @@
   padding: 10px 16px;
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--scope-header-color);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
@@ -822,7 +826,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px 4px;
-  color: var(--text-secondary);
+  color: var(--scope-header-color);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

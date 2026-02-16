@@ -52,6 +52,12 @@
   --user-bubble-end: var(--palette-coral-deep);
   --assistant-bubble: var(--palette-navy-mid);
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-coral);
+  --card-border: rgba(224, 139, 109, 0.5);
+  --pinned-border: rgba(224, 139, 109, 0.55);
+  --pinned-bg: rgba(224, 139, 109, 0.1);
+
   /* === Alpha Variants (for animations, shadows, glows) === */
   --accent-alpha-8: rgba(224, 139, 109, 0.08);
   --accent-alpha-12: rgba(224, 139, 109, 0.12);
@@ -152,6 +158,12 @@ html[data-theme="light"] {
   /* === Message Bubbles === */
   --assistant-bubble: #F5F2EF;
 
+  /* === Semantic: List View === */
+  --scope-header-color: #C47058;
+  --card-border: rgba(196, 112, 88, 0.5);
+  --pinned-border: rgba(196, 112, 88, 0.55);
+  --pinned-bg: rgba(196, 112, 88, 0.1);
+
   /* === Alpha Variants (light mode adjustments) === */
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
@@ -205,6 +217,11 @@ html[data-theme="light"] {
     --glass-bg: rgba(255, 252, 248, 0.85);
     --glass-border: rgba(46, 54, 63, 0.12);
     --assistant-bubble: #F5F2EF;
+
+    --scope-header-color: #C47058;
+    --card-border: rgba(196, 112, 88, 0.5);
+    --pinned-border: rgba(196, 112, 88, 0.55);
+    --pinned-bg: rgba(196, 112, 88, 0.1);
 
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);

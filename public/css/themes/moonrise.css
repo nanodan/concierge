@@ -54,6 +54,12 @@
   --user-bubble-end: #4A5D40;
   --assistant-bubble: var(--palette-forest-mid);
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-mustard);
+  --card-border: rgba(212, 160, 58, 0.5);
+  --pinned-border: rgba(212, 160, 58, 0.55);
+  --pinned-bg: rgba(212, 160, 58, 0.1);
+
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(212, 160, 58, 0.08);
   --accent-alpha-12: rgba(212, 160, 58, 0.12);
@@ -149,6 +155,12 @@ html[data-theme="light"] {
 
   --assistant-bubble: #F5F3ED;
 
+  /* === Semantic: List View === */
+  --scope-header-color: #B8860B;
+  --card-border: rgba(184, 134, 11, 0.5);
+  --pinned-border: rgba(184, 134, 11, 0.55);
+  --pinned-bg: rgba(184, 134, 11, 0.1);
+
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
 
@@ -195,6 +207,11 @@ html[data-theme="light"] {
     --glass-bg: rgba(255, 254, 248, 0.85);
     --glass-border: rgba(92, 70, 51, 0.12);
     --assistant-bubble: #F5F3ED;
+
+    --scope-header-color: #B8860B;
+    --card-border: rgba(184, 134, 11, 0.5);
+    --pinned-border: rgba(184, 134, 11, 0.55);
+    --pinned-bg: rgba(184, 134, 11, 0.1);
 
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);

@@ -46,6 +46,12 @@
   --user-bubble-end: #C85060;
   --assistant-bubble: #2A1E1E;
 
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-gold);
+  --card-border: rgba(100, 70, 70, 0.5);
+  --pinned-border: rgba(196, 163, 90, 0.6);
+  --pinned-bg: rgba(196, 163, 90, 0.12);
+
   /* === Alpha Variants === */
   --accent-alpha-8: rgba(232, 112, 126, 0.08);
   --accent-alpha-12: rgba(232, 112, 126, 0.12);
@@ -100,7 +106,7 @@
 
   /* === Component: Code Blocks === */
   --code-bg: #140E0D;
-  --code-header-bg: #2A1E1E;
+  --code-header-bg: #3D2D2D;
   --code-inline-bg: rgba(232, 112, 126, 0.18);
 
   /* === Component: Gradient Mesh === */
@@ -140,6 +146,12 @@ html[data-theme="light"] {
 
   /* === Message Bubbles === */
   --assistant-bubble: #EEDAD5;
+
+  /* === List View === */
+  --scope-header-color: #A08030;
+  --card-border: rgba(180, 140, 140, 0.5);
+  --pinned-border: rgba(160, 128, 48, 0.6);
+  --pinned-bg: rgba(160, 128, 48, 0.1);
 
   /* === Alpha Variants === */
   --white-alpha-6: rgba(0, 0, 0, 0.03);
@@ -195,6 +207,10 @@ html[data-theme="light"] {
     --glass-bg: rgba(255, 250, 248, 0.95);
     --glass-border: rgba(198, 93, 123, 0.18);
     --assistant-bubble: #EEDAD5;
+    --scope-header-color: #A08030;
+    --card-border: rgba(180, 140, 140, 0.5);
+    --pinned-border: rgba(160, 128, 48, 0.6);
+    --pinned-bg: rgba(160, 128, 48, 0.1);
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);
     --code-bg: #E8D0CC;
@@ -216,74 +232,5 @@ html[data-theme="light"] {
     --brand-icon-color: #C65D7B;
     --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
     --theme-color: #F8EDE8;
-  }
-}
-
-/* ========== BUDAPEST-SPECIFIC OVERRIDES ========== */
-/* Gold accents for scope headers and card borders */
-
-/* Scope headers and stack headers use gold instead of muted text */
-.scope-header,
-.stack-header {
-  color: #C4A35A;
-}
-
-/* All conversation cards get visible borders */
-.conv-card {
-  border: 1px solid rgba(100, 70, 70, 0.5);
-}
-
-/* Pinned card border uses gold */
-.conv-card-wrapper.pinned .conv-card {
-  border: 1px solid rgba(196, 163, 90, 0.6);
-}
-
-.conv-card-wrapper.pinned .conv-card::before {
-  background: rgba(196, 163, 90, 0.12);
-}
-
-/* Pin icon uses gold */
-.pin-indicator {
-  color: #C4A35A;
-}
-
-/* Light mode adjustments */
-html[data-theme="light"] .scope-header,
-html[data-theme="light"] .stack-header {
-  color: #A08030;
-}
-
-html[data-theme="light"] .conv-card {
-  border: 1px solid rgba(180, 140, 140, 0.5);
-}
-
-html[data-theme="light"] .conv-card-wrapper.pinned .conv-card {
-  border: 1px solid rgba(160, 128, 48, 0.6);
-}
-
-html[data-theme="light"] .conv-card-wrapper.pinned .conv-card::before {
-  background: rgba(160, 128, 48, 0.1);
-}
-
-html[data-theme="light"] .pin-indicator {
-  color: #A08030;
-}
-
-@media (prefers-color-scheme: light) {
-  html:not([data-theme="dark"]):not([data-theme="light"]) .scope-header,
-  html:not([data-theme="dark"]):not([data-theme="light"]) .stack-header {
-    color: #A08030;
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card {
-    border: 1px solid rgba(180, 140, 140, 0.5);
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card-wrapper.pinned .conv-card {
-    border: 1px solid rgba(160, 128, 48, 0.6);
-  }
-
-  html:not([data-theme="dark"]):not([data-theme="light"]) .pin-indicator {
-    color: #A08030;
   }
 }

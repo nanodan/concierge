@@ -128,30 +128,6 @@ const bellQuotes = {
     "That's an endangered species at most.",
     "You know I'm not good with those things.",
   ],
-  tenenbaums: [
-    "I've had a rough year, dad.",
-    "Anybody interested in grabbing a couple of burgers and hittin' the cemetery?",
-    "Please stop belittling me.",
-    "I saved Latin. What did you ever do?",
-    "I'm very sorry for your loss. Your mother was a terribly attractive woman.",
-    "Immediately after making this statement, Royal realized that it was true.",
-    "This is my adopted daughter, Margot.",
-    "Four minutes, forty-eight seconds. We're all dead. Burned to a crisp.",
-    "You want to talk some jive? I'll talk some jive.",
-    "I've always wanted to be a Tenenbaum.",
-  ],
-  claude: [
-    "At your service!",
-    "How may I assist?",
-    "Thinking deeply...",
-    "Consider it done.",
-    "Ready when you are.",
-    "Happy to help!",
-    "Let's figure this out together.",
-    "Interesting question...",
-    "On it!",
-    "What can I do for you?",
-  ],
   monokai: [
     "Hello, World!",
     "// TODO: ring bell",
@@ -196,10 +172,10 @@ function ringBell(bellElement) {
   const themeLink = document.getElementById('color-theme-link');
   const themePath = themeLink?.href || '';
   const themeMatch = themePath.match(/themes\/([^.]+)\.css/);
-  const theme = themeMatch ? themeMatch[1] : 'claude';
+  const theme = themeMatch ? themeMatch[1] : 'darjeeling';
 
-  // Get quotes for this theme (fallback to claude)
-  const quotes = bellQuotes[theme] || bellQuotes.claude;
+  // Get quotes for this theme (fallback to darjeeling)
+  const quotes = bellQuotes[theme] || bellQuotes.darjeeling;
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
   // Trigger animation

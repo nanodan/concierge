@@ -1,14 +1,12 @@
-const CACHE_NAME = 'concierge-v80';
+const CACHE_NAME = 'concierge-v84';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
   '/css/themes/darjeeling.css',
-  '/css/themes/claude.css',
   '/css/themes/budapest.css',
   '/css/themes/moonrise.css',
   '/css/themes/aquatic.css',
-  '/css/themes/tenenbaums.css',
   '/css/themes/solarized.css',
   '/css/themes/catppuccin.css',
   '/css/base.css',
