@@ -549,6 +549,23 @@ export function renderConversationList(items) {
       }
     });
   });
+
+  // Sync collapse/expand all button state
+  syncCollapseButtonState();
+}
+
+/**
+ * Sync the collapse/expand all button state with current scope collapse status.
+ * Called at the end of renderConversationList to keep button in sync.
+ */
+function syncCollapseButtonState() {
+  const collapseAllBtn = document.getElementById('collapse-all-btn');
+  if (!collapseAllBtn) return;
+  const scopes = state.getAllScopes();
+  const allCollapsed = state.areAllCollapsed(scopes);
+  collapseAllBtn.classList.toggle('active', allCollapsed);
+  collapseAllBtn.title = allCollapsed ? 'Expand all' : 'Collapse all';
+  collapseAllBtn.setAttribute('aria-label', allCollapsed ? 'Expand all' : 'Collapse all');
 }
 
 // --- Swipe gesture handling ---

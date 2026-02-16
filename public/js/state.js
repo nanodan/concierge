@@ -363,8 +363,16 @@ export function setStackExpanded(rootId, expanded) {
 }
 
 /**
+ * Get all unique scopes (cwd paths) from conversations.
+ * @returns {string[]} - Array of unique scope paths
+ */
+export function getAllScopes() {
+  return [...new Set(conversations.map(c => c.cwd || 'Unknown'))];
+}
+
+/**
  * Collapse all scope groups and fork stacks.
- * @param {Array} scopes - Array of scope paths to collapse
+ * @param {string[]} scopes - Array of scope paths to collapse
  */
 export function collapseAll(scopes) {
   // Collapse all scopes
@@ -379,7 +387,7 @@ export function collapseAll(scopes) {
 
 /**
  * Expand all scope groups.
- * @param {Array} scopes - Array of scope paths to expand
+ * @param {string[]} scopes - Array of scope paths to expand
  */
 export function expandAll(scopes) {
   // Expand all scopes
@@ -392,7 +400,7 @@ export function expandAll(scopes) {
 
 /**
  * Check if all scopes are collapsed.
- * @param {Array} scopes - Array of scope paths to check
+ * @param {string[]} scopes - Array of scope paths to check
  * @returns {boolean}
  */
 export function areAllCollapsed(scopes) {

@@ -1,7 +1,7 @@
 // --- Main entry point ---
 // This module imports all other modules and initializes the application
 
-import { initToast, initDialog, apiFetch } from './utils.js';
+import { initToast, initDialog, apiFetch, haptic } from './utils.js';
 import { initWebSocket, connectWS, forceReconnect } from './websocket.js';
 import * as state from './state.js';
 import {
@@ -387,14 +387,7 @@ connectWS();
 loadModels();
 loadConversations().then(() => {
   // Sync collapse button state after conversations load
-  if (collapseAllBtn) {
-    const scopes = [...new Set(state.conversations.map(c => c.cwd || 'Unknown'))];
-    if (state.areAllCollapsed(scopes)) {
-      collapseAllBtn.classList.add('active');
-      collapseAllBtn.title = 'Expand all';
-      collapseAllBtn.setAttribute('aria-label', 'Expand all');
-    }
-  }
+  updateCollapseButtonState();
 });
 
 if ('serviceWorker' in navigator) {
@@ -450,25 +443,33 @@ if (branchesBtn) {
   });
 }
 
+/**
+ * Update the collapse/expand all button state based on current scope collapse status.
+ * Exported for use in renderConversationList to keep button in sync.
+ */
+export function updateCollapseButtonState() {
+  if (!collapseAllBtn) return;
+  const scopes = state.getAllScopes();
+  const allCollapsed = state.areAllCollapsed(scopes);
+  collapseAllBtn.classList.toggle('active', allCollapsed);
+  collapseAllBtn.title = allCollapsed ? 'Expand all' : 'Collapse all';
+  collapseAllBtn.setAttribute('aria-label', allCollapsed ? 'Expand all' : 'Collapse all');
+}
+
 // Collapse/expand all button handler
 if (collapseAllBtn) {
   collapseAllBtn.addEventListener('click', () => {
-    // Get all current scopes from conversations
-    const scopes = [...new Set(state.conversations.map(c => c.cwd || 'Unknown'))];
+    haptic();
+    const scopes = state.getAllScopes();
 
     if (state.areAllCollapsed(scopes)) {
       // Everything is collapsed, expand all
       state.expandAll(scopes);
-      collapseAllBtn.classList.remove('active');
-      collapseAllBtn.title = 'Collapse all';
-      collapseAllBtn.setAttribute('aria-label', 'Collapse all');
     } else {
       // Some things are expanded, collapse all
       state.collapseAll(scopes);
-      collapseAllBtn.classList.add('active');
-      collapseAllBtn.title = 'Expand all';
-      collapseAllBtn.setAttribute('aria-label', 'Expand all');
     }
+    updateCollapseButtonState();
     renderConversationList();
   });
 }
