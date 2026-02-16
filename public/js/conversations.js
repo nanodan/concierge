@@ -10,6 +10,7 @@ import {
   LONG_PRESS_DURATION,
   HAPTIC_LIGHT,
 } from './constants.js';
+import { closeFilePanel } from './file-panel.js';
 
 // DOM elements (set by init)
 let listView = null;
@@ -739,6 +740,8 @@ export function triggerSearch() {
 }
 
 export async function openConversation(id) {
+  // Close file panel when switching conversations
+  closeFilePanel();
   state.setCurrentConversationId(id);
   state.deleteUnread(id);
   // Clear any text from previous conversation

@@ -125,6 +125,16 @@ const aheadBehindBadge = document.getElementById('ahead-behind-badge');
 const historyTab = document.getElementById('history-tab');
 const historyView = document.getElementById('history-view');
 const historyList = document.getElementById('history-list');
+const previewTab = document.getElementById('preview-tab');
+const previewView = document.getElementById('preview-view');
+const previewEmpty = document.getElementById('preview-empty');
+const previewRunning = document.getElementById('preview-running');
+const previewMessage = document.getElementById('preview-message');
+const previewStartBtn = document.getElementById('preview-start-btn');
+const previewType = document.getElementById('preview-type');
+const previewUrl = document.getElementById('preview-url');
+const previewOpenBtn = document.getElementById('preview-open-btn');
+const previewStopBtn = document.getElementById('preview-stop-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -318,7 +328,17 @@ initFilePanel({
   aheadBehindBadge,
   historyTab,
   historyView,
-  historyList
+  historyList,
+  previewTab,
+  previewView,
+  previewEmpty,
+  previewRunning,
+  previewMessage,
+  previewStartBtn,
+  previewType,
+  previewUrl,
+  previewOpenBtn,
+  previewStopBtn
 });
 
 // Initialize branches view
