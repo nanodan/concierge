@@ -513,6 +513,17 @@ html[data-theme="light"] .code-block::before {
   30% { opacity: 1; transform: scale(1); }
 }
 
+/* Thinking timer */
+.typing-timer {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.typing-timer.stale {
+  color: var(--warning);
+}
+
 /* Message action buttons container */
 .msg-action-btns {
   display: flex;

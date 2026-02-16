@@ -2,7 +2,7 @@
 // This module imports all other modules and initializes the application
 
 import { initToast, initDialog, apiFetch } from './utils.js';
-import { initWebSocket, connectWS } from './websocket.js';
+import { initWebSocket, connectWS, forceReconnect } from './websocket.js';
 import * as state from './state.js';
 import {
   initConversations,
@@ -196,6 +196,12 @@ state.initStatusElements({
 initWebSocket({
   reconnectBanner
 });
+
+// Retry button for reconnection
+const reconnectRetryBtn = document.getElementById('reconnect-retry-btn');
+if (reconnectRetryBtn) {
+  reconnectRetryBtn.addEventListener('click', forceReconnect);
+}
 
 // Initialize conversations
 initConversations({

@@ -36,7 +36,10 @@ function buildMessageMeta(msg) {
   if (msg.inputTokens != null) {
     meta += ` &middot; ${formatTokens(msg.inputTokens)} in / ${formatTokens(msg.outputTokens)} out`;
   }
-  if (msg.incomplete) {
+  // Show incomplete indicator if explicitly marked OR if assistant message is missing cost/tokens
+  // (retroactive detection for messages saved before we added the incomplete flag)
+  const isIncomplete = msg.incomplete || (msg.role === 'assistant' && msg.cost == null && msg.inputTokens == null);
+  if (isIncomplete) {
     meta += ` <span class="incomplete-indicator" title="Response ended without completion signal">${INCOMPLETE_ICON_SVG}</span>`;
   }
   return meta;
@@ -327,7 +330,7 @@ export function finalizeMessage(data) {
 
   if (streamingMessageEl) {
     const finalText = data.text || state.getStreamingText();
-    const meta = buildMessageMeta({ timestamp: Date.now(), ...data });
+    const meta = buildMessageMeta({ role: 'assistant', timestamp: Date.now(), ...data });
     const actionBtns = buildActionButtons({ includeTTS: true, includeRegen: true });
     streamingMessageEl.innerHTML = renderMarkdown(finalText) + `<div class="meta">${meta}</div>${actionBtns}`;
     enhanceCodeBlocks(streamingMessageEl);

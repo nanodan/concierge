@@ -522,13 +522,65 @@ export function getLoadMoreBtn() {
   return loadMoreBtn;
 }
 
+// Thinking timer state
+let thinkingStartTime = null;
+let lastActivityTime = null;
+let thinkingTimerInterval = null;
+const STALE_THRESHOLD = 30000; // 30 seconds without activity
+
+function formatElapsed(ms) {
+  const seconds = Math.floor(ms / 1000);
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+}
+
+function updateThinkingTimer() {
+  if (!typingIndicator || !thinkingStartTime) return;
+  const timerEl = typingIndicator.querySelector('.typing-timer');
+  if (!timerEl) return;
+
+  const elapsed = Date.now() - thinkingStartTime;
+  const sinceLastActivity = lastActivityTime ? Date.now() - lastActivityTime : 0;
+
+  if (sinceLastActivity > STALE_THRESHOLD) {
+    timerEl.textContent = `${formatElapsed(elapsed)} (no activity ${formatElapsed(sinceLastActivity)})`;
+    timerEl.classList.add('stale');
+  } else {
+    timerEl.textContent = formatElapsed(elapsed);
+    timerEl.classList.remove('stale');
+  }
+}
+
+export function recordActivity() {
+  lastActivityTime = Date.now();
+}
+
 export function setThinking(thinking) {
   if (typingIndicator) {
     typingIndicator.classList.toggle('hidden', !thinking);
-    // Reset status text when stopping
+    // Reset status text and timer when stopping
     if (!thinking) {
       const statusEl = typingIndicator.querySelector('.typing-status');
       if (statusEl) statusEl.textContent = '';
+      const timerEl = typingIndicator.querySelector('.typing-timer');
+      if (timerEl) {
+        timerEl.textContent = '';
+        timerEl.classList.remove('stale');
+      }
+      // Clear timer
+      if (thinkingTimerInterval) {
+        clearInterval(thinkingTimerInterval);
+        thinkingTimerInterval = null;
+      }
+      thinkingStartTime = null;
+      lastActivityTime = null;
+    } else {
+      // Start timer
+      thinkingStartTime = Date.now();
+      lastActivityTime = Date.now();
+      updateThinkingTimer();
+      thinkingTimerInterval = setInterval(updateThinkingTimer, 1000);
     }
   }
   if (sendBtn) {

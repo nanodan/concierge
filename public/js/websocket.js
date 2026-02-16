@@ -22,6 +22,17 @@ export function getWS() {
 }
 
 export function connectWS() {
+  // Clean up old WebSocket if exists
+  if (ws) {
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onclose = null;
+    ws.onerror = null;
+    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      ws.close();
+    }
+  }
+
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}`);
 
@@ -56,8 +67,15 @@ export function connectWS() {
     const jitter = baseDelay * (0.5 + Math.random()); // 50-150% of base delay
     reconnectAttempt++;
     reconnectTimer = setTimeout(connectWS, jitter);
-    // Show reconnect banner after first failed attempt
-    if (wsHasConnected && reconnectBanner) reconnectBanner.classList.remove('hidden');
+    // Show reconnect banner with attempt info
+    if (wsHasConnected && reconnectBanner) {
+      reconnectBanner.classList.remove('hidden');
+      const textEl = reconnectBanner.querySelector('#reconnect-text');
+      if (textEl) {
+        const nextRetry = Math.round(jitter / 1000);
+        textEl.textContent = `Reconnecting... (attempt ${reconnectAttempt}, retry in ${nextRetry}s)`;
+      }
+    }
   };
 
   ws.onerror = () => {
@@ -65,10 +83,18 @@ export function connectWS() {
   };
 }
 
+// Manual reconnect (for retry button)
+export function forceReconnect() {
+  clearTimeout(reconnectTimer);
+  reconnectAttempt = 0;
+  connectWS();
+}
+
 // Handler map for WebSocket message types
 const messageHandlers = {
   delta(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
+      state.recordActivity();
       appendDelta(data.text);
     }
   },
@@ -124,18 +150,21 @@ const messageHandlers = {
 
   thinking(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
+      state.recordActivity();
       state.updateThinkingText(data.text);
     }
   },
 
   tool_start(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
+      state.recordActivity();
       state.updateToolStatus(data.tool);
     }
   },
 
   tool_result(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
+      state.recordActivity();
       state.clearToolStatus();
     }
   },
