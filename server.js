@@ -229,11 +229,17 @@ async function handleEdit(ws, msg) {
     messages[messageIndex].text = text;
     messages[messageIndex].timestamp = Date.now();
 
+    // Find session ID from messages (like fork does) to preserve context
+    let editSessionId = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sessionId) { editSessionId = messages[i].sessionId; break; }
+    }
+
     const forkedConv = {
       id: newId,
       name: `${conv.name} (edit)`,
       cwd: conv.cwd,
-      claudeSessionId: null, // Fresh session for the edit
+      claudeSessionId: editSessionId, // Reuse session to preserve history
       messages,
       status: 'thinking',
       archived: false,
