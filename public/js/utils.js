@@ -24,6 +24,19 @@ export function formatTime(ts) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+export function formatAge(timestamp) {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  if (minutes > 0) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
+  return 'Just now';
+}
+
 export function formatTokens(count) {
   if (count == null) return '0';
   if (count >= 1000) return (count / 1000).toFixed(1) + 'k';

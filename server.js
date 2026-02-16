@@ -72,6 +72,8 @@ wss.on('connection', (ws) => {
       handleRegenerate(ws, msg);
     } else if (msg.type === 'edit') {
       handleEdit(ws, msg);
+    } else if (msg.type === 'resend') {
+      handleResend(ws, msg);
     }
   });
 });
@@ -272,6 +274,99 @@ async function handleEdit(ws, msg) {
     }, memories);
   } catch (err) {
     console.error('[WS] handleEdit error:', err);
+    const errorConvId = newId || conversationId;
+    ws.send(JSON.stringify({ type: 'error', conversationId: errorConvId, error: 'Internal server error' }));
+    await resetConversationOnError(errorConvId);
+  }
+}
+
+async function handleResend(ws, msg) {
+  const { conversationId, messageIndex } = msg;
+  let newId = null;
+
+  try {
+    const conv = await ensureMessages(conversationId);
+    if (!conv) {
+      ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
+      return;
+    }
+
+    if (hasActiveProcess(conversationId)) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+      return;
+    }
+
+    if (typeof messageIndex !== 'number' || messageIndex < 0 || messageIndex >= conv.messages.length) {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Invalid message index' }));
+      return;
+    }
+
+    const targetMsg = conv.messages[messageIndex];
+    if (targetMsg.role !== 'user') {
+      ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Can only resend user messages' }));
+      return;
+    }
+
+    const isLastMessage = messageIndex === conv.messages.length - 1;
+
+    if (isLastMessage) {
+      // Resend in place - just spawn Claude on this message
+      conv.status = 'thinking';
+      await saveConversation(conversationId);
+      broadcastStatus(conversationId, 'thinking');
+
+      const memories = await loadConversationMemories(conv);
+      spawnClaude(ws, conversationId, conv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
+        onSave: saveConversation,
+        broadcastStatus,
+      }, memories);
+    } else {
+      // Fork from this message and spawn Claude on the fork
+      newId = uuidv4();
+      const messages = conv.messages.slice(0, messageIndex + 1);
+
+      // Find session ID from messages to preserve context
+      let forkSessionId = null;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].sessionId) { forkSessionId = messages[i].sessionId; break; }
+      }
+
+      const forkedConv = {
+        id: newId,
+        name: `${conv.name} (resend)`,
+        cwd: conv.cwd,
+        claudeSessionId: forkSessionId,
+        messages,
+        status: 'thinking',
+        archived: false,
+        pinned: false,
+        autopilot: conv.autopilot,
+        model: conv.model,
+        createdAt: Date.now(),
+        parentId: conversationId,
+        forkIndex: messageIndex,
+      };
+      conversations.set(newId, forkedConv);
+      await saveConversation(newId);
+
+      // Notify client of the fork
+      ws.send(JSON.stringify({
+        type: 'resend_forked',
+        originalConversationId: conversationId,
+        conversationId: newId,
+        conversation: convMeta(forkedConv),
+      }));
+
+      broadcastStatus(newId, 'thinking');
+
+      const memories = await loadConversationMemories(forkedConv);
+      spawnClaude(ws, newId, forkedConv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
+        onSave: saveConversation,
+        broadcastStatus,
+      }, memories);
+    }
+  } catch (err) {
+    console.error('[WS] handleResend error:', err);
     const errorConvId = newId || conversationId;
     ws.send(JSON.stringify({ type: 'error', conversationId: errorConvId, error: 'Internal server error' }));
     await resetConversationOnError(errorConvId);

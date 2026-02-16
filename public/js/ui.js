@@ -1,6 +1,7 @@
 // --- UI interactions (core message/input handling) ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, formatTokens, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
+import { formatTime, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
+import { HEADER_COMPACT_ENTER, HEADER_COMPACT_EXIT, MESSAGE_INPUT_MAX_HEIGHT } from './constants.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
@@ -64,6 +65,13 @@ import {
   setupFileBrowserEventListeners,
 } from './ui/file-browser.js';
 
+import {
+  initContextBar,
+  setupContextBarEventListeners,
+  updateContextBar,
+  showCompressionPrompt,
+} from './ui/context-bar.js';
+
 // Re-export for backward compatibility
 export {
   showMemoryView,
@@ -73,6 +81,8 @@ export {
   closeCapabilitiesModal,
   openFileBrowser,
   closeFileBrowser,
+  updateContextBar,
+  showCompressionPrompt,
 };
 
 // Re-export memory API functions
@@ -220,10 +230,6 @@ let attachmentPreview = null;
 let modeBadge = null;
 let modelBtn = null;
 let modelDropdown = null;
-let contextBar = null;
-let contextBarFill = null;
-let contextBarLabel = null;
-let contextBreakdown = null;
 let jumpToBottomBtn = null;
 let msgActionPopup = null;
 let actionPopupOverlay = null;
@@ -284,10 +290,6 @@ export function initUI(elements) {
   modeBadge = elements.modeBadge;
   modelBtn = elements.modelBtn;
   modelDropdown = elements.modelDropdown;
-  contextBar = elements.contextBar;
-  contextBarFill = elements.contextBarFill;
-  contextBarLabel = elements.contextBarLabel;
-  contextBreakdown = document.getElementById('context-breakdown');
   jumpToBottomBtn = elements.jumpToBottomBtn;
   msgActionPopup = elements.msgActionPopup;
   actionPopupOverlay = elements.actionPopupOverlay;
@@ -406,12 +408,18 @@ export function initUI(elements) {
     fileBrowserUploadBtn: elements.fileBrowserUploadBtn,
     fileBrowserFileInput: elements.fileBrowserFileInput,
   });
+
+  initContextBar({
+    contextBar: elements.contextBar,
+    contextBarFill: elements.contextBarFill,
+    contextBarLabel: elements.contextBarLabel,
+  });
 }
 
 // --- Auto resize input ---
 export function autoResizeInput() {
   messageInput.style.height = 'auto';
-  messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+  messageInput.style.height = Math.min(messageInput.scrollHeight, MESSAGE_INPUT_MAX_HEIGHT) + 'px';
 }
 
 // --- Populate recent directories ---
@@ -631,6 +639,16 @@ function showMsgActionPopup(x, y, el, index, isUser) {
     editBtn.textContent = 'Edit';
     editBtn.addEventListener('click', () => { hideMsgActionPopup(); startEditMessage(el, index); });
     msgActionPopup.appendChild(editBtn);
+
+    const resendBtn = document.createElement('button');
+    resendBtn.className = 'action-popup-btn';
+    resendBtn.textContent = 'Resend';
+    resendBtn.addEventListener('click', () => {
+      haptic();
+      hideMsgActionPopup();
+      resendMessage(index);
+    });
+    msgActionPopup.appendChild(resendBtn);
   }
 
   const copyBtn = document.createElement('button');
@@ -751,7 +769,20 @@ export function regenerateMessage() {
   ws.send(JSON.stringify({ type: 'regenerate', conversationId: currentConversationId }));
 }
 
-// --- Model & Mode & Context Bar ---
+function resendMessage(messageIndex) {
+  const currentConversationId = state.getCurrentConversationId();
+  const ws = getWS();
+  if (!currentConversationId || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  state.setThinking(true);
+  ws.send(JSON.stringify({
+    type: 'resend',
+    conversationId: currentConversationId,
+    messageIndex,
+  }));
+}
+
+// --- Model & Mode Badges ---
 export function updateModeBadge(isAutopilot) {
   modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
   modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
@@ -763,204 +794,6 @@ export function updateModelBadge(modelId) {
   const models = state.getModels();
   const model = models.find(m => m.id === modelId);
   modelBtn.textContent = model ? model.name : modelId;
-}
-
-export function updateContextBar(inputTokens, outputTokens, modelId) {
-  const models = state.getModels();
-  const model = models.find(m => m.id === modelId);
-  const contextLimit = model ? model.context : 200000;
-  const totalTokens = (inputTokens || 0) + (outputTokens || 0);
-  const pct = Math.min((totalTokens / contextLimit) * 100, 100);
-
-  contextBar.classList.remove('hidden', 'warning', 'danger');
-  contextBarFill.style.width = pct + '%';
-  contextBarLabel.textContent = `${formatTokens(totalTokens)} / ${formatTokens(contextLimit)}`;
-
-  if (pct >= 90) {
-    contextBar.classList.add('danger');
-  } else if (pct >= 75) {
-    contextBar.classList.add('warning');
-  }
-}
-
-// Toggle context breakdown panel
-function toggleContextBreakdown() {
-  const isExpanded = contextBar.getAttribute('aria-expanded') === 'true';
-  if (isExpanded) {
-    hideContextBreakdown();
-  } else {
-    showContextBreakdown();
-  }
-}
-
-// Hide context breakdown panel
-function hideContextBreakdown() {
-  contextBar.setAttribute('aria-expanded', 'false');
-  contextBreakdown.classList.add('hidden');
-}
-
-// Show context breakdown panel with token details
-function showContextBreakdown() {
-  if (!contextBreakdown) return;
-
-  const messages = state.getAllMessages();
-  const memories = state.getMemories();
-  const models = state.getModels();
-  const modelId = state.getCurrentModel();
-  const model = models.find(m => m.id === modelId);
-  const contextLimit = model ? model.context : 200000;
-
-  // Estimate system prompt (~12k base + memories)
-  const memoryTokens = memories.reduce((sum, m) => {
-    // Rough estimate: ~4 chars per token
-    return sum + Math.ceil((m.text || '').length / 4);
-  }, 0);
-  const systemTokens = 12000 + memoryTokens;
-
-  // Get last response's input tokens (actual context used)
-  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.inputTokens);
-  const currentContext = lastAssistant
-    ? (lastAssistant.inputTokens || 0) + (lastAssistant.outputTokens || 0)
-    : 0;
-
-  // Message count and oldest message
-  const msgCount = messages.length;
-  const oldestMsg = messages[0]?.timestamp;
-  const oldestAge = oldestMsg ? formatAge(oldestMsg) : 'N/A';
-
-  // Calculate percentage
-  const pct = Math.min((currentContext / contextLimit) * 100, 100);
-  const pctClass = pct >= 90 ? 'danger' : pct >= 75 ? 'warning' : '';
-
-  // Count user vs assistant messages
-  const userMsgs = messages.filter(m => m.role === 'user').length;
-  const assistantMsgs = messages.filter(m => m.role === 'assistant').length;
-
-  // Estimate potential savings from compression (first 50% of messages)
-  const halfIndex = Math.floor(messages.length / 2);
-  const messagesToCompress = messages.slice(0, halfIndex);
-  const estimatedSavings = messagesToCompress.reduce((sum, m) => {
-    // Rough estimate based on text length
-    return sum + Math.ceil((m.text || '').length / 4);
-  }, 0);
-
-  contextBreakdown.innerHTML = `
-    <div class="context-breakdown-bar">
-      <div class="context-breakdown-bar-fill ${pctClass}" style="width: ${pct}%"></div>
-    </div>
-    <div class="context-breakdown-row">
-      <span class="context-breakdown-label">Current context</span>
-      <span class="context-breakdown-value">${formatTokens(currentContext)} / ${formatTokens(contextLimit)}</span>
-    </div>
-    <div class="context-breakdown-row">
-      <span class="context-breakdown-label">System prompt (est.)</span>
-      <span class="context-breakdown-value">~${formatTokens(systemTokens)}</span>
-    </div>
-    <div class="context-breakdown-row">
-      <span class="context-breakdown-label">Messages</span>
-      <span class="context-breakdown-value">${msgCount} (${userMsgs} you, ${assistantMsgs} Claude)</span>
-    </div>
-    <div class="context-breakdown-row">
-      <span class="context-breakdown-label">Oldest message</span>
-      <span class="context-breakdown-value">${oldestAge}</span>
-    </div>
-    ${pct >= 50 ? `
-      <div class="context-breakdown-actions">
-        <button class="compress-btn" id="compress-btn">
-          Compress conversation
-        </button>
-      </div>
-      <div class="compress-btn-hint">
-        Summarize ~${halfIndex} messages, save ~${formatTokens(estimatedSavings)} tokens
-      </div>
-    ` : ''}
-  `;
-
-  // Add compress button handler
-  const compressBtn = contextBreakdown.querySelector('#compress-btn');
-  if (compressBtn) {
-    compressBtn.addEventListener('click', () => {
-      haptic(15);
-      compressConversation();
-    });
-  }
-
-  contextBar.setAttribute('aria-expanded', 'true');
-  contextBreakdown.classList.remove('hidden');
-}
-
-// Format age from timestamp
-function formatAge(timestamp) {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} min${minutes > 1 ? 's' : ''} ago`;
-  return 'Just now';
-}
-
-// Compress conversation (calls API)
-async function compressConversation() {
-  const convId = state.getCurrentConversationId();
-  if (!convId) return;
-
-  const compressBtn = contextBreakdown.querySelector('#compress-btn');
-  if (compressBtn) {
-    compressBtn.disabled = true;
-    compressBtn.textContent = 'Compressing...';
-  }
-
-  try {
-    const res = await apiFetch(`/api/conversations/${convId}/compress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ threshold: 0.5 }),
-    });
-
-    if (!res || !res.ok) {
-      const data = res ? await res.json() : { error: 'Network error' };
-      showToast(data.error || 'Compression failed', 'error');
-      if (compressBtn) {
-        compressBtn.disabled = false;
-        compressBtn.textContent = 'Compress conversation';
-      }
-      return;
-    }
-
-    const data = await res.json();
-    showToast(`Compressed ${data.messagesSummarized} messages`);
-    hideContextBreakdown();
-
-    // Reload conversation to show updated messages
-    const { openConversation } = await import('./conversations.js');
-    openConversation(convId);
-  } catch (err) {
-    showToast('Compression failed: ' + err.message, 'error');
-    if (compressBtn) {
-      compressBtn.disabled = false;
-      compressBtn.textContent = 'Compress conversation';
-    }
-  }
-}
-
-// Show compression prompt when context is near limit
-export async function showCompressionPrompt(pct, totalTokens, contextLimit) {
-  state.setCompressionPromptShown(true);
-
-  const ok = await showDialog({
-    title: 'Context limit approaching',
-    message: `Your conversation is at ${Math.round(pct)}% of the ${formatTokens(contextLimit)} token limit. Would you like to compress older messages to free up space?\n\nThis will summarize earlier messages and start a fresh session while preserving context.`,
-    confirmLabel: 'Compress now',
-    cancelLabel: 'Not now',
-  });
-
-  if (ok) {
-    await compressConversation();
-  }
 }
 
 export async function switchModel(convId, modelId) {
@@ -1053,6 +886,7 @@ export function setupEventListeners(createConversation) {
   setupDirectoryBrowserEventListeners();
   setupCapabilitiesEventListeners();
   setupFileBrowserEventListeners(document.getElementById('general-files-btn'), haptic);
+  setupContextBarEventListeners();
 
   // Form submission
   inputForm.addEventListener('submit', (e) => {
@@ -1090,20 +924,6 @@ export function setupEventListeners(createConversation) {
     messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
     state.setUserHasScrolledUp(false);
     jumpToBottomBtn.classList.remove('visible');
-  });
-
-  // Context bar click to toggle breakdown
-  contextBar.addEventListener('click', () => {
-    haptic();
-    toggleContextBreakdown();
-  });
-
-  contextBar.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      haptic();
-      toggleContextBreakdown();
-    }
   });
 
   backBtn.addEventListener('click', () => {
@@ -1325,9 +1145,9 @@ export function setupEventListeners(createConversation) {
   // Scroll-linked compact header
   conversationList.addEventListener('scroll', () => {
     const scrollTop = conversationList.scrollTop;
-    if (scrollTop > 50 && !listHeader.classList.contains('compact')) {
+    if (scrollTop > HEADER_COMPACT_ENTER && !listHeader.classList.contains('compact')) {
       listHeader.classList.add('compact');
-    } else if (scrollTop <= 20 && listHeader.classList.contains('compact')) {
+    } else if (scrollTop <= HEADER_COMPACT_EXIT && listHeader.classList.contains('compact')) {
       listHeader.classList.remove('compact');
     }
   }, { passive: true });

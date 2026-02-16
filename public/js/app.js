@@ -1,8 +1,8 @@
 // --- Main entry point ---
 // This module imports all other modules and initializes the application
 
-import { initToast, initDialog, apiFetch } from './utils.js';
-import { initWebSocket, connectWS } from './websocket.js';
+import { initToast, initDialog, apiFetch, haptic } from './utils.js';
+import { initWebSocket, connectWS, forceReconnect } from './websocket.js';
 import * as state from './state.js';
 import {
   initConversations,
@@ -13,7 +13,10 @@ import {
   exitSelectionMode,
   selectAllConversations,
   bulkArchive,
-  bulkDelete
+  bulkDelete,
+  showListView,
+  openConversation,
+  renderConversationList
 } from './conversations.js';
 import {
   initUI,
@@ -160,6 +163,7 @@ const branchesBackBtn = document.getElementById('branches-back-btn');
 const branchesContent = document.getElementById('branches-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
+const collapseAllBtn = document.getElementById('collapse-all-btn');
 const _bulkActionBar = document.getElementById('bulk-action-bar');
 const bulkCancelBtn = document.getElementById('bulk-cancel-btn');
 const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
@@ -196,6 +200,12 @@ state.initStatusElements({
 initWebSocket({
   reconnectBanner
 });
+
+// Retry button for reconnection
+const reconnectRetryBtn = document.getElementById('reconnect-retry-btn');
+if (reconnectRetryBtn) {
+  reconnectRetryBtn.addEventListener('click', forceReconnect);
+}
 
 // Initialize conversations
 initConversations({
@@ -375,7 +385,10 @@ async function loadModels() {
 // --- Init ---
 connectWS();
 loadModels();
-loadConversations();
+loadConversations().then(() => {
+  // Sync collapse button state after conversations load
+  updateCollapseButtonState();
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -428,4 +441,65 @@ if (branchesBtn) {
   branchesBtn.addEventListener('click', () => {
     openBranchesFromChat();
   });
+}
+
+/**
+ * Update the collapse/expand all button state based on current scope collapse status.
+ * Exported for use in renderConversationList to keep button in sync.
+ */
+export function updateCollapseButtonState() {
+  if (!collapseAllBtn) return;
+  const scopes = state.getAllScopes();
+  const allCollapsed = state.areAllCollapsed(scopes);
+  collapseAllBtn.classList.toggle('active', allCollapsed);
+  collapseAllBtn.title = allCollapsed ? 'Expand all' : 'Collapse all';
+  collapseAllBtn.setAttribute('aria-label', allCollapsed ? 'Expand all' : 'Collapse all');
+}
+
+// Collapse/expand all button handler
+if (collapseAllBtn) {
+  collapseAllBtn.addEventListener('click', () => {
+    haptic();
+    const scopes = state.getAllScopes();
+
+    if (state.areAllCollapsed(scopes)) {
+      // Everything is collapsed, expand all
+      state.expandAll(scopes);
+    } else {
+      // Some things are expanded, collapse all
+      state.collapseAll(scopes);
+    }
+    updateCollapseButtonState();
+    renderConversationList();
+  });
+}
+
+// --- Browser history for Android back button support ---
+// Set initial state
+history.replaceState({ view: 'list' }, '', location.hash || '#');
+
+// Handle back button (popstate)
+window.addEventListener('popstate', (e) => {
+  const currentView = e.state?.view;
+
+  if (currentView === 'list' || !currentView) {
+    // Going back to list view
+    if (state.getCurrentConversationId()) {
+      showListView(true); // true = skip history update
+    }
+  } else if (currentView === 'chat' && e.state?.conversationId) {
+    // Going forward to chat view (rare, but handle it)
+    openConversation(e.state.conversationId);
+  }
+});
+
+// Handle initial load with hash (direct link to conversation)
+if (location.hash && location.hash.length > 1) {
+  const convId = location.hash.slice(1);
+  // Defer to let conversations load first
+  setTimeout(() => {
+    if (state.conversations.some(c => c.id === convId)) {
+      openConversation(convId);
+    }
+  }, 500);
 }

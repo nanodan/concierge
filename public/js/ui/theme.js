@@ -1,6 +1,7 @@
 // --- Theme management (light/dark/auto and color themes) ---
 import { haptic, showToast } from '../utils.js';
 import * as state from '../state.js';
+import { THEME_TRANSITION_DURATION } from '../constants.js';
 
 // DOM elements (set by init)
 let themeDropdown = null;
@@ -52,7 +53,7 @@ export function applyTheme(animate = false) {
   // Smooth transition when toggling themes
   if (animate) {
     document.documentElement.classList.add('theme-transitioning');
-    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350);
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), THEME_TRANSITION_DURATION);
   }
 
   document.documentElement.setAttribute('data-theme', effective);
@@ -194,7 +195,7 @@ export function applyColorTheme(animate = false) {
 
   if (animate) {
     document.documentElement.classList.add('theme-transitioning');
-    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 350);
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), THEME_TRANSITION_DURATION);
   }
 
   colorThemeLink.href = `/css/themes/${theme}.css`;
