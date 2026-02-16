@@ -15,7 +15,8 @@ import {
   bulkArchive,
   bulkDelete,
   showListView,
-  openConversation
+  openConversation,
+  renderConversationList
 } from './conversations.js';
 import {
   initUI,
@@ -162,6 +163,7 @@ const branchesBackBtn = document.getElementById('branches-back-btn');
 const branchesContent = document.getElementById('branches-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
+const collapseAllBtn = document.getElementById('collapse-all-btn');
 const _bulkActionBar = document.getElementById('bulk-action-bar');
 const bulkCancelBtn = document.getElementById('bulk-cancel-btn');
 const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
@@ -383,7 +385,17 @@ async function loadModels() {
 // --- Init ---
 connectWS();
 loadModels();
-loadConversations();
+loadConversations().then(() => {
+  // Sync collapse button state after conversations load
+  if (collapseAllBtn) {
+    const scopes = [...new Set(state.conversations.map(c => c.cwd || 'Unknown'))];
+    if (state.areAllCollapsed(scopes)) {
+      collapseAllBtn.classList.add('active');
+      collapseAllBtn.title = 'Expand all';
+      collapseAllBtn.setAttribute('aria-label', 'Expand all');
+    }
+  }
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
@@ -435,6 +447,29 @@ if (bulkDeleteBtn) {
 if (branchesBtn) {
   branchesBtn.addEventListener('click', () => {
     openBranchesFromChat();
+  });
+}
+
+// Collapse/expand all button handler
+if (collapseAllBtn) {
+  collapseAllBtn.addEventListener('click', () => {
+    // Get all current scopes from conversations
+    const scopes = [...new Set(state.conversations.map(c => c.cwd || 'Unknown'))];
+
+    if (state.areAllCollapsed(scopes)) {
+      // Everything is collapsed, expand all
+      state.expandAll(scopes);
+      collapseAllBtn.classList.remove('active');
+      collapseAllBtn.title = 'Collapse all';
+      collapseAllBtn.setAttribute('aria-label', 'Collapse all');
+    } else {
+      // Some things are expanded, collapse all
+      state.collapseAll(scopes);
+      collapseAllBtn.classList.add('active');
+      collapseAllBtn.title = 'Expand all';
+      collapseAllBtn.setAttribute('aria-label', 'Expand all');
+    }
+    renderConversationList();
   });
 }
 

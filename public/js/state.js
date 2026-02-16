@@ -362,6 +362,50 @@ export function setStackExpanded(rootId, expanded) {
   localStorage.setItem('expandedStacks', JSON.stringify([...expandedStacks]));
 }
 
+/**
+ * Collapse all scope groups and fork stacks.
+ * @param {Array} scopes - Array of scope paths to collapse
+ */
+export function collapseAll(scopes) {
+  // Collapse all scopes
+  for (const scope of scopes) {
+    collapsedScopes[scope] = true;
+  }
+  localStorage.setItem('collapsedScopes', JSON.stringify(collapsedScopes));
+  // Collapse all expanded stacks
+  expandedStacks.clear();
+  localStorage.setItem('expandedStacks', JSON.stringify([]));
+}
+
+/**
+ * Expand all scope groups.
+ * @param {Array} scopes - Array of scope paths to expand
+ */
+export function expandAll(scopes) {
+  // Expand all scopes
+  for (const scope of scopes) {
+    delete collapsedScopes[scope];
+  }
+  localStorage.setItem('collapsedScopes', JSON.stringify(collapsedScopes));
+  // Note: fork stacks stay collapsed by default (only expand on explicit user click)
+}
+
+/**
+ * Check if all scopes are collapsed.
+ * @param {Array} scopes - Array of scope paths to check
+ * @returns {boolean}
+ */
+export function areAllCollapsed(scopes) {
+  if (scopes.length === 0) return false;
+  // If any scope is expanded, return false
+  for (const scope of scopes) {
+    if (!collapsedScopes[scope]) return false;
+  }
+  // Also check if any stacks are expanded
+  if (expandedStacks.size > 0) return false;
+  return true;
+}
+
 export function addUnread(id) {
   unreadConversations.add(id);
   localStorage.setItem('unreadConversations', JSON.stringify([...unreadConversations]));
