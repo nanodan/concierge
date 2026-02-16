@@ -1,4 +1,4 @@
-const CACHE_NAME = 'concierge-v78';
+const CACHE_NAME = 'concierge-v80';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

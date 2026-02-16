@@ -125,93 +125,164 @@
 
 /* ========== LIGHT MODE ========== */
 html[data-theme="light"] {
-  --palette-navy-dark: #F0F5FA;
-  --palette-navy-mid: #E5EBF2;
-  --palette-navy-light: #FAFCFF;
-  --palette-navy-lighter: #D5DEE8;
-  --palette-navy-border: #C0CCD8;
-  --palette-sand: #1E2D40;
-  --palette-sand-muted: #4A5A6A;
+  --palette-navy-dark: #EDF3F8;
+  --palette-navy-mid: #E0E8F0;
+  --palette-navy-light: #F8FAFC;
+  --palette-navy-lighter: #CCD8E4;
+  --palette-navy-border: #A8B8C8;
+  --palette-sand: #0F1A28;
+  --palette-sand-muted: #3A4A5A;
 
-  --bg: #F0F5FA;
-  --bg-secondary: #E5EBF2;
-  --bg-tertiary: #D5DEE8;
-  --surface: #FAFCFF;
-  --input-bg: #FAFCFF;
+  --bg: #EDF3F8;
+  --bg-secondary: #E0E8F0;
+  --bg-tertiary: #CCD8E4;
+  --surface: #F8FAFC;
+  --input-bg: #F8FAFC;
 
-  --text: #1E2D40;
-  --text-secondary: #4A5A6A;
+  /* Darker text for better contrast */
+  --text: #0F1A28;
+  --text-secondary: #3A4A5A;
 
-  --border: #C0CCD8;
-  --glass-bg: rgba(250, 252, 255, 0.85);
-  --glass-border: rgba(30, 58, 95, 0.12);
+  /* More visible borders */
+  --border: #A8B8C8;
+  --glass-bg: rgba(248, 250, 252, 0.9);
+  --glass-border: rgba(15, 26, 40, 0.12);
 
-  --assistant-bubble: #F0F5FA;
+  --assistant-bubble: #E0E8F0;
 
-  --white-alpha-6: rgba(0, 0, 0, 0.03);
-  --white-alpha-10: rgba(0, 0, 0, 0.06);
+  --white-alpha-6: rgba(0, 0, 0, 0.04);
+  --white-alpha-10: rgba(0, 0, 0, 0.08);
 
-  --code-bg: #E5EBF2;
-  --code-header-bg: #D5DEE8;
-  --code-inline-bg: rgba(74, 155, 155, 0.1);
+  --code-bg: #E0E8F0;
+  --code-header-bg: #CCD8E4;
+  --code-inline-bg: rgba(74, 155, 155, 0.12);
 
-  --mesh-color-1: rgba(74, 155, 155, 0.06);
-  --mesh-color-2: rgba(226, 92, 69, 0.04);
-  --mesh-color-3: rgba(30, 58, 95, 0.05);
+  --mesh-color-1: rgba(74, 155, 155, 0.08);
+  --mesh-color-2: rgba(226, 92, 69, 0.05);
+  --mesh-color-3: rgba(30, 58, 95, 0.06);
 
   --syntax-keyword: #2A7A7A;
   --syntax-string: #3A8A80;
   --syntax-number: #C04535;
-  --syntax-comment: #7A8A9A;
+  --syntax-comment: #6A7A8A;
   --syntax-function: #B89530;
   --syntax-type: #2A8585;
   --syntax-variable: #C55545;
-  --syntax-operator: #4A5A6A;
+  --syntax-operator: #3A4A5A;
 
-  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-  --theme-color: #F0F5FA;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --theme-color: #EDF3F8;
 }
 
 /* Auto theme via media query */
 @media (prefers-color-scheme: light) {
   html:not([data-theme="dark"]):not([data-theme="light"]) {
-    --palette-navy-dark: #F0F5FA;
-    --palette-navy-mid: #E5EBF2;
-    --palette-navy-light: #FAFCFF;
-    --palette-navy-lighter: #D5DEE8;
-    --palette-navy-border: #C0CCD8;
-    --palette-sand: #1E2D40;
-    --palette-sand-muted: #4A5A6A;
+    --palette-navy-dark: #EDF3F8;
+    --palette-navy-mid: #E0E8F0;
+    --palette-navy-light: #F8FAFC;
+    --palette-navy-lighter: #CCD8E4;
+    --palette-navy-border: #A8B8C8;
+    --palette-sand: #0F1A28;
+    --palette-sand-muted: #3A4A5A;
 
-    --bg: #F0F5FA;
-    --bg-secondary: #E5EBF2;
-    --bg-tertiary: #D5DEE8;
-    --surface: #FAFCFF;
-    --input-bg: #FAFCFF;
-    --text: #1E2D40;
-    --text-secondary: #4A5A6A;
-    --border: #C0CCD8;
-    --glass-bg: rgba(250, 252, 255, 0.85);
-    --glass-border: rgba(30, 58, 95, 0.12);
-    --assistant-bubble: #F0F5FA;
+    --bg: #EDF3F8;
+    --bg-secondary: #E0E8F0;
+    --bg-tertiary: #CCD8E4;
+    --surface: #F8FAFC;
+    --input-bg: #F8FAFC;
+    --text: #0F1A28;
+    --text-secondary: #3A4A5A;
+    --border: #A8B8C8;
+    --glass-bg: rgba(248, 250, 252, 0.9);
+    --glass-border: rgba(15, 26, 40, 0.12);
+    --assistant-bubble: #E0E8F0;
 
-    --white-alpha-6: rgba(0, 0, 0, 0.03);
-    --white-alpha-10: rgba(0, 0, 0, 0.06);
-    --code-bg: #E5EBF2;
-    --code-header-bg: #D5DEE8;
-    --code-inline-bg: rgba(74, 155, 155, 0.1);
-    --mesh-color-1: rgba(74, 155, 155, 0.06);
-    --mesh-color-2: rgba(226, 92, 69, 0.04);
-    --mesh-color-3: rgba(30, 58, 95, 0.05);
+    --white-alpha-6: rgba(0, 0, 0, 0.04);
+    --white-alpha-10: rgba(0, 0, 0, 0.08);
+    --code-bg: #E0E8F0;
+    --code-header-bg: #CCD8E4;
+    --code-inline-bg: rgba(74, 155, 155, 0.12);
+    --mesh-color-1: rgba(74, 155, 155, 0.08);
+    --mesh-color-2: rgba(226, 92, 69, 0.05);
+    --mesh-color-3: rgba(30, 58, 95, 0.06);
     --syntax-keyword: #2A7A7A;
     --syntax-string: #3A8A80;
     --syntax-number: #C04535;
-    --syntax-comment: #7A8A9A;
+    --syntax-comment: #6A7A8A;
     --syntax-function: #B89530;
     --syntax-type: #2A8585;
     --syntax-variable: #C55545;
-    --syntax-operator: #4A5A6A;
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --theme-color: #F0F5FA;
+    --syntax-operator: #3A4A5A;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+    --theme-color: #EDF3F8;
+  }
+}
+
+/* ========== AQUATIC-SPECIFIC OVERRIDES ========== */
+/* Teal accents for scope headers and card borders */
+
+/* Scope headers and stack headers use teal instead of muted text */
+.scope-header,
+.stack-header {
+  color: #4A9B9B;
+}
+
+/* All conversation cards get visible borders */
+.conv-card {
+  border: 1px solid rgba(53, 74, 96, 0.7);
+}
+
+/* Pinned card border uses teal */
+.conv-card-wrapper.pinned .conv-card {
+  border: 1px solid rgba(74, 155, 155, 0.6);
+}
+
+.conv-card-wrapper.pinned .conv-card::before {
+  background: rgba(74, 155, 155, 0.1);
+}
+
+/* Pin icon uses teal */
+.pin-indicator {
+  color: #4A9B9B;
+}
+
+/* Light mode adjustments */
+html[data-theme="light"] .scope-header,
+html[data-theme="light"] .stack-header {
+  color: #2A7A7A;
+}
+
+html[data-theme="light"] .conv-card {
+  border: 1px solid rgba(120, 140, 160, 0.5);
+}
+
+html[data-theme="light"] .conv-card-wrapper.pinned .conv-card {
+  border: 1px solid rgba(42, 122, 122, 0.55);
+}
+
+html[data-theme="light"] .conv-card-wrapper.pinned .conv-card::before {
+  background: rgba(42, 122, 122, 0.08);
+}
+
+html[data-theme="light"] .pin-indicator {
+  color: #2A7A7A;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) .scope-header,
+  html:not([data-theme="dark"]):not([data-theme="light"]) .stack-header {
+    color: #2A7A7A;
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card {
+    border: 1px solid rgba(120, 140, 160, 0.5);
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card-wrapper.pinned .conv-card {
+    border: 1px solid rgba(42, 122, 122, 0.55);
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .pin-indicator {
+    color: #2A7A7A;
   }
 }

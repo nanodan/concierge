@@ -118,36 +118,36 @@
 
 /* ========== LIGHT MODE - Lobby Rose ========== */
 html[data-theme="light"] {
-  /* === Backgrounds === */
-  --bg: #F5E6E0;
-  --bg-secondary: #E8D0D0;
-  --bg-tertiary: #DDB8B8;
-  --surface: #FDF5F3;
-  --input-bg: #FDF5F3;
+  /* === Backgrounds - more contrast === */
+  --bg: #F8EDE8;
+  --bg-secondary: #EEDAD5;
+  --bg-tertiary: #E0C4BE;
+  --surface: #FFFAF8;
+  --input-bg: #FFFAF8;
 
-  /* === Text === */
-  --text: #4A2C2A;
-  --text-secondary: #7D4E57;
+  /* === Text - darker for contrast === */
+  --text: #3A2220;
+  --text-secondary: #6A4548;
 
   /* === Accent === */
   --accent: #C65D7B;
   --accent-light: #D4838F;
 
-  /* === Borders === */
-  --border: rgba(212, 165, 165, 0.5);
-  --glass-bg: rgba(245, 230, 224, 0.95);
-  --glass-border: rgba(198, 93, 123, 0.15);
+  /* === Borders - more visible === */
+  --border: rgba(180, 130, 130, 0.5);
+  --glass-bg: rgba(255, 250, 248, 0.95);
+  --glass-border: rgba(198, 93, 123, 0.18);
 
   /* === Message Bubbles === */
-  --assistant-bubble: #E8C4C4;
+  --assistant-bubble: #EEDAD5;
 
   /* === Alpha Variants === */
   --white-alpha-6: rgba(0, 0, 0, 0.03);
   --white-alpha-10: rgba(0, 0, 0, 0.06);
 
   /* === Code Blocks === */
-  --code-bg: #E8C4C4;
-  --code-header-bg: #DDB8B8;
+  --code-bg: #E8D0CC;
+  --code-header-bg: #E0C4BE;
   --code-inline-bg: rgba(198, 93, 123, 0.12);
 
   /* === Gradient Mesh === */
@@ -166,7 +166,7 @@ html[data-theme="light"] {
   --syntax-operator: #7D4E57;
 
   /* === Status === */
-  --status-disconnected: #DDB8B8;
+  --status-disconnected: #E0C4BE;
 
   /* === Scrollbar === */
   --scrollbar-thumb: rgba(198, 93, 123, 0.3);
@@ -176,29 +176,29 @@ html[data-theme="light"] {
   --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
 
   /* === PWA: Theme Colors === */
-  --theme-color: #F5E6E0;
+  --theme-color: #F8EDE8;
 }
 
 /* Auto theme via media query */
 @media (prefers-color-scheme: light) {
   html:not([data-theme="dark"]):not([data-theme="light"]) {
-    --bg: #F5E6E0;
-    --bg-secondary: #E8D0D0;
-    --bg-tertiary: #DDB8B8;
-    --surface: #FDF5F3;
-    --input-bg: #FDF5F3;
-    --text: #4A2C2A;
-    --text-secondary: #7D4E57;
+    --bg: #F8EDE8;
+    --bg-secondary: #EEDAD5;
+    --bg-tertiary: #E0C4BE;
+    --surface: #FFFAF8;
+    --input-bg: #FFFAF8;
+    --text: #3A2220;
+    --text-secondary: #6A4548;
     --accent: #C65D7B;
     --accent-light: #D4838F;
-    --border: rgba(212, 165, 165, 0.5);
-    --glass-bg: rgba(245, 230, 224, 0.95);
-    --glass-border: rgba(198, 93, 123, 0.15);
-    --assistant-bubble: #E8C4C4;
+    --border: rgba(180, 130, 130, 0.5);
+    --glass-bg: rgba(255, 250, 248, 0.95);
+    --glass-border: rgba(198, 93, 123, 0.18);
+    --assistant-bubble: #EEDAD5;
     --white-alpha-6: rgba(0, 0, 0, 0.03);
     --white-alpha-10: rgba(0, 0, 0, 0.06);
-    --code-bg: #E8C4C4;
-    --code-header-bg: #DDB8B8;
+    --code-bg: #E8D0CC;
+    --code-header-bg: #E0C4BE;
     --code-inline-bg: rgba(198, 93, 123, 0.12);
     --mesh-color-1: rgba(212, 131, 143, 0.15);
     --mesh-color-2: rgba(201, 162, 39, 0.08);
@@ -211,10 +211,79 @@ html[data-theme="light"] {
     --syntax-type: #7D4E57;
     --syntax-variable: #A08030;
     --syntax-operator: #7D4E57;
-    --status-disconnected: #DDB8B8;
+    --status-disconnected: #E0C4BE;
     --scrollbar-thumb: rgba(198, 93, 123, 0.3);
     --brand-icon-color: #C65D7B;
     --brand-gradient: linear-gradient(135deg, #C65D7B 0%, #A08030 100%);
-    --theme-color: #F5E6E0;
+    --theme-color: #F8EDE8;
+  }
+}
+
+/* ========== BUDAPEST-SPECIFIC OVERRIDES ========== */
+/* Gold accents for scope headers and card borders */
+
+/* Scope headers and stack headers use gold instead of muted text */
+.scope-header,
+.stack-header {
+  color: #C4A35A;
+}
+
+/* All conversation cards get visible borders */
+.conv-card {
+  border: 1px solid rgba(100, 70, 70, 0.5);
+}
+
+/* Pinned card border uses gold */
+.conv-card-wrapper.pinned .conv-card {
+  border: 1px solid rgba(196, 163, 90, 0.6);
+}
+
+.conv-card-wrapper.pinned .conv-card::before {
+  background: rgba(196, 163, 90, 0.12);
+}
+
+/* Pin icon uses gold */
+.pin-indicator {
+  color: #C4A35A;
+}
+
+/* Light mode adjustments */
+html[data-theme="light"] .scope-header,
+html[data-theme="light"] .stack-header {
+  color: #A08030;
+}
+
+html[data-theme="light"] .conv-card {
+  border: 1px solid rgba(180, 140, 140, 0.5);
+}
+
+html[data-theme="light"] .conv-card-wrapper.pinned .conv-card {
+  border: 1px solid rgba(160, 128, 48, 0.6);
+}
+
+html[data-theme="light"] .conv-card-wrapper.pinned .conv-card::before {
+  background: rgba(160, 128, 48, 0.1);
+}
+
+html[data-theme="light"] .pin-indicator {
+  color: #A08030;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) .scope-header,
+  html:not([data-theme="dark"]):not([data-theme="light"]) .stack-header {
+    color: #A08030;
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card {
+    border: 1px solid rgba(180, 140, 140, 0.5);
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .conv-card-wrapper.pinned .conv-card {
+    border: 1px solid rgba(160, 128, 48, 0.6);
+  }
+
+  html:not([data-theme="dark"]):not([data-theme="light"]) .pin-indicator {
+    color: #A08030;
   }
 }
