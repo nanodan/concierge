@@ -30,6 +30,7 @@ Organized by category. Each file contains individual items with priority, effort
 - **ARIA labels** — added to 20+ icon-only buttons
 - **Focus-visible styles** — accent-colored focus rings on interactive elements
 - **Swipe optimizations** — will-change and touch-action CSS properties
+- **Conversation branching list view** — indented list view with tree connectors, fork previews, collapsible subtrees
 
 ## Categories
 

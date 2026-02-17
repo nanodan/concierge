@@ -39,6 +39,9 @@ export async function loadBranchesTree(conversationId) {
   renderTree(data);
 }
 
+// Collapsed state for tree nodes
+const collapsedNodes = new Set();
+
 function renderTree(data) {
   if (!data.tree) {
     branchesContent.innerHTML = '<div class="branches-empty">No branches found</div>';
@@ -63,128 +66,103 @@ function renderTree(data) {
     return;
   }
 
-  // Calculate tree dimensions
-  const nodeWidth = 160;
-  const nodeHeight = 50;
-  const horizontalGap = 40;
-  const verticalGap = 60;
+  // Build the list view HTML
+  let html = '<div class="branches-list">';
 
-  // Assign positions to nodes (top-to-bottom layout)
-  const positions = new Map();
-  let maxX = 0;
-  let maxY = 0;
+  // Icons
+  const rootIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg>`;
+  const branchIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3c0 3 3 3 6 3h3"/></svg>`;
 
-  function measureTree(node, depth = 0) {
-    if (!node.children || node.children.length === 0) {
-      return { width: nodeWidth, height: nodeHeight };
-    }
-    let totalWidth = 0;
-    for (const child of node.children) {
-      const childSize = measureTree(child, depth + 1);
-      totalWidth += childSize.width + horizontalGap;
-    }
-    totalWidth -= horizontalGap; // Remove last gap
-    return { width: Math.max(nodeWidth, totalWidth), height: nodeHeight };
-  }
-
-  function positionNodes(node, x, y, availableWidth) {
-    // Center this node in its available width
-    const nodeX = x + (availableWidth - nodeWidth) / 2;
-    positions.set(node.id, { x: nodeX, y, node });
-    maxX = Math.max(maxX, nodeX + nodeWidth);
-    maxY = Math.max(maxY, y + nodeHeight);
-
-    if (!node.children || node.children.length === 0) return;
-
-    // Calculate widths for children
-    const childWidths = node.children.map(child => measureTree(child).width);
-    const totalChildWidth = childWidths.reduce((sum, w) => sum + w + horizontalGap, -horizontalGap);
-
-    // Position children centered below this node
-    let childX = x + (availableWidth - totalChildWidth) / 2;
-    const childY = y + nodeHeight + verticalGap;
-
-    for (let i = 0; i < node.children.length; i++) {
-      const child = node.children[i];
-      const childWidth = childWidths[i];
-      positionNodes(child, childX, childY, childWidth);
-      childX += childWidth + horizontalGap;
-    }
-  }
-
-  // Measure full tree and position nodes
-  const treeSize = measureTree(data.tree);
-  const padding = 40;
-  positionNodes(data.tree, padding, padding, treeSize.width);
-
-  // Create SVG
-  const svgWidth = maxX + padding * 2;
-  const svgHeight = maxY + padding * 2;
-
-  let svg = `<svg class="branches-svg" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}">`;
-
-  // Draw connections first (so they're behind nodes)
-  function drawConnections(node) {
-    const pos = positions.get(node.id);
-    if (!pos) return;
-
-    if (node.children) {
-      for (const child of node.children) {
-        const childPos = positions.get(child.id);
-        if (childPos) {
-          // Draw curved line from parent bottom center to child top center
-          const x1 = pos.x + nodeWidth / 2;
-          const y1 = pos.y + nodeHeight;
-          const x2 = childPos.x + nodeWidth / 2;
-          const y2 = childPos.y;
-          const midY = (y1 + y2) / 2;
-
-          svg += `<path class="branch-line" d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" />`;
-
-          // Add fork point label
-          if (child.forkIndex != null) {
-            const labelX = (x1 + x2) / 2;
-            const labelY = midY;
-            svg += `<text class="branch-fork-label" x="${labelX}" y="${labelY}">msg #${child.forkIndex + 1}</text>`;
-          }
-        }
-        drawConnections(child);
-      }
-    }
-  }
-  drawConnections(data.tree);
-
-  // Draw nodes
-  function drawNodes(node) {
-    const pos = positions.get(node.id);
-    if (!pos) return;
-
+  function renderNode(node, depth) {
     const isCurrent = node.id === data.currentId;
-    const nodeClass = isCurrent ? 'branch-node current' : 'branch-node';
+    const hasKids = node.children && node.children.length > 0;
+    const isCollapsed = collapsedNodes.has(node.id);
+    const isRoot = depth === 0;
 
-    svg += `<g class="${nodeClass}" data-id="${node.id}" transform="translate(${pos.x}, ${pos.y})">`;
-    svg += `<rect class="branch-node-bg" width="${nodeWidth}" height="${nodeHeight}" rx="8" />`;
-    svg += `<text class="branch-node-name" x="${nodeWidth / 2}" y="20">${escapeHtml(truncate(node.name, 18))}</text>`;
-    svg += `<text class="branch-node-count" x="${nodeWidth / 2}" y="38">${node.messageCount} messages</text>`;
-    svg += '</g>';
+    // Depth indicator: show colored bars (capped at 3 for visual clarity)
+    const displayDepth = Math.min(depth, 3);
+    let depthHtml = '';
+    if (displayDepth > 0) {
+      depthHtml = '<div class="branch-depth-indicator">';
+      for (let i = 0; i < displayDepth; i++) {
+        depthHtml += `<div class="branch-depth-bar d${i + 1}"></div>`;
+      }
+      depthHtml += '</div>';
+    }
 
-    if (node.children) {
+    // Format relative time
+    const timeAgo = formatRelativeTime(node.updatedAt || node.createdAt);
+
+    // Fork preview (shown for non-root nodes)
+    let forkInfo = '';
+    if (node.forkIndex != null) {
+      const preview = node.forkPreview ? escapeHtml(node.forkPreview) : '';
+      const forkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 17 12 12 7 7"/><line x1="12" y1="12" x2="20" y2="12"/></svg>`;
+      forkInfo = `<div class="branch-fork-info">${forkIcon}<span>msg ${node.forkIndex + 1}</span>${preview ? `<span class="fork-preview">"${preview}"</span>` : ''}</div>`;
+    }
+
+    // Children count for collapsed nodes
+    const childrenBadge = hasKids && isCollapsed
+      ? `<span class="branch-children-badge">${countDescendants(node)} hidden</span>`
+      : '';
+
+    html += `
+      <div class="branch-item${isCurrent ? ' current' : ''}${isRoot ? ' root' : ''}" data-id="${node.id}" data-depth="${depth}">
+        <div class="branch-item-row">
+          ${depthHtml}
+          <div class="branch-item-icon">${isRoot ? rootIcon : branchIcon}</div>
+          <div class="branch-item-content">
+            <div class="branch-item-header">
+              <span class="branch-item-name">${escapeHtml(node.name)}</span>
+              ${isCurrent ? '<span class="branch-current-badge">current</span>' : ''}
+            </div>
+            <div class="branch-item-meta">
+              <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${node.messageCount}</span>
+              <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${timeAgo}</span>
+            </div>
+            ${forkInfo}
+          </div>
+          ${childrenBadge}
+          ${hasKids ? `
+            <button class="branch-collapse-btn${isCollapsed ? ' collapsed' : ''}" data-id="${node.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="${isCollapsed ? '9 18 15 12 9 6' : '6 9 12 15 18 9'}"/>
+              </svg>
+            </button>
+          ` : ''}
+        </div>
+      </div>`;
+
+    // Render children if not collapsed
+    if (hasKids && !isCollapsed) {
       for (const child of node.children) {
-        drawNodes(child);
+        renderNode(child, depth + 1);
       }
     }
   }
-  drawNodes(data.tree);
 
-  svg += '</svg>';
+  // Count all descendants of a node
+  function countDescendants(node) {
+    if (!node.children) return 0;
+    let count = node.children.length;
+    for (const child of node.children) {
+      count += countDescendants(child);
+    }
+    return count;
+  }
 
-  // Wrap in container for pan/zoom
-  branchesContent.innerHTML = `<div class="branches-container">${svg}</div>`;
+  renderNode(data.tree, 0);
+  html += '</div>';
 
-  // Add click handlers to nodes
-  branchesContent.querySelectorAll('.branch-node').forEach(node => {
-    node.addEventListener('click', () => {
-      const id = node.dataset.id;
+  branchesContent.innerHTML = html;
+
+  // Add click handlers
+  branchesContent.querySelectorAll('.branch-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      // Ignore clicks on collapse button
+      if (e.target.closest('.branch-collapse-btn')) return;
+
+      const id = item.dataset.id;
       if (id && id !== data.currentId) {
         haptic();
         navigateToConversation(id);
@@ -192,96 +170,37 @@ function renderTree(data) {
     });
   });
 
-  // Setup pan/zoom
-  setupPanZoom();
+  // Add collapse/expand handlers
+  branchesContent.querySelectorAll('.branch-collapse-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      haptic(5);
+      const id = btn.dataset.id;
+      if (collapsedNodes.has(id)) {
+        collapsedNodes.delete(id);
+      } else {
+        collapsedNodes.add(id);
+      }
+      renderTree(data);
+    });
+  });
 }
 
-function truncate(text, len) {
-  if (!text) return '';
-  return text.length > len ? text.slice(0, len) + '...' : text;
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return '';
+  const now = Date.now();
+  const diff = now - timestamp;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
-function setupPanZoom() {
-  const container = branchesContent.querySelector('.branches-container');
-  if (!container) return;
-
-  let scale = 1;
-  let translateX = 0;
-  let translateY = 0;
-  let isPanning = false;
-  let startX = 0;
-  let startY = 0;
-
-  function updateTransform() {
-    const svg = container.querySelector('svg');
-    if (svg) {
-      svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-    }
-  }
-
-  // Check if target is a node (skip panning for node interactions)
-  function isNodeTarget(target) {
-    return target.closest('.branch-node');
-  }
-
-  // Touch pan
-  container.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1 && !isNodeTarget(e.target)) {
-      isPanning = true;
-      startX = e.touches[0].clientX - translateX;
-      startY = e.touches[0].clientY - translateY;
-    }
-  }, { passive: true });
-
-  container.addEventListener('touchmove', (e) => {
-    if (isPanning && e.touches.length === 1) {
-      translateX = e.touches[0].clientX - startX;
-      translateY = e.touches[0].clientY - startY;
-      updateTransform();
-    }
-  }, { passive: true });
-
-  container.addEventListener('touchend', () => {
-    isPanning = false;
-  }, { passive: true });
-
-  // Mouse pan
-  container.addEventListener('mousedown', (e) => {
-    if (isNodeTarget(e.target)) return;
-    isPanning = true;
-    startX = e.clientX - translateX;
-    startY = e.clientY - translateY;
-    container.style.cursor = 'grabbing';
-  });
-
-  container.addEventListener('mousemove', (e) => {
-    if (isPanning) {
-      translateX = e.clientX - startX;
-      translateY = e.clientY - startY;
-      updateTransform();
-    }
-  });
-
-  container.addEventListener('mouseup', () => {
-    isPanning = false;
-    container.style.cursor = 'grab';
-  });
-
-  container.addEventListener('mouseleave', () => {
-    isPanning = false;
-    container.style.cursor = 'grab';
-  });
-
-  // Mouse wheel zoom
-  container.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    scale = Math.min(Math.max(0.5, scale * delta), 2);
-    updateTransform();
-  }, { passive: false });
-
-  container.style.cursor = 'grab';
-}
 
 async function navigateToConversation(id) {
   // Import dynamically to avoid circular dependency

@@ -394,3 +394,34 @@ Additional hidden delights beyond the existing Konami code, title tap, and thank
 - **Rotate phone 360°** — screen does a barrel roll
 
 **Files:** `public/js/app.js`, `public/js/ui.js`, `public/js/conversations.js`
+
+---
+
+## ~~Conversation branching list view~~ ✅ DONE
+**Priority:** Medium
+**Effort:** Medium
+
+~~SVG graph view replaced with indented list view for better usability.~~ **IMPLEMENTED**
+
+- Tree connectors (│ ├ └) show hierarchy
+- Fork preview snippets ("@ msg 7: Can you refactor...")
+- Collapse/expand subtrees
+- Message count and relative time
+- Tap to navigate to branch
+
+---
+
+## Branch navigation enhancements
+**Priority:** Low
+**Effort:** Medium
+
+Additional features to improve branch navigation workflow.
+
+**Approach:**
+- **Jump to fork point**: Tap the fork preview line to scroll to that message in the conversation
+- **Compare branches**: Side-by-side diff view to compare two branches (messages that diverge)
+- **Branch badges**: Show status indicators (active, archived, message count)
+- **Swipe actions**: Swipe left on branch items for quick actions (archive, delete)
+- **Search/filter**: Filter branches by name or find branches containing specific text
+
+**Files:** `public/js/branches.js`, `public/css/branches.css`
