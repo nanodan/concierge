@@ -38,19 +38,15 @@ Automatically start Claude conversations when events occur. Turn the app into a 
 
 ---
 
-## Parallel Conversations
+## ~~Parallel Conversations~~ ✅ DONE
 **Priority:** Medium
 **Effort:** Medium
 
-Run multiple Claude conversations simultaneously. Currently one process per conversation, but no UI to monitor multiple active sessions.
+~~Run multiple Claude conversations simultaneously.~~ **IMPLEMENTED**
 
-**Approach:**
-- Dashboard view showing all active conversations
+- Multiple conversations can run Claude processes simultaneously
 - Progress indicator on conversation cards when Claude is working
-- Notification when any background conversation completes
-- "Run in background" option when sending a message
-
-**Files:** `public/js/conversations.js` (active indicators), `public/js/ui.js` (dashboard), `server.js` (broadcast active status)
+- Can switch between conversations while responses stream
 
 ---
 

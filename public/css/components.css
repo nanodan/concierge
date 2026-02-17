@@ -2134,3 +2134,37 @@
   color: var(--text-secondary);
   opacity: 0.5;
 }
+
+/* Drag-and-drop file upload overlay (desktop only) */
+.chat-drop-overlay {
+  display: none;
+}
+
+@media (hover: hover) {
+  .chat-drop-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .chat-drop-overlay.visible {
+    opacity: 1;
+  }
+
+  .chat-drop-overlay::before {
+    content: 'Drop files to attach';
+    padding: 1rem 2rem;
+    background: var(--bg-card);
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 1rem;
+  }
+}

@@ -995,6 +995,41 @@ export function setupEventListeners(createConversation) {
     renderAttachmentPreview();
   });
 
+  // Drag-and-drop file upload (entire chat view)
+  const chatDropOverlay = document.getElementById('chat-drop-overlay');
+
+  chatView.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    chatDropOverlay.classList.add('visible');
+  });
+
+  chatView.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  chatView.addEventListener('dragleave', (e) => {
+    // Only hide when leaving the chat view entirely
+    if (!chatView.contains(e.relatedTarget)) {
+      chatDropOverlay.classList.remove('visible');
+    }
+  });
+
+  chatView.addEventListener('drop', (e) => {
+    e.preventDefault();
+    chatDropOverlay.classList.remove('visible');
+
+    if (e.dataTransfer.files.length === 0) return;
+
+    for (const file of e.dataTransfer.files) {
+      const att = { file, name: file.name };
+      if (file.type.startsWith('image/')) {
+        att.previewUrl = URL.createObjectURL(file);
+      }
+      state.addPendingAttachment(att);
+    }
+    renderAttachmentPreview();
+  });
+
   // Export
   if (exportBtn) {
     exportBtn.addEventListener('click', () => {

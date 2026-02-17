@@ -243,26 +243,16 @@ Line numbers, syntax theme matching color theme, improved copy feedback.
 
 ---
 
-## Live code preview
+## ~~Live code preview~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium
 
-Render HTML/CSS/JS code blocks live as Claude streams them. Watch a webpage materialize in real-time.
+~~Render HTML/CSS/JS code blocks live as Claude streams them.~~ **IMPLEMENTED**
 
-**Approach:**
-- Detect `html`, `jsx`, or `svg` code fences during streaming
-- MVP: "Preview" button appears on completed code blocks, opens modal with sandboxed iframe
-- V2: Split pane with live preview updating as tokens stream (debounced 500ms)
-- Handle partial code gracefully (render last-valid-state, swallow errors)
-- Bundle common dependencies in preview frame (React CDN, Tailwind CDN)
-- Reuse file panel slot on desktop, or floating modal on mobile
-
-**Challenges:**
-- Mid-stream HTML is invalid — either wait for block close or heuristically close tags
-- Multiple code blocks — preview most recent, or show tabs
-- Security — iframe sandbox attribute for isolation
-
-**Files:** `public/js/render.js` (code block detection, preview button), `public/js/ui.js` (preview modal/panel), `public/css/messages.css` (preview styling)
+- "Preview" button on HTML/JSX/SVG code blocks
+- Opens sandboxed iframe modal with live render
+- Supports React and Tailwind via CDN
+- Works during streaming (updates as code completes)
 
 ---
 
@@ -297,27 +287,16 @@ When Claude edits a file, show a GitHub-style diff with accept/reject per hunk i
 
 ---
 
-## Screenshot-to-code
+## ~~Screenshot-to-code~~ ✅ DONE
 **Priority:** High
 **Effort:** Medium
 
-Paste or upload a screenshot, Claude analyzes it and generates code, live preview shows the result materializing.
+~~Paste or upload a screenshot, Claude analyzes it and generates code, live preview shows the result materializing.~~ **IMPLEMENTED**
 
-**Why:** Magical demo. Combines vision + code generation + live preview. "I want this" → watch it appear.
-
-**Approach:**
-- Extend existing file upload to handle paste events (Cmd+V with image)
-- Upload image as attachment (existing infrastructure)
-- Prompt template: "Recreate this UI in HTML/CSS. Match the layout, colors, and typography as closely as possible."
-- Stream response into live preview pane (builds on live preview TODO)
-- Side-by-side: original screenshot | live rendered result
-
-**Enhancements:**
-- "Make it responsive" follow-up button
-- "Use Tailwind" / "Use vanilla CSS" toggle
-- Iterate: "Make the button bigger" with image context retained
-
-**Files:** `public/js/ui.js` (paste handler, screenshot mode UI), `public/js/render.js` (side-by-side preview), existing upload infrastructure
+- Paste images directly into chat (Cmd+V)
+- Upload images as attachments via existing infrastructure
+- Claude vision analyzes screenshots and generates matching code
+- Live preview renders the result as it streams
 
 ---
 
