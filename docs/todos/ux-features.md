@@ -258,32 +258,31 @@ Line numbers, syntax theme matching color theme, improved copy feedback.
 
 ## Diff review UI
 **Priority:** High
-**Effort:** High
+**Effort:** Medium
 
-When Claude edits a file, show a GitHub-style diff with accept/reject per hunk instead of just "Using Edit".
+Add per-hunk revert capability to the file panel's git diff view.
 
-**Why:** Massive trust improvement. Users see exactly what Claude wants to change and can approve granularly. Human-in-the-loop at the right level of detail.
+**Why:** File-level discard already exists, but sometimes you want to keep some changes and revert others.
 
 **Approach:**
-- Intercept `tool_start` events for Edit tool
-- Fetch the file's current content via existing file API
-- When tool completes, compute diff between old and new content
-- Render split or unified diff view with per-hunk accept/reject buttons
-- "Accept All" / "Reject All" for quick actions
-- On reject: need to communicate back to Claude (or just revert the file)
+- File panel already shows git diffs with file-level discard
+- Add "Granular" toggle/mode to the diff view
+- In granular mode, parse diff into hunks, each hunk gets a "Revert" button
+- Revert hunk: create reverse patch for that hunk, apply with `git apply --reverse`
+- Visual feedback: reverted hunks disappear or show as "reverted"
 
-**UI options:**
-- Inline in chat stream (expanding panel)
-- Modal overlay with full diff view
-- Side panel (reuse file panel slot)
+**Implementation:**
+1. Parse unified diff format into hunks (split on `@@ ... @@` headers)
+2. Each hunk rendered as a collapsible section with header showing line range
+3. "Revert" button per hunk creates a mini patch file and runs `git apply --reverse`
+4. After revert, refresh the diff view
 
-**Challenges:**
-- Edit tool may have already applied the change by the time we see it
-- Need to capture "before" state when tool starts, "after" when it completes
-- Rejecting changes mid-stream could confuse Claude's state
-- May need `--confirm-edits` flag in Claude CLI (if it exists) or custom wrapper
+**Nice to have:**
+- Syntax highlighting in diff
+- Keyboard navigation between hunks
+- "Revert all except this one" inverse selection
 
-**Files:** `public/js/render.js` (diff rendering), `lib/claude.js` (capture before/after), `lib/routes.js` (file content endpoint), `public/css/messages.css` (diff styling)
+**Files:** `public/js/file-panel.js` (hunk parsing, revert logic), `lib/routes.js` (endpoint to apply reverse patch), `public/css/components.css` (hunk styling)
 
 ---
 

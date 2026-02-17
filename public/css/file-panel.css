@@ -2,7 +2,7 @@
 
 /* Panel dimensions */
 :root {
-  --file-panel-width: 320px;
+  --file-panel-width: 420px;
   --file-panel-header-height: 44px;
   --file-panel-nav-height: 36px;
 }

@@ -176,14 +176,9 @@ function setupEventListeners() {
   setupGitBranchesEventListeners();
   setupPreviewEventListeners();
 
-  // Initialize gestures
-  if (filePanel && isMobile()) {
+  // Initialize gestures (handles both mobile drag and desktop resize)
+  if (filePanel) {
     initGestures(filePanel, closeFilePanel);
-  }
-
-  // Desktop resize
-  if (filePanel && !isMobile()) {
-    setupDesktopResize();
   }
 
   // Handle resize
