@@ -73,32 +73,30 @@ function renderTree(data) {
   const rootIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg>`;
   const branchIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3c0 3 3 3 6 3h3"/></svg>`;
 
-  function renderNode(node, depth) {
+  function renderNode(node, depth, parentName = null) {
     const isCurrent = node.id === data.currentId;
     const hasKids = node.children && node.children.length > 0;
     const isCollapsed = collapsedNodes.has(node.id);
     const isRoot = depth === 0;
 
-    // Depth indicator: show colored bars (capped at 3 for visual clarity)
-    const displayDepth = Math.min(depth, 3);
-    let depthHtml = '';
-    if (displayDepth > 0) {
-      depthHtml = '<div class="branch-depth-indicator">';
-      for (let i = 0; i < displayDepth; i++) {
-        depthHtml += `<div class="branch-depth-bar d${i + 1}"></div>`;
-      }
-      depthHtml += '</div>';
-    }
+    // Indentation: actual left margin based on depth (capped)
+    const indentPx = Math.min(depth, 4) * 20;
 
     // Format relative time
     const timeAgo = formatRelativeTime(node.updatedAt || node.createdAt);
 
-    // Fork preview (shown for non-root nodes)
+    // Fork info: show parent name and message preview
     let forkInfo = '';
-    if (node.forkIndex != null) {
+    if (node.forkIndex != null && parentName) {
       const preview = node.forkPreview ? escapeHtml(node.forkPreview) : '';
-      const forkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 17 12 12 7 7"/><line x1="12" y1="12" x2="20" y2="12"/></svg>`;
-      forkInfo = `<div class="branch-fork-info">${forkIcon}<span>msg ${node.forkIndex + 1}</span>${preview ? `<span class="fork-preview">"${preview}"</span>` : ''}</div>`;
+      // Truncate parent name if too long
+      const shortParent = parentName.length > 20 ? parentName.slice(0, 20) + '...' : parentName;
+      forkInfo = `
+        <div class="branch-fork-info">
+          <span class="fork-from">↳ from <strong>${escapeHtml(shortParent)}</strong></span>
+          <span class="fork-at">@ msg ${node.forkIndex + 1}</span>
+          ${preview ? `<span class="fork-preview">"${preview}"</span>` : ''}
+        </div>`;
     }
 
     // Children count for collapsed nodes
@@ -107,9 +105,8 @@ function renderTree(data) {
       : '';
 
     html += `
-      <div class="branch-item${isCurrent ? ' current' : ''}${isRoot ? ' root' : ''}" data-id="${node.id}" data-depth="${depth}">
+      <div class="branch-item${isCurrent ? ' current' : ''}${isRoot ? ' root' : ''}" data-id="${node.id}" data-depth="${depth}" style="margin-left: ${indentPx}px">
         <div class="branch-item-row">
-          ${depthHtml}
           <div class="branch-item-icon">${isRoot ? rootIcon : branchIcon}</div>
           <div class="branch-item-content">
             <div class="branch-item-header">
@@ -133,10 +130,10 @@ function renderTree(data) {
         </div>
       </div>`;
 
-    // Render children if not collapsed
+    // Render children if not collapsed, passing current node name as parent
     if (hasKids && !isCollapsed) {
       for (const child of node.children) {
-        renderNode(child, depth + 1);
+        renderNode(child, depth + 1, node.name);
       }
     }
   }

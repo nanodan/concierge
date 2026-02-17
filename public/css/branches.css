@@ -58,24 +58,7 @@
   min-height: 60px;
 }
 
-/* Depth indicator - visual bar instead of tree chars */
-.branch-depth-indicator {
-  display: flex;
-  align-items: stretch;
-  gap: 3px;
-  align-self: stretch;
-  flex-shrink: 0;
-}
-
-.branch-depth-bar {
-  width: 3px;
-  border-radius: 2px;
-  background: var(--border);
-}
-
-.branch-depth-bar.d1 { background: var(--accent); opacity: 0.7; }
-.branch-depth-bar.d2 { background: var(--accent); opacity: 0.5; }
-.branch-depth-bar.d3 { background: var(--accent); opacity: 0.3; }
+/* Indentation handled via inline margin-left on items */
 
 /* Branch icon */
 .branch-item-icon {
@@ -188,29 +171,39 @@
   gap: 4px;
 }
 
-/* Fork info with preview */
+/* Fork info with parent name and preview */
 .branch-fork-info {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  line-height: 1.4;
 }
 
-.branch-fork-info svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  opacity: 0.5;
+.branch-fork-info .fork-from {
+  color: var(--text-secondary);
+}
+
+.branch-fork-info .fork-from strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.branch-fork-info .fork-at {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .branch-fork-info .fork-preview {
   font-style: italic;
-  opacity: 0.8;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Root node special styling */
