@@ -356,11 +356,12 @@ html[data-theme="light"] .code-block::before {
   font-size: 12px;
   font-weight: 500;
   font-family: inherit;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-  min-height: 32px;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 .copy-btn:hover {
@@ -538,8 +539,8 @@ html[data-theme="light"] .code-block::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -550,8 +551,8 @@ html[data-theme="light"] .code-block::before {
 }
 
 .msg-action-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .msg-action-btn:hover {

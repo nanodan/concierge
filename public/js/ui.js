@@ -1434,11 +1434,17 @@ export function setupEventListeners(createConversation) {
   }
 
   // Close chat more menu on outside click
-  document.addEventListener('click', () => {
+  document.addEventListener('click', (e) => {
     if (chatMoreDropdown && !chatMoreDropdown.classList.contains('hidden')) {
-      chatMoreDropdown.classList.add('hidden');
+      // Check if click was outside the dropdown and button
+      if (!chatMoreDropdown.contains(e.target) && e.target !== chatMoreBtn && !chatMoreBtn?.contains(e.target)) {
+        // Consume the click - don't let it pass through to elements underneath
+        e.preventDefault();
+        e.stopPropagation();
+        closeChatMoreMenu();
+      }
     }
-  });
+  }, true); // Use capture phase to intercept before other handlers
 
   // Apply themes on init
   applyTheme();

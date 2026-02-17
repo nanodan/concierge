@@ -126,7 +126,7 @@ export function toggleMoreMenu() {
     closeColorThemeDropdown();
     moreMenuDropdown.classList.remove('hidden');
     setTimeout(() => {
-      document.addEventListener('click', closeMoreMenuOnOutsideClick);
+      document.addEventListener('click', closeMoreMenuOnOutsideClick, true);
     }, 0);
   } else {
     closeMoreMenu();
@@ -138,11 +138,14 @@ export function closeMoreMenu() {
   moreMenuDropdown.classList.add('hidden');
   // Collapse any expanded sections
   moreMenuDropdown.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
-  document.removeEventListener('click', closeMoreMenuOnOutsideClick);
+  document.removeEventListener('click', closeMoreMenuOnOutsideClick, true);
 }
 
 function closeMoreMenuOnOutsideClick(e) {
   if (!moreMenuDropdown.contains(e.target) && e.target !== moreMenuBtn && !moreMenuBtn.contains(e.target)) {
+    // Consume the click - don't let it pass through to elements underneath
+    e.preventDefault();
+    e.stopPropagation();
     closeMoreMenu();
   }
 }
