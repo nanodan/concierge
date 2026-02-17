@@ -113,7 +113,20 @@ const messageHandlers = {
   },
 
   status(data) {
+    // Track thinking state for all conversations
+    if (data.status === 'thinking') {
+      state.addThinking(data.conversationId);
+    } else {
+      state.removeThinking(data.conversationId);
+    }
+
+    // Update current conversation UI
     state.updateStatus(data.conversationId, data.status);
+
+    // Refresh list view to show thinking indicators
+    import('./conversations.js').then(({ renderConversationList }) => {
+      renderConversationList();
+    });
   },
 
   error(data, currentConversationId) {
