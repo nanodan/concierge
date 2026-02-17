@@ -94,22 +94,6 @@ Search could be much more useful with filtering and better result display.
 
 ---
 
-## Accent color customization
-**Priority:** Low
-**Effort:** Low
-
-Only purple (`#7c6cf0`) right now. Users may want to personalize.
-
-**Approach:**
-- Add color picker in settings (or preset palette)
-- Store choice in localStorage
-- Override `--accent` CSS variable at runtime
-- Derive related colors (hover, muted) programmatically from the chosen accent
-
-**Files:** `public/js/ui.js` (settings UI), `public/css/base.css` (ensure all accent usage goes through variable)
-
----
-
 ## Rich export formats
 **Priority:** Low
 **Effort:** Medium

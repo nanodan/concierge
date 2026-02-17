@@ -22,6 +22,8 @@ let historyView = null;
 let upBtn = null;
 let pathEl = null;
 let fileTree = null;
+let uploadBtn = null;
+let fileInput = null;
 
 // Changes tab elements
 let changesList = null;
@@ -82,6 +84,8 @@ export function initStandaloneFiles(elements) {
   upBtn = elements.upBtn;
   pathEl = elements.pathEl;
   fileTree = elements.fileTree;
+  uploadBtn = document.getElementById('files-standalone-upload-btn');
+  fileInput = document.getElementById('files-standalone-file-input');
   fileViewer = elements.fileViewer;
   fileViewerName = elements.fileViewerName;
   fileViewerClose = elements.fileViewerClose;
@@ -125,6 +129,43 @@ export function initStandaloneFiles(elements) {
       if (currentPath && currentPath !== rootPath) {
         const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
         loadDirectory(parent);
+      }
+    });
+  }
+
+  // Upload button
+  if (uploadBtn && fileInput) {
+    uploadBtn.addEventListener('click', () => {
+      haptic();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        uploadFiles(fileInput.files);
+        fileInput.value = '';
+      }
+    });
+  }
+
+  // Drag and drop on files view
+  if (filesView) {
+    filesView.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      filesView.classList.add('drag-over');
+    });
+
+    filesView.addEventListener('dragleave', (e) => {
+      if (!filesView.contains(e.relatedTarget)) {
+        filesView.classList.remove('drag-over');
+      }
+    });
+
+    filesView.addEventListener('drop', (e) => {
+      e.preventDefault();
+      filesView.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) {
+        uploadFiles(e.dataTransfer.files);
       }
     });
   }
@@ -419,6 +460,23 @@ async function deleteFile(filePath) {
   }
 
   showToast('Deleted');
+  loadDirectory(currentPath);
+}
+
+/**
+ * Upload files to current directory
+ */
+async function uploadFiles(files) {
+  if (!currentPath) return;
+
+  for (const file of files) {
+    const url = `/api/files/upload?path=${encodeURIComponent(currentPath)}&filename=${encodeURIComponent(file.name)}`;
+    const resp = await apiFetch(url, { method: 'POST', body: file });
+    if (!resp) continue;
+    showToast(`Uploaded ${file.name}`);
+  }
+
+  // Refresh directory to show new files
   loadDirectory(currentPath);
 }
 

@@ -36,7 +36,7 @@ Organized by category. Each file contains individual items with priority, effort
 | File | Open Items | Focus |
 |------|------------|-------|
 | [performance.md](performance.md) | 3 | Pagination, search/stats optimization |
-| [ux-features.md](ux-features.md) | 11 | Diff review, voice-to-voice, search improvements |
+| [ux-features.md](ux-features.md) | 10 | Diff review, voice-to-voice, search improvements |
 | [architecture.md](architecture.md) | 2 | localStorage versioning, server restart |
 | [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
@@ -54,6 +54,5 @@ Organized by category. Each file contains individual items with priority, effort
 - Text file editing (file-browser)
 
 **Quick wins** — low effort, meaningful improvement:
-- Accent color customization (ux)
 - Input validation hardening (security)
 - localStorage versioning (architecture)
