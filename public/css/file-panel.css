@@ -1228,6 +1228,176 @@
   font-style: italic;
 }
 
+/* === File Viewer Header Actions === */
+.file-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* === Diff Granular Toggle (in header) === */
+.diff-granular-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.diff-granular-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--hover-bg);
+}
+
+.diff-granular-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+
+.diff-granular-toggle.hidden {
+  display: none;
+}
+
+.diff-granular-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* === Diff Hunks View === */
+.diff-hunks-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-hunk {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 8px 12px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.diff-hunk-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.diff-hunk-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.diff-hunk-lines {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--syntax-keyword, #61afef);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.diff-hunk-context {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diff-hunk-stats {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.diff-stat-add {
+  color: var(--syntax-string, #98c379);
+}
+
+.diff-stat-del {
+  color: var(--error, #e06c75);
+}
+
+.diff-hunk-revert-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--error, #e53935);
+  background: transparent;
+  border: 1px solid var(--error, #e53935);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.diff-hunk-revert-btn:hover {
+  background: var(--error, #e53935);
+  color: #fff;
+}
+
+.diff-hunk-code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.diff-hunk-code > div {
+  padding: 0 8px;
+  min-height: 1.6em;
+}
+
+/* Mobile adjustments for hunk view */
+@media (max-width: 767px) {
+  .diff-hunk {
+    margin: 6px 8px;
+    border-radius: 4px;
+  }
+
+  .diff-hunk-toolbar {
+    padding: 8px;
+    flex-wrap: wrap;
+  }
+
+  .diff-hunk-info {
+    flex-basis: 100%;
+    margin-bottom: 6px;
+  }
+
+  .diff-hunk-revert-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .diff-hunk-context {
+    display: none;
+  }
+}
+
 /* === Desktop Resize Handle === */
 .file-panel-resize {
   display: none;

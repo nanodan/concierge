@@ -18,10 +18,13 @@ let stashBtn = null;
 let fileViewer = null;
 let fileViewerName = null;
 let fileViewerContent = null;
+let granularToggleBtn = null;
 
 // State
 let gitStatus = null;
 let stashes = null;
+let granularMode = localStorage.getItem('gitGranularMode') === 'true';
+let currentDiffData = null;  // Store current diff data for re-rendering
 
 /**
  * Initialize git changes elements
@@ -39,6 +42,16 @@ export function initGitChanges(elements) {
   fileViewer = elements.fileViewer;
   fileViewerName = elements.fileViewerName;
   fileViewerContent = elements.fileViewerContent;
+  granularToggleBtn = elements.diffGranularToggle;
+
+  // Setup granular toggle click handler
+  if (granularToggleBtn) {
+    granularToggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      haptic();
+      toggleGranularMode();
+    });
+  }
 }
 
 /**
@@ -767,28 +780,85 @@ async function viewDiff(filePath, staged) {
   });
   if (!res) {
     fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>Failed to load diff</p></div>`;
+    currentDiffData = null;
     return;
   }
   const data = await res.json();
 
   if (data.error) {
     fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
+    currentDiffData = null;
     return;
   }
 
   if (!data.raw || data.raw.trim() === '') {
     fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>No changes to display</p></div>`;
+    currentDiffData = null;
     return;
   }
 
-  renderDiff(data);
+  // Store data for re-rendering when toggling granular mode
+  currentDiffData = { ...data, path: filePath, staged };
+  renderDiff(currentDiffData);
+}
+
+/**
+ * Toggle granular mode
+ */
+function toggleGranularMode() {
+  granularMode = !granularMode;
+  localStorage.setItem('gitGranularMode', granularMode.toString());
+  updateGranularToggleState();
+  if (currentDiffData) {
+    renderDiff(currentDiffData);
+  }
+}
+
+/**
+ * Hide the granular toggle button (called when viewing non-diff files)
+ */
+export function hideGranularToggle() {
+  if (granularToggleBtn) {
+    granularToggleBtn.classList.add('hidden');
+  }
+  currentDiffData = null;
+}
+
+/**
+ * Update the granular toggle button state
+ */
+function updateGranularToggleState() {
+  if (granularToggleBtn) {
+    granularToggleBtn.classList.toggle('active', granularMode);
+    granularToggleBtn.title = granularMode ? 'Switch to simple view' : 'Switch to granular view (per-hunk revert)';
+  }
 }
 
 /**
  * Render a diff
  */
 export function renderDiff(data) {
-  const lines = data.raw.split('\n');
+  const { hunks, raw, path, staged } = data;
+  const hasHunks = hunks && hunks.length > 0;
+
+  // Show/hide and update the toggle button
+  if (granularToggleBtn) {
+    granularToggleBtn.classList.toggle('hidden', !hasHunks);
+    updateGranularToggleState();
+  }
+
+  if (granularMode && hasHunks) {
+    renderHunksView(hunks, path, staged);
+  } else {
+    renderSimpleView(raw);
+  }
+}
+
+/**
+ * Render simple diff view (all lines together)
+ */
+function renderSimpleView(raw) {
+  const lines = raw.split('\n');
   let html = '';
 
   for (const line of lines) {
@@ -807,4 +877,112 @@ export function renderDiff(data) {
   }
 
   fileViewerContent.innerHTML = `<code class="diff-view">${html}</code>`;
+}
+
+/**
+ * Render granular hunks view with per-hunk revert buttons
+ */
+function renderHunksView(hunks, filePath, staged) {
+  let html = '';
+
+  hunks.forEach((hunk, index) => {
+    // Parse hunk header for display (e.g., "@@ -10,5 +10,7 @@ function name")
+    const headerMatch = hunk.header.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)?/);
+    const context = headerMatch && headerMatch[5] ? headerMatch[5].trim() : '';
+    const lineInfo = `Lines ${hunk.oldStart}-${hunk.oldStart + hunk.oldLines - 1}`;
+
+    // Count additions and deletions in this hunk
+    let additions = 0, deletions = 0;
+    for (const line of hunk.lines) {
+      if (line.startsWith('+')) additions++;
+      else if (line.startsWith('-')) deletions++;
+    }
+
+    html += `
+      <div class="diff-hunk" data-hunk-index="${index}">
+        <div class="diff-hunk-toolbar">
+          <div class="diff-hunk-info">
+            <span class="diff-hunk-lines">${lineInfo}</span>
+            ${context ? `<span class="diff-hunk-context">${escapeHtml(context)}</span>` : ''}
+            <span class="diff-hunk-stats">
+              ${additions > 0 ? `<span class="diff-stat-add">+${additions}</span>` : ''}
+              ${deletions > 0 ? `<span class="diff-stat-del">-${deletions}</span>` : ''}
+            </span>
+          </div>
+          <button class="diff-hunk-revert-btn" data-hunk-index="${index}" title="Revert this change">
+            Revert
+          </button>
+        </div>
+        <code class="diff-hunk-code">`;
+
+    // Render hunk lines
+    for (const line of hunk.lines) {
+      let className = 'diff-context';
+      if (line.startsWith('+')) {
+        className = 'diff-add';
+      } else if (line.startsWith('-')) {
+        className = 'diff-del';
+      }
+      html += `<div class="${className}">${escapeHtml(line)}</div>`;
+    }
+
+    html += `</code></div>`;
+  });
+
+  fileViewerContent.innerHTML = `<div class="diff-hunks-view">${html}</div>`;
+
+  // Attach revert button listeners
+  fileViewerContent.querySelectorAll('.diff-hunk-revert-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      haptic();
+
+      const hunkIndex = parseInt(btn.dataset.hunkIndex, 10);
+      const hunk = hunks[hunkIndex];
+      await revertHunk(filePath, hunkIndex, hunk, staged);
+    });
+  });
+}
+
+/**
+ * Revert a single hunk
+ */
+async function revertHunk(filePath, hunkIndex, hunk, staged) {
+  const confirmed = await showDialog({
+    title: 'Revert this change?',
+    message: 'This will undo just this section of changes.',
+    danger: true,
+    confirmLabel: 'Revert'
+  });
+  if (!confirmed) return;
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  const res = await apiFetch(`/api/conversations/${convId}/git/revert-hunk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: filePath, hunk, staged })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  showToast('Change reverted');
+
+  // Close the diff viewer and refresh git status
+  fileViewer.classList.remove('open');
+  setTimeout(() => {
+    fileViewer.classList.add('hidden');
+    setViewingDiff(null);
+    currentDiffData = null;
+  }, ANIMATION_DELAY_SHORT);
+
+  loadGitStatus();
 }

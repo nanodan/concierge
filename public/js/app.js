@@ -109,6 +109,7 @@ const filePanelViewer = document.getElementById('file-viewer');
 const fileViewerName = document.getElementById('file-viewer-name');
 const fileViewerClose = document.getElementById('file-viewer-close');
 const fileViewerContent = document.getElementById('file-viewer-content');
+const diffGranularToggle = document.getElementById('diff-granular-toggle');
 const filePanelTabs = document.getElementById('file-panel-tabs');
 const filesTab = document.getElementById('files-tab');
 const changesTab = document.getElementById('changes-tab');
@@ -319,6 +320,7 @@ initFilePanel({
   fileViewerName,
   fileViewerClose,
   fileViewerContent,
+  diffGranularToggle,
   chatView,
   filePanelTabs,
   filesTab,

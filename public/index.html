@@ -297,7 +297,15 @@
       <div id="file-viewer" class="file-viewer hidden">
         <div class="file-viewer-header">
           <span id="file-viewer-name" class="file-viewer-name"></span>
-          <button id="file-viewer-close" class="file-viewer-close">Back</button>
+          <div class="file-viewer-actions">
+            <button id="diff-granular-toggle" class="diff-granular-toggle hidden" title="Toggle granular view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+            <button id="file-viewer-close" class="file-viewer-close">Back</button>
+          </div>
         </div>
         <pre id="file-viewer-content" class="file-viewer-content"><code></code></pre>
       </div>
