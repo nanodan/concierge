@@ -4,7 +4,7 @@
 import { escapeHtml } from './markdown.js';
 import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import { getFileIcon, IMAGE_EXTS } from './file-utils.js';
-import { ANIMATION_DELAY_SHORT, SLIDE_TRANSITION_DURATION, DEBOUNCE_SEARCH, BUTTON_PROCESSING_TIMEOUT } from './constants.js';
+import { ANIMATION_DELAY_SHORT, SLIDE_TRANSITION_DURATION, BUTTON_PROCESSING_TIMEOUT } from './constants.js';
 
 // DOM elements
 let filesStandaloneView = null;
@@ -48,14 +48,14 @@ let granularToggleBtn = null;
 // State
 let currentPath = '';
 let rootPath = '';
-let currentTab = 'files';
+let _currentTab = 'files';
 let gitStatus = null;
 let stashes = null;
 let commits = null;
 let unpushedCount = 0;
 let granularMode = localStorage.getItem('gitGranularMode') === 'true';
 let currentDiffData = null;
-let viewingDiff = null;
+let _viewingDiff = null;
 
 // Icons (minimal set needed here)
 const ICONS = {
@@ -251,7 +251,7 @@ export function closeStandaloneFiles(skipHistoryUpdate = false) {
  * Switch between tabs
  */
 function switchTab(tab) {
-  currentTab = tab;
+  _currentTab = tab;
   haptic();
 
   // Update tab button states
@@ -963,7 +963,7 @@ async function viewDiff(filePath, staged) {
   const filename = filePath.split('/').pop();
   fileViewerName.textContent = filename;
   fileViewerContent.innerHTML = '<code>Loading diff...</code>';
-  viewingDiff = { path: filePath, staged };
+  _viewingDiff = { path: filePath, staged };
 
   // Show viewer
   fileViewer.classList.remove('hidden');
@@ -1592,7 +1592,7 @@ function closeFileViewer() {
   if (!fileViewer) return;
 
   fileViewer.classList.remove('open');
-  viewingDiff = null;
+  _viewingDiff = null;
   currentDiffData = null;
   if (granularToggleBtn) {
     granularToggleBtn.classList.add('hidden');

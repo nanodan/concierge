@@ -5,7 +5,7 @@ import { haptic, showToast } from '../utils.js';
 import * as state from '../state.js';
 
 // Import submodules
-import { isMobile, initGestures, setupDesktopResize, setupDragGesture } from './gestures.js';
+import { isMobile, initGestures, setupDragGesture } from './gestures.js';
 import {
   initFileBrowser,
   setupFileBrowserEventListeners,
