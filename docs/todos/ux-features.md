@@ -356,13 +356,41 @@ Ensure all interactive elements have proper ARIA labels and keyboard support.
 **Priority:** Low
 **Effort:** Low
 
-Additional hidden delights beyond the existing Konami code, title tap, and console art.
+Additional hidden delights beyond the existing Konami code, title tap, and thank-you hearts.
 
-**Ideas:**
+**Gesture/Touch:**
+- **Double-tap empty message area** — brief "thinking" animation or Claude emoji winks
+- **Pull-to-refresh past threshold** — rubber band snap, emoji burst, or satisfying sound
+- **Swipe pattern** — left-right-left-right on conversation list triggers something
+- **Long-press the send button** — secret "turbo mode" animation (purely cosmetic)
+- **Shake phone** — scrambles then unscrambles the UI (DeviceMotion API)
+
+**Typing/Input:**
 - **Sudo prefix** — Type "sudo" as first word, response gets "🔓 ROOT ACCESS GRANTED" prefix
-- **Shake to undo** — Shake phone to undo last action (DeviceMotion API)
-- **Empty state secret** — Long-press the "no conversations" illustration to hear a programming joke
-- **Stats view secret** — Tap a stat to see absurd comparisons ("Enough tokens to write War and Peace 47 times")
-- **Pull-to-refresh easter egg** — Pull way past normal threshold for emoji burst or sound effect
+- **Type "/dance"** — brief CSS animation makes the UI wiggle
+- **Exact 42 characters** — send exactly 42 characters for a Hitchhiker's reference
+- **Palindrome message** — detect and celebrate with a toast
+
+**Time/Date-based:**
+- **Midnight theme** — use between 12:00-12:05 AM, briefly show a "night owl" badge
+- **Pi Day (3/14)** — subtle π symbol appears somewhere
+- **Friday 5pm** — "Weekend mode" confetti
+- **App birthday** — celebration on the anniversary of first install
+
+**Milestone-based:**
+- **100th message** — achievement toast
+- **First conversation** — subtle welcome animation
+- **10 conversations in one day** — "power user" acknowledgment
+
+**Hidden spots:**
+- **Tap the connection dot** — shows uptime or a joke
+- **Tap between header buttons** — invisible hitbox triggers something
+- **Scroll to absolute top of empty list** — rubber band reveals hidden message
+- **Empty state secret** — Long-press the "no conversations" illustration for a programming joke
+- **Stats view secret** — Tap a stat to see absurd comparisons
+
+**Visual effects:**
+- **Rapid theme toggle** (5x fast) — triggers disco/rainbow mode briefly
+- **Rotate phone 360°** — screen does a barrel roll
 
 **Files:** `public/js/app.js`, `public/js/ui.js`, `public/js/conversations.js`

@@ -470,6 +470,44 @@ export function openNewChatModal(cwd = '') {
 }
 
 // --- Send message ---
+
+// Thank you easter egg - check for gratitude and show hearts
+const THANK_YOU_PATTERNS = /\b(thanks?|thank\s*you|thx|ty|tysm|thank\s*u|cheers|gracias|merci|danke|arigatou?|grazie)\b/i;
+
+function triggerHeartsAnimation() {
+  const hearts = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🩷', '🩵', '🤍'];
+  for (let i = 0; i < 15; i++) {
+    const heart = document.createElement('div');
+    heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+    heart.style.cssText = `
+      position: fixed;
+      font-size: ${16 + Math.random() * 16}px;
+      left: ${20 + Math.random() * 60}vw;
+      bottom: 80px;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 1;
+      animation: heart-float ${2 + Math.random() * 2}s ease-out forwards;
+    `;
+    document.body.appendChild(heart);
+    setTimeout(() => heart.remove(), 4000);
+  }
+
+  // Add animation if not exists
+  if (!document.getElementById('heart-float-style')) {
+    const style = document.createElement('style');
+    style.id = 'heart-float-style';
+    style.textContent = `
+      @keyframes heart-float {
+        0% { transform: translateY(0) scale(0); opacity: 0; }
+        10% { transform: translateY(-20px) scale(1); opacity: 1; }
+        100% { transform: translateY(-200px) scale(0.5); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
 export async function sendMessage(text) {
   const pendingAttachments = state.getPendingAttachments();
   const currentConversationId = state.getCurrentConversationId();
@@ -477,6 +515,11 @@ export async function sendMessage(text) {
 
   if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
   haptic(5);
+
+  // Easter egg: hearts when thanking Claude
+  if (THANK_YOU_PATTERNS.test(text)) {
+    triggerHeartsAnimation();
+  }
 
   // Queue if offline (without attachments)
   if (!ws || ws.readyState !== WebSocket.OPEN) {
