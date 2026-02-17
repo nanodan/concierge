@@ -1328,6 +1328,72 @@
   display: none;
 }
 
+/* Expandable menu sections */
+.more-menu-expandable {
+  position: relative;
+}
+
+.more-menu-expandable .expand-icon {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.more-menu-expandable.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+.more-menu-subitems {
+  display: none;
+  flex-direction: column;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.more-menu-subitems.expanded {
+  display: flex;
+  max-height: 400px;
+}
+
+.more-menu-subitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 44px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-size: 13px;
+}
+
+.more-menu-subitem:hover {
+  background: var(--bg-tertiary);
+  color: var(--text);
+}
+
+.more-menu-subitem:active {
+  background: var(--surface);
+}
+
+.more-menu-subitem.active {
+  color: var(--accent);
+}
+
+.more-menu-subitem.active::after {
+  content: '';
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
 /* Danger menu item */
 .more-menu-item.danger {
   color: var(--error, #e53935);

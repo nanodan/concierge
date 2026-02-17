@@ -136,6 +136,8 @@ export function toggleMoreMenu() {
 export function closeMoreMenu() {
   if (!moreMenuDropdown) return;
   moreMenuDropdown.classList.add('hidden');
+  // Collapse any expanded sections
+  moreMenuDropdown.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
   document.removeEventListener('click', closeMoreMenuOnOutsideClick);
 }
 
@@ -285,22 +287,85 @@ export function setupThemeEventListeners() {
     });
   }
 
-  // More menu items
-  if (moreColorTheme) {
+  // Home page inline expandable theme sections
+  const homeColorThemeItems = document.getElementById('home-color-theme-items');
+  const homeThemeItems = document.getElementById('home-theme-items');
+
+  // Toggle color theme section expansion
+  if (moreColorTheme && homeColorThemeItems) {
     moreColorTheme.addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleColorThemeDropdown();
+      const isExpanded = moreColorTheme.classList.contains('expanded');
+      // Close other section if open
+      moreThemeToggle?.classList.remove('expanded');
+      homeThemeItems?.classList.remove('expanded');
+      // Toggle this section
+      moreColorTheme.classList.toggle('expanded', !isExpanded);
+      homeColorThemeItems.classList.toggle('expanded', !isExpanded);
+      // Update active state
+      updateHomeColorThemeActive();
     });
   }
 
-  if (moreThemeToggle) {
+  // Toggle light/dark theme section expansion
+  if (moreThemeToggle && homeThemeItems) {
     moreThemeToggle.addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleThemeDropdown();
+      const isExpanded = moreThemeToggle.classList.contains('expanded');
+      // Close other section if open
+      moreColorTheme?.classList.remove('expanded');
+      homeColorThemeItems?.classList.remove('expanded');
+      // Toggle this section
+      moreThemeToggle.classList.toggle('expanded', !isExpanded);
+      homeThemeItems.classList.toggle('expanded', !isExpanded);
+      // Update active state
+      updateHomeThemeActive();
     });
   }
 
-  // Theme dropdown (light/dark/auto)
+  // Handle color theme selection from home menu
+  if (homeColorThemeItems) {
+    homeColorThemeItems.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.more-menu-subitem');
+      if (item && item.dataset.colorTheme) {
+        selectColorTheme(item.dataset.colorTheme);
+        updateHomeColorThemeActive();
+      }
+    });
+  }
+
+  // Handle light/dark theme selection from home menu
+  if (homeThemeItems) {
+    homeThemeItems.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.more-menu-subitem');
+      if (item && item.dataset.theme) {
+        selectTheme(item.dataset.theme);
+        updateHomeThemeActive();
+      }
+    });
+  }
+
+  // Helper to update active state for color themes (home menu)
+  function updateHomeColorThemeActive() {
+    if (!homeColorThemeItems) return;
+    const current = state.getCurrentColorTheme();
+    homeColorThemeItems.querySelectorAll('.more-menu-subitem').forEach(item => {
+      item.classList.toggle('active', item.dataset.colorTheme === current);
+    });
+  }
+
+  // Helper to update active state for light/dark themes (home menu)
+  function updateHomeThemeActive() {
+    if (!homeThemeItems) return;
+    const current = state.getCurrentTheme();
+    homeThemeItems.querySelectorAll('.more-menu-subitem').forEach(item => {
+      item.classList.toggle('active', item.dataset.theme === current);
+    });
+  }
+
+  // Legacy: Theme dropdown (light/dark/auto) - keep for backward compatibility
   if (themeDropdown) {
     themeDropdown.addEventListener('click', (e) => {
       const option = e.target.closest('.theme-option');
@@ -310,7 +375,7 @@ export function setupThemeEventListeners() {
     });
   }
 
-  // Color theme dropdown
+  // Legacy: Color theme dropdown - keep for backward compatibility
   if (colorThemeDropdown) {
     colorThemeDropdown.addEventListener('click', (e) => {
       const option = e.target.closest('.theme-option');

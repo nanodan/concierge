@@ -22,6 +22,8 @@ import {
   toggleColorThemeDropdown,
   toggleThemeDropdown,
   setupThemeEventListeners,
+  selectTheme,
+  selectColorTheme,
 } from './ui/theme.js';
 
 import {
@@ -868,6 +870,8 @@ function toggleChatMoreMenu() {
 function closeChatMoreMenu() {
   if (chatMoreDropdown) {
     chatMoreDropdown.classList.add('hidden');
+    // Collapse any expanded sections
+    chatMoreDropdown.querySelectorAll('.expanded').forEach(el => el.classList.remove('expanded'));
   }
 }
 
@@ -1349,21 +1353,83 @@ export function setupEventListeners(createConversation) {
     });
   }
 
-  // Chat more menu theme items
+  // Chat more menu inline expandable theme sections
   const chatMoreColorTheme = document.getElementById('chat-more-color-theme');
   const chatMoreThemeToggle = document.getElementById('chat-more-theme-toggle');
+  const chatColorThemeItems = document.getElementById('chat-color-theme-items');
+  const chatThemeItems = document.getElementById('chat-theme-items');
 
-  if (chatMoreColorTheme) {
+  // Toggle color theme section expansion
+  if (chatMoreColorTheme && chatColorThemeItems) {
     chatMoreColorTheme.addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleColorThemeDropdown(chatMoreBtn, closeChatMoreMenu);
+      const isExpanded = chatMoreColorTheme.classList.contains('expanded');
+      // Close other section if open
+      chatMoreThemeToggle?.classList.remove('expanded');
+      chatThemeItems?.classList.remove('expanded');
+      // Toggle this section
+      chatMoreColorTheme.classList.toggle('expanded', !isExpanded);
+      chatColorThemeItems.classList.toggle('expanded', !isExpanded);
+      // Update active state
+      updateInlineColorThemeActive();
     });
   }
 
-  if (chatMoreThemeToggle) {
+  // Toggle light/dark theme section expansion
+  if (chatMoreThemeToggle && chatThemeItems) {
     chatMoreThemeToggle.addEventListener('click', (e) => {
       e.stopPropagation();
-      toggleThemeDropdown(chatMoreBtn, closeChatMoreMenu);
+      const isExpanded = chatMoreThemeToggle.classList.contains('expanded');
+      // Close other section if open
+      chatMoreColorTheme?.classList.remove('expanded');
+      chatColorThemeItems?.classList.remove('expanded');
+      // Toggle this section
+      chatMoreThemeToggle.classList.toggle('expanded', !isExpanded);
+      chatThemeItems.classList.toggle('expanded', !isExpanded);
+      // Update active state
+      updateInlineThemeActive();
+    });
+  }
+
+  // Handle color theme selection
+  if (chatColorThemeItems) {
+    chatColorThemeItems.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.more-menu-subitem');
+      if (item && item.dataset.colorTheme) {
+        selectColorTheme(item.dataset.colorTheme);
+        updateInlineColorThemeActive();
+      }
+    });
+  }
+
+  // Handle light/dark theme selection
+  if (chatThemeItems) {
+    chatThemeItems.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const item = e.target.closest('.more-menu-subitem');
+      if (item && item.dataset.theme) {
+        selectTheme(item.dataset.theme);
+        updateInlineThemeActive();
+      }
+    });
+  }
+
+  // Helper to update active state for color themes
+  function updateInlineColorThemeActive() {
+    if (!chatColorThemeItems) return;
+    const current = state.getCurrentColorTheme();
+    chatColorThemeItems.querySelectorAll('.more-menu-subitem').forEach(item => {
+      item.classList.toggle('active', item.dataset.colorTheme === current);
+    });
+  }
+
+  // Helper to update active state for light/dark themes
+  function updateInlineThemeActive() {
+    if (!chatThemeItems) return;
+    const current = state.getCurrentTheme();
+    chatThemeItems.querySelectorAll('.more-menu-subitem').forEach(item => {
+      item.classList.toggle('active', item.dataset.theme === current);
     });
   }
 
