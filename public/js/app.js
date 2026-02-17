@@ -26,6 +26,7 @@ import {
 } from './ui.js';
 import { initFilePanel } from './file-panel.js';
 import { initBranches, openBranchesFromChat } from './branches.js';
+import { initStandaloneFiles } from './files-standalone.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -162,6 +163,16 @@ const branchesBtn = document.getElementById('branches-btn');
 const branchesView = document.getElementById('branches-view');
 const branchesBackBtn = document.getElementById('branches-back-btn');
 const branchesContent = document.getElementById('branches-content');
+const filesStandaloneView = document.getElementById('files-standalone-view');
+const filesStandaloneBackBtn = document.getElementById('files-standalone-back-btn');
+const filesStandaloneTitle = document.getElementById('files-standalone-title');
+const filesStandaloneUp = document.getElementById('files-standalone-up');
+const filesStandalonePath = document.getElementById('files-standalone-path');
+const filesStandaloneTree = document.getElementById('files-standalone-tree');
+const filesStandaloneViewer = document.getElementById('files-standalone-viewer');
+const filesStandaloneViewerName = document.getElementById('files-standalone-viewer-name');
+const filesStandaloneViewerClose = document.getElementById('files-standalone-viewer-close');
+const filesStandaloneViewerContent = document.getElementById('files-standalone-viewer-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
 const collapseAllBtn = document.getElementById('collapse-all-btn');
@@ -360,6 +371,21 @@ initBranches({
   branchesContent,
   listView,
   chatView
+});
+
+// Initialize standalone files view
+initStandaloneFiles({
+  filesStandaloneView,
+  listView,
+  backBtn: filesStandaloneBackBtn,
+  titleEl: filesStandaloneTitle,
+  upBtn: filesStandaloneUp,
+  pathEl: filesStandalonePath,
+  fileTree: filesStandaloneTree,
+  fileViewer: filesStandaloneViewer,
+  fileViewerName: filesStandaloneViewerName,
+  fileViewerClose: filesStandaloneViewerClose,
+  fileViewerContent: filesStandaloneViewerContent
 });
 
 // Setup action popup handlers

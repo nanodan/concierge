@@ -417,6 +417,17 @@
   pointer-events: auto;
 }
 
+#files-standalone-view {
+  transform: translateX(100%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+#files-standalone-view.slide-in {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
 /* Stats page */
 .stats-content {
   flex: 1;
