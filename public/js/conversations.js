@@ -11,6 +11,7 @@ import {
   HAPTIC_LIGHT,
 } from './constants.js';
 import { closeFilePanel } from './file-panel.js';
+import { openStandaloneFiles } from './files-standalone.js';
 
 // DOM elements (set by init)
 let listView = null;
@@ -448,6 +449,9 @@ export function renderConversationList(items) {
               <span class="scope-path">${escapeHtml(shortPath(scope))}</span>
               <span class="scope-count">${convs.length}</span>
             </button>
+            <button class="scope-folder-btn" data-scope="${escapeHtml(scope)}" aria-label="Browse files in this folder">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </button>
             <button class="scope-add-btn" data-scope="${escapeHtml(scope)}" aria-label="New chat in this folder">+</button>
           </div>
           <div class="scope-items${collapsed ? ' hidden' : ''}">
@@ -467,6 +471,17 @@ export function renderConversationList(items) {
         header.classList.toggle('collapsed', isCollapsed);
         header.querySelector('.scope-chevron').innerHTML = isCollapsed ? '&#x25B6;' : '&#x25BC;';
         state.toggleCollapsedScope(scope, isCollapsed);
+      });
+    });
+
+    // Scope folder button handlers
+    conversationList.querySelectorAll('.scope-folder-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        haptic();
+        btn.blur(); // Remove focus so it doesn't stay highlighted
+        const scope = btn.dataset.scope;
+        openStandaloneFiles(scope);
       });
     });
 

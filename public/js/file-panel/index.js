@@ -106,6 +106,7 @@ export function initFilePanel(elements) {
     fileViewer: elements.fileViewer,
     fileViewerName: elements.fileViewerName,
     fileViewerContent: elements.fileViewerContent,
+    diffGranularToggle: elements.diffGranularToggle,
   });
 
   initGitCommits({

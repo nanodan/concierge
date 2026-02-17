@@ -4,6 +4,7 @@ import { haptic, showToast, apiFetch, formatFileSize } from '../utils.js';
 import * as state from '../state.js';
 import { getFileIcon, FILE_ICONS, IMAGE_EXTS } from '../file-utils.js';
 import { ANIMATION_DELAY_SHORT, DEBOUNCE_SEARCH, SLIDE_TRANSITION_DURATION } from '../constants.js';
+import { hideGranularToggle } from './git-changes.js';
 
 // UI-specific icons
 const ICONS = {
@@ -252,6 +253,9 @@ export async function viewFile(filePath) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
+  // Hide granular toggle since this is not a diff view
+  hideGranularToggle();
+
   const filename = filePath.split('/').pop();
   fileViewerName.textContent = filename;
   fileViewerContent.innerHTML = '<code>Loading...</code>';
@@ -367,6 +371,7 @@ export async function viewFile(filePath) {
 export function closeFileViewer() {
   fileViewer.classList.remove('open');
   viewingDiff = null;
+  hideGranularToggle();
   setTimeout(() => {
     fileViewer.classList.add('hidden');
     fileViewerContent.innerHTML = '<code></code>';

@@ -26,6 +26,7 @@ import {
 } from './ui.js';
 import { initFilePanel } from './file-panel.js';
 import { initBranches, openBranchesFromChat } from './branches.js';
+import { initStandaloneFiles, closeStandaloneFiles } from './files-standalone.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -109,6 +110,7 @@ const filePanelViewer = document.getElementById('file-viewer');
 const fileViewerName = document.getElementById('file-viewer-name');
 const fileViewerClose = document.getElementById('file-viewer-close');
 const fileViewerContent = document.getElementById('file-viewer-content');
+const diffGranularToggle = document.getElementById('diff-granular-toggle');
 const filePanelTabs = document.getElementById('file-panel-tabs');
 const filesTab = document.getElementById('files-tab');
 const changesTab = document.getElementById('changes-tab');
@@ -161,6 +163,16 @@ const branchesBtn = document.getElementById('branches-btn');
 const branchesView = document.getElementById('branches-view');
 const branchesBackBtn = document.getElementById('branches-back-btn');
 const branchesContent = document.getElementById('branches-content');
+const filesStandaloneView = document.getElementById('files-standalone-view');
+const filesStandaloneBackBtn = document.getElementById('files-standalone-back-btn');
+const filesStandaloneTitle = document.getElementById('files-standalone-title');
+const filesStandaloneUp = document.getElementById('files-standalone-up');
+const filesStandalonePath = document.getElementById('files-standalone-path');
+const filesStandaloneTree = document.getElementById('files-standalone-tree');
+const filesStandaloneViewer = document.getElementById('files-standalone-viewer');
+const filesStandaloneViewerName = document.getElementById('files-standalone-viewer-name');
+const filesStandaloneViewerClose = document.getElementById('files-standalone-viewer-close');
+const filesStandaloneViewerContent = document.getElementById('files-standalone-viewer-content');
 const listHeader = listView.querySelector('.list-header');
 const selectModeBtn = document.getElementById('select-mode-btn');
 const collapseAllBtn = document.getElementById('collapse-all-btn');
@@ -319,6 +331,7 @@ initFilePanel({
   fileViewerName,
   fileViewerClose,
   fileViewerContent,
+  diffGranularToggle,
   chatView,
   filePanelTabs,
   filesTab,
@@ -358,6 +371,21 @@ initBranches({
   branchesContent,
   listView,
   chatView
+});
+
+// Initialize standalone files view
+initStandaloneFiles({
+  filesStandaloneView,
+  listView,
+  backBtn: filesStandaloneBackBtn,
+  titleEl: filesStandaloneTitle,
+  upBtn: filesStandaloneUp,
+  pathEl: filesStandalonePath,
+  fileTree: filesStandaloneTree,
+  fileViewer: filesStandaloneViewer,
+  fileViewerName: filesStandaloneViewerName,
+  fileViewerClose: filesStandaloneViewerClose,
+  fileViewerContent: filesStandaloneViewerContent
 });
 
 // Setup action popup handlers
@@ -487,6 +515,8 @@ window.addEventListener('popstate', (e) => {
     if (state.getCurrentConversationId()) {
       showListView(true); // true = skip history update
     }
+    // Also close standalone files if open
+    closeStandaloneFiles(true); // true = skip history update (popstate already handled it)
   } else if (currentView === 'chat' && e.state?.conversationId) {
     // Going forward to chat view (rare, but handle it)
     openConversation(e.state.conversationId);

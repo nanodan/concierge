@@ -441,6 +441,41 @@
   background: var(--accent-alpha-20);
 }
 
+.scope-folder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.scope-folder-btn:hover {
+  background: var(--accent-alpha-10);
+  color: var(--accent);
+}
+
+.scope-folder-btn:active {
+  background: var(--accent-alpha-20);
+  color: var(--accent);
+}
+
+.scope-folder-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.scope-folder-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 .scope-header {
   display: flex;
   align-items: center;
