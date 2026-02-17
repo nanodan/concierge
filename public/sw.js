@@ -1,4 +1,4 @@
-const CACHE_NAME = 'concierge-v84';
+const CACHE_NAME = 'concierge-v88';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -9,6 +9,9 @@ const STATIC_ASSETS = [
   '/css/themes/aquatic.css',
   '/css/themes/solarized.css',
   '/css/themes/catppuccin.css',
+  '/css/themes/fjord.css',
+  '/css/themes/monokai.css',
+  '/css/themes/paper.css',
   '/css/base.css',
   '/css/layout.css',
   '/css/components.css',

@@ -235,6 +235,7 @@ let msgActionPopup = null;
 let actionPopupOverlay = null;
 let themeDropdown = null;
 let colorThemeDropdown = null;
+let moreMenuDropdown = null;
 let moreNotificationsToggle = null;
 let moreNotificationsLabel = null;
 let moreStats = null;
@@ -295,6 +296,7 @@ export function initUI(elements) {
   actionPopupOverlay = elements.actionPopupOverlay;
   themeDropdown = elements.themeDropdown;
   colorThemeDropdown = elements.colorThemeDropdown;
+  moreMenuDropdown = elements.moreMenuDropdown;
   moreNotificationsToggle = elements.moreNotificationsToggle;
   moreNotificationsLabel = elements.moreNotificationsLabel;
   moreStats = document.getElementById('more-stats');
@@ -832,10 +834,23 @@ export function populateFilterModels() {
     models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
 }
 
+// Close all floating dropdowns/submenus
+function closeAllDropdowns() {
+  closeThemeDropdown();
+  closeColorThemeDropdown();
+  closeChatMoreMenu();
+  closeMoreMenu();
+}
+
 // Chat more menu
 function toggleChatMoreMenu() {
   if (!chatMoreDropdown) return;
   const isHidden = chatMoreDropdown.classList.contains('hidden');
+
+  // Close other dropdowns first (but not ourselves if we're about to open)
+  closeThemeDropdown();
+  closeColorThemeDropdown();
+  closeMoreMenu();
 
   if (isHidden) {
     // Position the dropdown near the button
@@ -1380,11 +1395,15 @@ export function setupEventListeners(createConversation) {
       if (actionPopupOverlay && !actionPopupOverlay.classList.contains('hidden')) {
         hideActionPopup();
         hideMsgActionPopup();
-      // Close theme dropdowns
+      // Close dropdowns/menus (innermost first)
       } else if (themeDropdown && !themeDropdown.classList.contains('hidden')) {
         closeThemeDropdown();
       } else if (colorThemeDropdown && !colorThemeDropdown.classList.contains('hidden')) {
         closeColorThemeDropdown();
+      } else if (chatMoreDropdown && !chatMoreDropdown.classList.contains('hidden')) {
+        closeChatMoreMenu();
+      } else if (moreMenuDropdown && !moreMenuDropdown.classList.contains('hidden')) {
+        closeMoreMenu();
       } else if (lightbox && !lightbox.classList.contains('hidden')) {
         lightbox.classList.add('hidden');
       } else if (dialogOverlay && !dialogOverlay.classList.contains('hidden')) {

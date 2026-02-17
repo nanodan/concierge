@@ -1,0 +1,352 @@
+/*
+ * Paper Theme
+ * Fine stationery, fountain pen ink, warm tactile paper
+ */
+
+/* ========== DARK MODE (default) - Writer's Desk ========== */
+:root {
+  /* === Core Palette === */
+  --palette-parchment: #E8DCC8;
+  --palette-parchment-muted: #B8A88C;
+  --palette-ink: #2C2416;
+  --palette-ink-mid: #3D3224;
+  --palette-ink-light: #4A3F30;
+  --palette-ink-lighter: #5C4F3C;
+  --palette-ink-border: #6B5D48;
+  --palette-amber: #D4A24C;
+  --palette-amber-light: #E8B860;
+  --palette-sepia: #A67C52;
+  --palette-rust: #B85C38;
+  --palette-sage: #7A8B6E;
+  --palette-slate-blue: #6B7A8C;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-ink);
+  --bg-secondary: var(--palette-ink-mid);
+  --bg-tertiary: var(--palette-ink-lighter);
+  --surface: var(--palette-ink-light);
+  --input-bg: var(--palette-ink-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-parchment);
+  --text-secondary: var(--palette-parchment-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-amber);
+  --accent-light: var(--palette-amber-light);
+  --accent-secondary: var(--palette-slate-blue);
+
+  /* === Semantic: Status === */
+  --danger: var(--palette-rust);
+  --success: var(--palette-sage);
+  --warning: var(--palette-amber);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-ink-border);
+  --glass-bg: rgba(44, 36, 22, 0.92);
+  --glass-border: rgba(232, 220, 200, 0.1);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-amber);
+  --user-bubble-end: var(--palette-sepia);
+  --assistant-bubble: var(--palette-ink-mid);
+
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-amber);
+  --card-border: rgba(212, 162, 76, 0.4);
+  --pinned-border: rgba(212, 162, 76, 0.55);
+  --pinned-bg: rgba(212, 162, 76, 0.1);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(212, 162, 76, 0.08);
+  --accent-alpha-12: rgba(212, 162, 76, 0.12);
+  --accent-alpha-15: rgba(212, 162, 76, 0.15);
+  --accent-alpha-20: rgba(212, 162, 76, 0.2);
+  --accent-alpha-25: rgba(212, 162, 76, 0.25);
+  --accent-alpha-30: rgba(212, 162, 76, 0.3);
+  --accent-alpha-35: rgba(212, 162, 76, 0.35);
+  --accent-alpha-50: rgba(212, 162, 76, 0.5);
+
+  --danger-alpha-15: rgba(184, 92, 56, 0.15);
+  --danger-alpha-40: rgba(184, 92, 56, 0.4);
+
+  --teal-alpha-6: rgba(107, 122, 140, 0.06);
+  --teal-alpha-25: rgba(107, 122, 140, 0.25);
+
+  --terracotta-alpha-6: rgba(166, 124, 82, 0.06);
+  --terracotta-alpha-10: rgba(166, 124, 82, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-sage);
+  --status-thinking: var(--palette-amber);
+  --status-disconnected: var(--palette-ink-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: var(--palette-slate-blue);
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-amber);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-rust);
+  --syntax-string: var(--palette-sage);
+  --syntax-number: var(--palette-amber);
+  --syntax-comment: #7A6B58;
+  --syntax-function: var(--palette-slate-blue);
+  --syntax-type: var(--palette-amber-light);
+  --syntax-variable: var(--palette-sepia);
+  --syntax-operator: var(--palette-parchment-muted);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient Mesh === */
+  --mesh-color-1: rgba(212, 162, 76, 0.1);
+  --mesh-color-2: rgba(166, 124, 82, 0.06);
+  --mesh-color-3: rgba(107, 122, 140, 0.05);
+
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-amber);
+  --brand-gradient: linear-gradient(135deg, var(--palette-amber-light) 0%, var(--palette-sepia) 100%);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #2C2416;
+}
+
+/* ========== LIGHT MODE - Fresh Stationery ========== */
+html[data-theme="light"] {
+  /* === Core Palette Overrides === */
+  --palette-parchment: #3C3428;
+  --palette-parchment-muted: #6B5D4D;
+
+  /* === Backgrounds - warm paper tones === */
+  --bg: #F7F3EB;
+  --bg-secondary: #EDE7DB;
+  --bg-tertiary: #E0D8C8;
+  --surface: #FFFCF5;
+  --input-bg: #FFFCF5;
+
+  /* === Text - ink-like === */
+  --text: #2C2416;
+  --text-secondary: #5C4F3C;
+
+  /* === Accent - wax seal red === */
+  --accent: #B85038;
+  --accent-light: #D06048;
+
+  /* === Borders === */
+  --border: #D4C8B4;
+  --glass-bg: rgba(255, 252, 245, 0.92);
+  --glass-border: rgba(44, 36, 22, 0.1);
+
+  /* === Message Bubbles === */
+  --assistant-bubble: #EDE7DB;
+
+  /* === List View === */
+  --scope-header-color: #8B4C30;
+  --card-border: rgba(184, 80, 56, 0.4);
+  --pinned-border: rgba(184, 80, 56, 0.5);
+  --pinned-bg: rgba(184, 80, 56, 0.08);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(184, 80, 56, 0.08);
+  --accent-alpha-12: rgba(184, 80, 56, 0.12);
+  --accent-alpha-15: rgba(184, 80, 56, 0.15);
+  --accent-alpha-20: rgba(184, 80, 56, 0.2);
+  --accent-alpha-25: rgba(184, 80, 56, 0.25);
+  --accent-alpha-30: rgba(184, 80, 56, 0.3);
+  --accent-alpha-35: rgba(184, 80, 56, 0.35);
+  --accent-alpha-50: rgba(184, 80, 56, 0.5);
+
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+  /* === Code Blocks === */
+  --code-bg: #EDE7DB;
+  --code-header-bg: #E0D8C8;
+  --code-inline-bg: rgba(184, 80, 56, 0.1);
+
+  /* === Gradient Mesh === */
+  --mesh-color-1: rgba(184, 80, 56, 0.08);
+  --mesh-color-2: rgba(166, 124, 82, 0.06);
+  --mesh-color-3: rgba(107, 122, 140, 0.04);
+
+  /* === Syntax Highlighting - fountain pen inks === */
+  --syntax-keyword: #8B4C30;
+  --syntax-string: #4A6B48;
+  --syntax-number: #9A6B20;
+  --syntax-comment: #8B7A68;
+  --syntax-function: #4A5A6B;
+  --syntax-type: #7A5030;
+  --syntax-variable: #6B5030;
+  --syntax-operator: #5C4F3C;
+
+  /* === Status === */
+  --status-disconnected: #E0D8C8;
+
+  /* === Scrollbar === */
+  --scrollbar-thumb: rgba(92, 79, 60, 0.25);
+
+  /* === Component: Brand === */
+  --brand-icon-color: #B85038;
+  --brand-gradient: linear-gradient(135deg, #D06048 0%, #8B4C30 100%);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #F7F3EB;
+}
+
+/* Auto theme via media query */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-parchment: #3C3428;
+    --palette-parchment-muted: #6B5D4D;
+
+    --bg: #F7F3EB;
+    --bg-secondary: #EDE7DB;
+    --bg-tertiary: #E0D8C8;
+    --surface: #FFFCF5;
+    --input-bg: #FFFCF5;
+    --text: #2C2416;
+    --text-secondary: #5C4F3C;
+    --accent: #B85038;
+    --accent-light: #D06048;
+    --border: #D4C8B4;
+    --glass-bg: rgba(255, 252, 245, 0.92);
+    --glass-border: rgba(44, 36, 22, 0.1);
+    --assistant-bubble: #EDE7DB;
+
+    --scope-header-color: #8B4C30;
+    --card-border: rgba(184, 80, 56, 0.4);
+    --pinned-border: rgba(184, 80, 56, 0.5);
+    --pinned-bg: rgba(184, 80, 56, 0.08);
+
+    --accent-alpha-8: rgba(184, 80, 56, 0.08);
+    --accent-alpha-12: rgba(184, 80, 56, 0.12);
+    --accent-alpha-15: rgba(184, 80, 56, 0.15);
+    --accent-alpha-20: rgba(184, 80, 56, 0.2);
+    --accent-alpha-25: rgba(184, 80, 56, 0.25);
+    --accent-alpha-30: rgba(184, 80, 56, 0.3);
+    --accent-alpha-35: rgba(184, 80, 56, 0.35);
+    --accent-alpha-50: rgba(184, 80, 56, 0.5);
+
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+
+    --code-bg: #EDE7DB;
+    --code-header-bg: #E0D8C8;
+    --code-inline-bg: rgba(184, 80, 56, 0.1);
+
+    --mesh-color-1: rgba(184, 80, 56, 0.08);
+    --mesh-color-2: rgba(166, 124, 82, 0.06);
+    --mesh-color-3: rgba(107, 122, 140, 0.04);
+
+    --syntax-keyword: #8B4C30;
+    --syntax-string: #4A6B48;
+    --syntax-number: #9A6B20;
+    --syntax-comment: #8B7A68;
+    --syntax-function: #4A5A6B;
+    --syntax-type: #7A5030;
+    --syntax-variable: #6B5030;
+    --syntax-operator: #5C4F3C;
+
+    --status-disconnected: #E0D8C8;
+    --scrollbar-thumb: rgba(92, 79, 60, 0.25);
+    --brand-icon-color: #B85038;
+    --brand-gradient: linear-gradient(135deg, #D06048 0%, #8B4C30 100%);
+    --theme-color: #F7F3EB;
+  }
+}
+
+/* ========== PAPER TEXTURE OVERLAY ========== */
+
+/*
+ * Multi-layered paper texture effect:
+ * - Fine grain from paper fibers
+ * - Subtle color variations like real paper pulp
+ * - Soft vignette for aged/used feel
+ */
+
+/* Override the base noise with paper-specific grain */
+body::after {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23fff' surfaceScale='2' result='light'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+}
+
+/* Light mode: more visible paper texture */
+html[data-theme="light"] body::after,
+html:not([data-theme="dark"]):not([data-theme="light"]) body::after {
+  opacity: 0.045;
+}
+
+/* Secondary paper fiber layer for depth */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='fibers'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.8 0.2' numOctaves='2' seed='5' stitchTiles='stitch' result='fibers'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fibers)'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: overlay;
+}
+
+/* Light mode fiber visibility */
+html[data-theme="light"] body::before {
+  opacity: 0.025;
+  mix-blend-mode: multiply;
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) body::before {
+    opacity: 0.025;
+    mix-blend-mode: multiply;
+  }
+}
+
+/* Subtle warm vignette for aged paper feel */
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 120% 100% at 50% 50%,
+    transparent 40%,
+    rgba(139, 90, 43, 0.04) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Softer vignette in light mode */
+html[data-theme="light"] #app::after {
+  background: radial-gradient(
+    ellipse 120% 100% at 50% 50%,
+    transparent 50%,
+    rgba(92, 60, 30, 0.035) 100%
+  );
+}
+
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) #app::after {
+    background: radial-gradient(
+      ellipse 120% 100% at 50% 50%,
+      transparent 50%,
+      rgba(92, 60, 30, 0.035) 100%
+    );
+  }
+}

@@ -22,7 +22,8 @@ export const COLOR_THEMES = {
   aquatic: { name: 'Aquatic', icon: '\u{1F6A2}' },
   fjord: { name: 'Fjord', icon: '\u{1F3D4}' },
   monokai: { name: 'Monokai', icon: '\u{1F4BB}' },
-  catppuccin: { name: 'Catppuccin', icon: '\u{1F431}' }
+  catppuccin: { name: 'Catppuccin', icon: '\u{1F431}' },
+  paper: { name: 'Paper', icon: '\u{1F4DC}' }
 };
 
 export function initTheme(elements) {
