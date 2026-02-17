@@ -26,7 +26,7 @@ import {
 } from './ui.js';
 import { initFilePanel } from './file-panel.js';
 import { initBranches, openBranchesFromChat } from './branches.js';
-import { initStandaloneFiles } from './files-standalone.js';
+import { initStandaloneFiles, closeStandaloneFiles } from './files-standalone.js';
 
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
@@ -515,6 +515,8 @@ window.addEventListener('popstate', (e) => {
     if (state.getCurrentConversationId()) {
       showListView(true); // true = skip history update
     }
+    // Also close standalone files if open
+    closeStandaloneFiles(true); // true = skip history update (popstate already handled it)
   } else if (currentView === 'chat' && e.state?.conversationId) {
     // Going forward to chat view (rare, but handle it)
     openConversation(e.state.conversationId);

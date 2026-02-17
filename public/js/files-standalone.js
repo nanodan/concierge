@@ -209,6 +209,9 @@ export function openStandaloneFiles(path) {
   // Reset to files tab
   switchTab('files');
 
+  // Push history state for Android back button
+  history.pushState({ view: 'files-standalone' }, '', '#files');
+
   // Show view - use slide-in class which enables transform and pointer-events
   listView.classList.add('slide-out');
   filesStandaloneView.classList.add('slide-in');
@@ -223,9 +226,11 @@ export function openStandaloneFiles(path) {
 
 /**
  * Close the standalone files view
+ * @param {boolean} skipHistoryUpdate - If true, don't update browser history (used when triggered by popstate)
  */
-export function closeStandaloneFiles() {
+export function closeStandaloneFiles(skipHistoryUpdate = false) {
   if (!filesStandaloneView) return;
+  if (!filesStandaloneView.classList.contains('slide-in')) return; // Already closed
 
   // Close file viewer if open
   if (fileViewer && !fileViewer.classList.contains('hidden')) {
@@ -235,6 +240,11 @@ export function closeStandaloneFiles() {
 
   // Remove slide-in to trigger transition back off-screen
   filesStandaloneView.classList.remove('slide-in');
+
+  // Update history (unless triggered by popstate)
+  if (!skipHistoryUpdate && history.state?.view === 'files-standalone') {
+    history.back();
+  }
 }
 
 /**
