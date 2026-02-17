@@ -25,6 +25,8 @@ let gitStatus = null;
 let stashes = null;
 let granularMode = localStorage.getItem('gitGranularMode') === 'true';
 let currentDiffData = null;  // Store current diff data for re-rendering
+let untrackedSelectionMode = false;
+let selectedUntracked = new Set();
 
 /**
  * Initialize git changes elements
@@ -291,11 +293,17 @@ function renderChangesView() {
   // Untracked section
   if (untracked.length > 0) {
     html += `
-      <div class="changes-section">
+      <div class="changes-section untracked-section${untrackedSelectionMode ? ' selection-mode' : ''}">
         <div class="changes-section-header">
           <span class="changes-section-title">Untracked Files</span>
           <span class="changes-section-count">${untracked.length}</span>
-          <button class="changes-section-btn" data-action="stage-all-untracked" title="Stage All">+ All</button>
+          ${untrackedSelectionMode
+            ? `<button class="changes-section-btn danger" data-action="delete-selected" title="Delete Selected"${selectedUntracked.size === 0 ? ' disabled' : ''}>Delete (${selectedUntracked.size})</button>`
+            : `<button class="changes-section-btn" data-action="stage-all-untracked" title="Stage All">+ All</button>`
+          }
+          <button class="changes-section-btn select-btn${untrackedSelectionMode ? ' active' : ''}" data-action="toggle-select" title="${untrackedSelectionMode ? 'Cancel' : 'Select Multiple'}">
+            ${untrackedSelectionMode ? 'Cancel' : 'Select'}
+          </button>
         </div>
         ${untracked.map(f => renderChangeItem({ ...f, status: '?' }, 'untracked')).join('')}
       </div>`;
@@ -333,18 +341,30 @@ function renderChangeItem(file, type) {
   const normalizedPath = file.path.replace(/\/$/, '');
   const filename = normalizedPath.split('/').pop() + (file.path.endsWith('/') ? '/' : '');
 
+  const isSelected = type === 'untracked' && selectedUntracked.has(file.path);
+  const showCheckbox = type === 'untracked' && untrackedSelectionMode;
+
   return `
-    <div class="changes-item" data-path="${escapeHtml(file.path)}" data-type="${type}">
+    <div class="changes-item${isSelected ? ' selected' : ''}" data-path="${escapeHtml(file.path)}" data-type="${type}">
+      ${showCheckbox ? `
+        <span class="changes-item-checkbox${isSelected ? ' checked' : ''}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            ${isSelected ? '<polyline points="20 6 9 17 4 12"/>' : ''}
+          </svg>
+        </span>
+      ` : ''}
       <span class="status-badge status-${file.status.toLowerCase()}" title="${statusLabel}">${file.status}</span>
       <span class="changes-item-name" title="${escapeHtml(file.path)}">${escapeHtml(filename)}</span>
       <span class="changes-item-path">${escapeHtml(file.path)}</span>
-      <div class="changes-item-actions">
-        ${type === 'staged' ? `<button class="changes-action-btn" data-action="unstage" title="Unstage">\u2212</button>` : ''}
-        ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
-        ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">\u00d7</button>` : ''}
-        ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
-        ${type === 'untracked' ? `<button class="changes-action-btn danger" data-action="delete" title="Delete">\u00d7</button>` : ''}
-      </div>
+      ${!showCheckbox ? `
+        <div class="changes-item-actions">
+          ${type === 'staged' ? `<button class="changes-action-btn" data-action="unstage" title="Unstage">\u2212</button>` : ''}
+          ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+          ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">\u00d7</button>` : ''}
+          ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+          ${type === 'untracked' ? `<button class="changes-action-btn danger" data-action="delete" title="Delete">\u00d7</button>` : ''}
+        </div>
+      ` : ''}
     </div>`;
 }
 
@@ -354,12 +374,20 @@ function renderChangeItem(file, type) {
 function attachChangeItemListeners() {
   if (!changesList) return;
 
-  // Click on item to view diff
+  // Click on item to view diff (or toggle selection in selection mode)
   changesList.querySelectorAll('.changes-item').forEach(item => {
     item.addEventListener('click', (e) => {
       if (e.target.closest('.changes-action-btn')) return;
       const filePath = item.dataset.path;
       const type = item.dataset.type;
+
+      // In selection mode, toggle selection for untracked files
+      if (type === 'untracked' && untrackedSelectionMode) {
+        haptic(5);
+        toggleUntrackedSelection(filePath);
+        return;
+      }
+
       if (type !== 'untracked') {
         viewDiff(filePath, type === 'staged');
       }
@@ -414,7 +442,7 @@ function attachChangeItemListeners() {
     btn.addEventListener('touchend', handleAction);
   });
 
-  // Section buttons (Stage All / Unstage All)
+  // Section buttons (Stage All / Unstage All / Select / Delete Selected)
   changesList.querySelectorAll('.changes-section-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -431,9 +459,64 @@ function attachChangeItemListeners() {
       } else if (action === 'stage-all-untracked' && gitStatus?.untracked) {
         const paths = gitStatus.untracked.map(f => f.path);
         await stageFiles(paths);
+      } else if (action === 'toggle-select') {
+        if (untrackedSelectionMode) {
+          exitUntrackedSelectionMode();
+        } else {
+          enterUntrackedSelectionMode();
+        }
+      } else if (action === 'delete-selected') {
+        await deleteSelectedUntracked();
       }
     });
   });
+}
+
+// === Untracked Selection Mode Functions ===
+
+function enterUntrackedSelectionMode() {
+  untrackedSelectionMode = true;
+  selectedUntracked.clear();
+  renderChangesView();
+}
+
+function exitUntrackedSelectionMode() {
+  untrackedSelectionMode = false;
+  selectedUntracked.clear();
+  renderChangesView();
+}
+
+function toggleUntrackedSelection(path) {
+  if (selectedUntracked.has(path)) {
+    selectedUntracked.delete(path);
+  } else {
+    selectedUntracked.add(path);
+  }
+  renderChangesView();
+}
+
+async function deleteSelectedUntracked() {
+  if (selectedUntracked.size === 0) return;
+
+  const count = selectedUntracked.size;
+  const confirmed = await showDialog({
+    title: `Delete ${count} file${count > 1 ? 's' : ''}?`,
+    message: `This will permanently delete ${count} untracked file${count > 1 ? 's' : ''}. This cannot be undone.`,
+    danger: true,
+    confirmLabel: 'Delete All'
+  });
+
+  if (!confirmed) return;
+
+  const paths = Array.from(selectedUntracked);
+  for (const path of paths) {
+    await deleteUntrackedFile(path, true); // silent mode
+  }
+
+  showToast(`Deleted ${count} file${count > 1 ? 's' : ''}`);
+  untrackedSelectionMode = false;
+  selectedUntracked.clear();
+  loadGitStatus(); // Refresh from server to show files are gone
 }
 
 // === Stash Functions ===
@@ -677,7 +760,7 @@ export async function discardChanges(paths) {
   loadGitStatus();
 }
 
-async function deleteUntrackedFile(relativePath) {
+async function deleteUntrackedFile(relativePath, silent = false) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
@@ -697,8 +780,10 @@ async function deleteUntrackedFile(relativePath) {
     return;
   }
 
-  showToast('File deleted');
-  loadGitStatus();
+  if (!silent) {
+    showToast('File deleted');
+    loadGitStatus();
+  }
 }
 
 async function handleCommit() {

@@ -1064,6 +1064,80 @@
   color: var(--bg);
 }
 
+/* === Untracked File Selection Mode === */
+.changes-section.selection-mode .changes-item {
+  cursor: pointer;
+}
+
+.changes-section.selection-mode .changes-item:active {
+  background: var(--hover-bg);
+}
+
+/* Disable the filename/path swap on hover in selection mode */
+.changes-section.selection-mode .changes-item:hover .changes-item-name {
+  opacity: 1;
+}
+
+.changes-section.selection-mode .changes-item:hover .changes-item-path {
+  opacity: 0;
+}
+
+.changes-item-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.changes-item-checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.changes-item-checkbox svg {
+  stroke: var(--bg);
+}
+
+.changes-item.selected {
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.1));
+}
+
+/* Select button in section header */
+.changes-section-btn.select-btn {
+  margin-left: 4px;
+}
+
+.changes-section-btn.select-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border-color: var(--accent);
+}
+
+.changes-section-btn.danger {
+  color: var(--error, #e53935);
+  border-color: var(--error, #e53935);
+}
+
+.changes-section-btn.danger:hover:not(:disabled) {
+  background: var(--error, #e53935);
+  color: #fff;
+}
+
+.changes-section-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.changes-section-btn:disabled:hover {
+  background: none;
+}
+
 /* === Stash Section === */
 .stash-section {
   margin-top: 8px;
