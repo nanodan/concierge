@@ -238,12 +238,14 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
   user-select: none;
+  border-left: 3px solid transparent;
 }
 
 .file-tree-item:hover {
-  background: var(--hover-bg);
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.1));
+  border-left-color: var(--accent);
 }
 
 .file-tree-item:active {
