@@ -42,23 +42,44 @@
 
 .message.user {
   align-self: flex-end;
-  background: var(--user-bubble);
+  background: linear-gradient(145deg, var(--user-bubble) 0%, var(--user-bubble-end) 100%);
   color: white;
   border-bottom-right-radius: 6px;
-  box-shadow: 0 2px 12px var(--black-alpha-25);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.15),
+    0 3px 12px var(--black-alpha-25),
+    0 1px 3px var(--black-alpha-15);
 }
 
 .message.assistant {
   align-self: flex-start;
-  background: var(--assistant-bubble);
+  background:
+    linear-gradient(
+      175deg,
+      var(--assistant-bubble) 0%,
+      color-mix(in srgb, var(--assistant-bubble) 94%, var(--accent) 6%) 100%
+    );
   color: var(--text);
   border-bottom-left-radius: 6px;
   max-width: 92%;
   box-shadow:
     inset 0 1px 2px var(--black-alpha-8),
-    0 1px 6px var(--black-alpha-20);
+    0 2px 8px var(--black-alpha-20);
   border: 1px solid var(--glass-border);
-  border-left: 2px solid var(--accent-alpha-30);
+  border-left: 3px solid var(--accent-alpha-50);
+  position: relative;
+}
+
+/* Subtle paper texture on assistant messages */
+.message.assistant::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  pointer-events: none;
+  border-radius: inherit;
+  mix-blend-mode: overlay;
 }
 
 /* Claude avatar for assistant messages */
@@ -265,10 +286,28 @@ html[data-theme="light"] .code-block::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: var(--code-header-bg);
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Typewriter-style top border accent */
+.code-block-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent-alpha-30) 0px,
+    var(--accent-alpha-30) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }
 
 .code-block > pre {
@@ -305,11 +344,16 @@ html[data-theme="light"] .code-block::before {
 }
 
 .code-lang-badge {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--accent-light);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  background: var(--accent-alpha-15);
+  padding: 2px 8px;
+  border-radius: 3px;
+  transform: rotate(-1deg);
+  display: inline-block;
 }
 
 /* Language-specific badge colors */
@@ -746,6 +790,23 @@ html[data-theme="light"] .code-block::before {
 
 .message.animate-in {
   animation: message-appear 0.3s ease;
+}
+
+/* Stagger animation for initial message load */
+@keyframes message-stagger {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-wrapper.stagger-in,
+.message.stagger-in:not(.message-wrapper .message) {
+  animation: message-stagger 0.35s var(--spring) backwards;
 }
 
 /* Queued message style */

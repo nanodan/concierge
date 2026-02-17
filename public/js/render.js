@@ -143,7 +143,27 @@ export function renderMessages(messages) {
   attachMessageActions();
   attachCompressedSectionToggle();
   renderAllReactions();
+
+  // Apply stagger animation to visible messages
+  applyStaggerAnimation(messagesContainer);
+
   state.scrollToBottom(true);
+}
+
+// Apply stagger-in animation class to message elements
+function applyStaggerAnimation(container) {
+  const items = container.querySelectorAll('.message-wrapper, .message:not(.message-wrapper .message)');
+  items.forEach((el, i) => {
+    if (i < 10) {
+      el.classList.add('stagger-in');
+      el.style.animationDelay = `${i * 0.03}s`;
+      // Remove class after animation to prevent re-animation on DOM changes
+      el.addEventListener('animationend', () => {
+        el.classList.remove('stagger-in');
+        el.style.animationDelay = '';
+      }, { once: true });
+    }
+  });
 }
 
 // Attach click handler for compressed section toggle

@@ -86,14 +86,16 @@
 
 .top-bar h1 {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   background: var(--brand-gradient, linear-gradient(135deg, var(--accent-light), var(--accent)));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   transition: font-size 0.2s var(--smooth), transform 0.2s var(--smooth);
+  text-shadow: 0 0 40px var(--accent-alpha-30);
+  filter: drop-shadow(0 1px 2px var(--accent-alpha-20));
 }
 
 /* Scroll-linked compact header */
@@ -104,7 +106,7 @@
 }
 
 .top-bar.compact h1 {
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .top-bar.compact .brand-icon {
@@ -896,6 +898,24 @@
   justify-content: center;
   margin-bottom: 28px;
   animation: gentle-bob 4s ease-in-out infinite;
+  position: relative;
+}
+
+/* Vintage double-ring frame */
+.empty-state-icon::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border: 1px dashed var(--accent-alpha-20);
+  border-radius: 50%;
+}
+
+.empty-state-icon::after {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border: 1px solid var(--accent-alpha-10);
+  border-radius: 50%;
 }
 
 @keyframes gentle-bob {

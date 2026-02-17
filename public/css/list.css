@@ -69,9 +69,9 @@
 @media (hover: hover) {
   .conv-card:hover {
     background: var(--bg-secondary);
-    border-color: var(--accent-alpha-20);
+    border-color: var(--accent-alpha-30);
     transform: translateX(4px);
-    box-shadow: -2px 4px 12px var(--black-alpha-15);
+    box-shadow: -3px 5px 16px var(--black-alpha-20);
   }
 }
 
@@ -127,8 +127,8 @@
 .conv-card-name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.005em;
+  font-size: 17px;
+  letter-spacing: -0.02em;
 }
 
 /* Pin icon */
