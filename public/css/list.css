@@ -90,7 +90,7 @@
   border-color: var(--accent-alpha-30);
 }
 
-/* Recency indicator - subtle left edge accent */
+/* Unread indicator - left edge accent */
 .conv-card::before {
   content: '';
   position: absolute;
@@ -104,8 +104,8 @@
   transition: opacity 0.2s;
 }
 
-.conv-card-wrapper.recent .conv-card::before {
-  opacity: 0.6;
+.conv-card-wrapper.unread .conv-card::before {
+  opacity: 0.8;
 }
 
 .conv-card-wrapper.pinned .conv-card::before {
@@ -594,6 +594,34 @@
   background: var(--accent);
   box-shadow: 0 0 6px var(--accent-alpha-50);
   flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* Thinking indicator - animated pulse */
+.thinking-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning, #f59e0b);
+  margin-right: 6px;
+  flex-shrink: 0;
+  animation: thinking-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* When both thinking and unread, only show thinking */
+.thinking-dot + .unread-dot {
+  display: none;
 }
 
 /* Selection mode */

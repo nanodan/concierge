@@ -67,6 +67,9 @@ export let expandedStacks = new Set(JSON.parse(localStorage.getItem('expandedSta
 // Unread conversations
 export const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConversations') || '[]'));
 
+// Thinking conversations (which are currently processing)
+export const thinkingConversations = new Set();
+
 // Message reactions
 export let messageReactions = JSON.parse(localStorage.getItem('messageReactions') || '{}');
 
@@ -426,6 +429,18 @@ export function deleteUnread(id) {
 
 export function hasUnread(id) {
   return unreadConversations.has(id);
+}
+
+export function addThinking(id) {
+  thinkingConversations.add(id);
+}
+
+export function removeThinking(id) {
+  thinkingConversations.delete(id);
+}
+
+export function isThinking(id) {
+  return thinkingConversations.has(id);
 }
 
 export function setMessageReactions(reactions) {

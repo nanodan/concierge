@@ -1,6 +1,6 @@
 // --- File Browser (file tree, navigation, upload, search) ---
 import { escapeHtml } from '../markdown.js';
-import { haptic, showToast, apiFetch, formatFileSize } from '../utils.js';
+import { haptic, showToast, showDialog, apiFetch, formatFileSize } from '../utils.js';
 import * as state from '../state.js';
 import { getFileIcon, FILE_ICONS, IMAGE_EXTS } from '../file-utils.js';
 import { ANIMATION_DELAY_SHORT, DEBOUNCE_SEARCH, SLIDE_TRANSITION_DURATION } from '../constants.js';
@@ -190,6 +190,9 @@ export async function loadFileTree(subpath) {
  */
 function renderFileTree(entries) {
   const convId = state.getCurrentConversationId();
+  const conv = state.conversations.find(c => c.id === convId);
+  const baseCwd = conv?.cwd || '';
+
   fileTree.innerHTML = entries.map(entry => {
     const icon = getFileIcon(entry);
     const meta = entry.type === 'directory' ? '' : formatFileSize(entry.size);
@@ -204,17 +207,23 @@ function renderFileTree(entries) {
       iconHtml = `<div class="file-tree-icon ${icon.class}">${icon.svg}</div>`;
     }
 
+    // Build full path for delete
+    const fullPath = baseCwd ? `${baseCwd}/${entry.path}` : entry.path;
+
     return `
-      <div class="file-tree-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}" data-ext="${entry.ext || ''}">
+      <div class="file-tree-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}" data-full-path="${escapeHtml(fullPath)}" data-ext="${entry.ext || ''}">
         ${iconHtml}
         <span class="file-tree-name">${escapeHtml(entry.name)}</span>
         ${meta ? `<span class="file-tree-meta">${meta}</span>` : ''}
+        <button class="file-tree-delete-btn" title="Delete">\u00d7</button>
       </div>`;
   }).join('');
 
   // Attach event handlers
   fileTree.querySelectorAll('.file-tree-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't navigate if clicking delete button
+      if (e.target.closest('.file-tree-delete-btn')) return;
       haptic(5);
       const type = item.dataset.type;
       const filePath = item.dataset.path;
@@ -226,6 +235,48 @@ function renderFileTree(entries) {
       }
     });
   });
+
+  // Attach delete handlers
+  fileTree.querySelectorAll('.file-tree-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const item = btn.closest('.file-tree-item');
+      const fullPath = item.dataset.fullPath;
+      const filename = item.dataset.path.split('/').pop();
+      haptic();
+
+      const confirmed = await showDialog({
+        title: 'Delete file?',
+        message: `Delete "${filename}"? This cannot be undone.`,
+        danger: true,
+        confirmLabel: 'Delete'
+      });
+
+      if (confirmed) {
+        await deleteFile(fullPath);
+      }
+    });
+  });
+}
+
+/**
+ * Delete a file or directory
+ */
+async function deleteFile(filePath) {
+  const res = await apiFetch(`/api/files?path=${encodeURIComponent(filePath)}`, {
+    method: 'DELETE'
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
+  }
+
+  showToast('Deleted');
+  loadFileTree(currentPath);
 }
 
 /**

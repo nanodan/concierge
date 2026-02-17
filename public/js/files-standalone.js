@@ -200,10 +200,10 @@ export function openStandaloneFiles(path) {
   rootPath = path;
   currentPath = path;
 
-  // Update title
-  const shortPath = path.replace(/^\/(?:Users|home)\/[^/]+/, '~');
+  // Update title (show just the folder name)
+  const folderName = path.split('/').pop() || 'Files';
   if (titleEl) {
-    titleEl.textContent = shortPath;
+    titleEl.textContent = folderName;
   }
 
   // Reset to files tab
@@ -288,9 +288,9 @@ async function loadDirectory(path) {
   currentPath = path;
   fileTree.innerHTML = '<div class="file-tree-loading">Loading...</div>';
 
-  // Update path display
+  // Update path display (show relative path from root, no ~ prefix)
   if (pathEl) {
-    const displayPath = path.replace(/^\/(?:Users|home)\/[^/]+/, '~');
+    const displayPath = path.replace(/^\/(?:Users|home)\/[^/]+\/?/, '');
     pathEl.textContent = displayPath || '/';
   }
 
@@ -347,6 +347,7 @@ function renderFileTree(entries) {
           <div class="file-tree-icon thumbnail"><img src="${imgUrl}" alt="" loading="lazy"></div>
           <span class="file-tree-name">${escapeHtml(entry.name)}</span>
           ${entry.size !== undefined ? `<span class="file-tree-meta">${formatFileSize(entry.size)}</span>` : ''}
+          <button class="file-tree-delete-btn" data-path="${escapeHtml(entry.path)}" title="Delete">\u00d7</button>
         </div>`;
     }
 
@@ -358,12 +359,15 @@ function renderFileTree(entries) {
         <span class="file-tree-icon ${iconInfo.class}">${iconInfo.svg}</span>
         <span class="file-tree-name">${escapeHtml(entry.name)}</span>
         ${!isDir && entry.size !== undefined ? `<span class="file-tree-meta">${formatFileSize(entry.size)}</span>` : ''}
+        <button class="file-tree-delete-btn" data-path="${escapeHtml(entry.path)}" title="Delete">\u00d7</button>
       </div>`;
   }).join('');
 
   // Attach click handlers
   fileTree.querySelectorAll('.file-tree-item').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't navigate if clicking delete button
+      if (e.target.closest('.file-tree-delete-btn')) return;
       haptic();
       const itemPath = item.dataset.path;
       const type = item.dataset.type;
@@ -375,6 +379,47 @@ function renderFileTree(entries) {
       }
     });
   });
+
+  // Attach delete handlers
+  fileTree.querySelectorAll('.file-tree-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const filePath = btn.dataset.path;
+      const filename = filePath.split('/').pop();
+      haptic();
+
+      const confirmed = await showDialog({
+        title: 'Delete file?',
+        message: `Delete "${filename}"? This cannot be undone.`,
+        danger: true,
+        confirmLabel: 'Delete'
+      });
+
+      if (confirmed) {
+        await deleteFile(filePath);
+      }
+    });
+  });
+}
+
+/**
+ * Delete a file or directory
+ */
+async function deleteFile(filePath) {
+  const res = await apiFetch(`/api/files?path=${encodeURIComponent(filePath)}`, {
+    method: 'DELETE'
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
+  }
+
+  showToast('Deleted');
+  loadDirectory(currentPath);
 }
 
 // === Changes Tab ===
@@ -583,6 +628,7 @@ function renderChangeItem(file, type) {
         ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
         ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">\u00d7</button>` : ''}
         ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+        ${type === 'untracked' ? `<button class="changes-action-btn danger" data-action="delete" title="Delete">\u00d7</button>` : ''}
       </div>
     </div>`;
 }
@@ -633,6 +679,17 @@ function attachChangeItemListeners() {
         });
         if (confirmed) {
           await discardChanges([filePath]);
+        }
+      } else if (action === 'delete') {
+        const filename = filePath.split('/').pop();
+        const confirmed = await showDialog({
+          title: 'Delete file?',
+          message: `Delete "${filename}"? This cannot be undone.`,
+          danger: true,
+          confirmLabel: 'Delete'
+        });
+        if (confirmed) {
+          await deleteUntrackedFile(filePath);
         }
       }
     };
@@ -869,6 +926,24 @@ async function discardChanges(paths) {
   }
 
   showToast('Changes discarded');
+  loadGitStatus();
+}
+
+async function deleteUntrackedFile(relativePath) {
+  // Build full path from rootPath + relativePath
+  const fullPath = `${rootPath}/${relativePath}`;
+  const res = await apiFetch(`/api/files?path=${encodeURIComponent(fullPath)}`, {
+    method: 'DELETE'
+  });
+  if (!res) return;
+  const data = await res.json();
+
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
+  }
+
+  showToast('File deleted');
   loadGitStatus();
 }
 

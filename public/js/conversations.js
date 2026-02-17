@@ -87,6 +87,14 @@ export async function loadConversations() {
   if (!res) return;
   const convs = await res.json();
   state.setConversations(convs);
+  // Sync thinking state from server
+  convs.forEach(c => {
+    if (c.status === 'thinking') {
+      state.addThinking(c.id);
+    } else {
+      state.removeThinking(c.id);
+    }
+  });
   if (!chatView.classList.contains('slide-in')) {
     renderConversationList();
   }
@@ -329,13 +337,11 @@ export function renderConversationList(items) {
     const archiveLabel = c.archived ? 'Unarchive' : 'Archive';
     const archiveBtnClass = c.archived ? 'unarchive-btn' : 'archive-btn';
     const isUnread = state.hasUnread(c.id);
+    const isThinking = state.isThinking(c.id);
     const isSelected = state.getSelectedConversations().has(c.id);
     const isPinned = c.pinned;
     const pinIcon = isPinned ? '<svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>' : '';
-    // Recent: within last 24 hours
-    const lastActivity = c.lastMessage?.timestamp || c.createdAt;
-    const isRecent = lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 24 * 60 * 60 * 1000;
-    const wrapperClasses = [isPinned && 'pinned', isRecent && 'recent'].filter(Boolean).join(' ');
+    const wrapperClasses = [isPinned && 'pinned', isUnread && 'unread'].filter(Boolean).join(' ');
     return `
       <div class="conv-card-wrapper${wrapperClasses ? ' ' + wrapperClasses : ''}">
         <div class="swipe-actions">
@@ -348,7 +354,7 @@ export function renderConversationList(items) {
           </div>
           <div class="conv-card-content">
             <div class="conv-card-top">
-              ${isUnread ? '<span class="unread-dot"></span>' : ''}${pinIcon}<span class="conv-card-name">${escapeHtml(c.name)}</span>
+              ${isThinking ? '<span class="thinking-dot"></span>' : ''}${isUnread ? '<span class="unread-dot"></span>' : ''}${pinIcon}<span class="conv-card-name">${escapeHtml(c.name)}</span>
               <span class="conv-card-time">${time}</span>
             </div>
             <div class="conv-card-preview">${escapeHtml(preview)}</div>

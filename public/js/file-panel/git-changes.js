@@ -343,6 +343,7 @@ function renderChangeItem(file, type) {
         ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
         ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">\u00d7</button>` : ''}
         ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
+        ${type === 'untracked' ? `<button class="changes-action-btn danger" data-action="delete" title="Delete">\u00d7</button>` : ''}
       </div>
     </div>`;
 }
@@ -394,6 +395,17 @@ function attachChangeItemListeners() {
         });
         if (confirmed) {
           await discardChanges([filePath]);
+        }
+      } else if (action === 'delete') {
+        const filename = filePath.split('/').pop();
+        const confirmed = await showDialog({
+          title: 'Delete file?',
+          message: `Delete "${filename}"? This cannot be undone.`,
+          danger: true,
+          confirmLabel: 'Delete'
+        });
+        if (confirmed) {
+          await deleteUntrackedFile(filePath);
         }
       }
     };
@@ -662,6 +674,30 @@ export async function discardChanges(paths) {
   }
 
   showToast('Changes discarded');
+  loadGitStatus();
+}
+
+async function deleteUntrackedFile(relativePath) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return;
+
+  // Get conversation cwd to build full path
+  const conv = state.conversations.find(c => c.id === convId);
+  const baseCwd = conv?.cwd || '';
+  const fullPath = baseCwd ? `${baseCwd}/${relativePath}` : relativePath;
+
+  const res = await apiFetch(`/api/files?path=${encodeURIComponent(fullPath)}`, {
+    method: 'DELETE'
+  });
+  if (!res) return;
+  const data = await res.json();
+
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
+  }
+
+  showToast('File deleted');
   loadGitStatus();
 }
 
