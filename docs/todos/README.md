@@ -41,7 +41,7 @@ Organized by category. Each file contains individual items with priority, effort
 | [security.md](security.md) | 3 | Rate limiting, input validation, XSS |
 | [accessibility.md](accessibility.md) | 2 | Screen readers, contrast (ARIA/focus partial) |
 | [multi-provider.md](multi-provider.md) | 1 | OpenAI, Google, provider abstraction layer |
-| [file-browser.md](file-browser.md) | 5 | Quick actions, recent files, editing, iOS share, create new file |
+| [file-browser.md](file-browser.md) | 6 | Quick actions, recent files, editing, iOS share, create new file, git auto-refresh |
 | [automation.md](automation.md) | 2 | Triggers, task queue |
 
 ## Priority Guide

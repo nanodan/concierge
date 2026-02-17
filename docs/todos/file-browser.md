@@ -117,3 +117,22 @@ Create empty files or files from templates.
 - Opens in editor after creation
 
 **Files:** `lib/routes.js`, `public/js/ui.js`
+
+---
+
+## Git changes auto-refresh (file watching)
+**Priority:** Medium
+**Effort:** Medium-High
+
+Auto-update the Changes tab in real-time when files change, like VS Code and GitHub Desktop.
+
+Currently the user must manually refresh to see new/changed files. If you stage files and a new untracked file appears, you won't see it until you refresh.
+
+**Approach:**
+- Server-side file watcher (`chokidar` or `fs.watch`) on each conversation's cwd
+- Push updates via WebSocket when files change in the git working directory
+- Debounce rapid changes (100-200ms) to avoid flooding the client
+- Only watch when a client has the Changes tab open (register/unregister)
+- Consider polling fallback for systems where file watching is unreliable
+
+**Files:** `lib/routes/git.js`, `server.js`, `public/js/file-panel/git-changes.js`
