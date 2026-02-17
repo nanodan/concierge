@@ -341,10 +341,7 @@ export function renderConversationList(items) {
     const isSelected = state.getSelectedConversations().has(c.id);
     const isPinned = c.pinned;
     const pinIcon = isPinned ? '<svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>' : '';
-    // Recent: within last 24 hours
-    const lastActivity = c.lastMessage?.timestamp || c.createdAt;
-    const isRecent = lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 24 * 60 * 60 * 1000;
-    const wrapperClasses = [isPinned && 'pinned', isRecent && 'recent'].filter(Boolean).join(' ');
+    const wrapperClasses = [isPinned && 'pinned', isUnread && 'unread'].filter(Boolean).join(' ');
     return `
       <div class="conv-card-wrapper${wrapperClasses ? ' ' + wrapperClasses : ''}">
         <div class="swipe-actions">
