@@ -349,3 +349,20 @@ Ensure all interactive elements have proper ARIA labels and keyboard support.
 - Test with VoiceOver/NVDA
 
 **Files:** `public/index.html`, `public/js/*.js`
+
+---
+
+## Easter eggs (fun additions)
+**Priority:** Low
+**Effort:** Low
+
+Additional hidden delights beyond the existing Konami code, title tap, and console art.
+
+**Ideas:**
+- **Sudo prefix** — Type "sudo" as first word, response gets "🔓 ROOT ACCESS GRANTED" prefix
+- **Shake to undo** — Shake phone to undo last action (DeviceMotion API)
+- **Empty state secret** — Long-press the "no conversations" illustration to hear a programming joke
+- **Stats view secret** — Tap a stat to see absurd comparisons ("Enough tokens to write War and Peace 47 times")
+- **Pull-to-refresh easter egg** — Pull way past normal threshold for emoji burst or sound effect
+
+**Files:** `public/js/app.js`, `public/js/ui.js`, `public/js/conversations.js`

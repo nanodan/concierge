@@ -533,3 +533,87 @@ if (location.hash && location.hash.length > 1) {
     }
   }, 500);
 }
+
+// --- Easter eggs ---
+
+// Konami code: ↑↑↓↓←→←→BA
+const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+let konamiIndex = 0;
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (key === konamiSequence[konamiIndex]) {
+    konamiIndex++;
+    if (konamiIndex === konamiSequence.length) {
+      konamiIndex = 0;
+      triggerPartyMode();
+    }
+  } else {
+    konamiIndex = 0;
+  }
+});
+
+function triggerPartyMode() {
+  haptic(50);
+  // Create confetti burst
+  const colors = ['#d4a574', '#f0c674', '#81a2be', '#b294bb', '#8abeb7', '#cc6666'];
+  for (let i = 0; i < 100; i++) {
+    const confetti = document.createElement('div');
+    confetti.style.cssText = `
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      left: ${Math.random() * 100}vw;
+      top: -10px;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+      pointer-events: none;
+      z-index: 9999;
+      animation: confetti-fall ${2 + Math.random() * 2}s linear forwards;
+    `;
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 4000);
+  }
+
+  // Add confetti animation if not exists
+  if (!document.getElementById('confetti-style')) {
+    const style = document.createElement('style');
+    style.id = 'confetti-style';
+    style.textContent = `
+      @keyframes confetti-fall {
+        to {
+          transform: translateY(100vh) rotate(${Math.random() * 720}deg);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Show toast
+  import('./utils.js').then(({ showToast }) => {
+    showToast('🎉 You found the secret!');
+  });
+}
+
+// Tap title 7 times for secret
+let titleTapCount = 0;
+let titleTapTimer = null;
+const appTitle = document.querySelector('#list-view .brand h1');
+if (appTitle) {
+  appTitle.addEventListener('click', () => {
+    titleTapCount++;
+    clearTimeout(titleTapTimer);
+    titleTapTimer = setTimeout(() => { titleTapCount = 0; }, 2000);
+
+    if (titleTapCount === 7) {
+      titleTapCount = 0;
+      haptic(30);
+      // Brief rainbow mode
+      document.documentElement.style.setProperty('--accent', `hsl(${Math.random() * 360}, 70%, 60%)`);
+      import('./utils.js').then(({ showToast }) => {
+        showToast('🌈 Accent randomized! Refresh to reset.');
+      });
+    }
+  });
+}
