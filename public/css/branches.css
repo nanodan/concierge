@@ -17,7 +17,30 @@
 .branches-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+}
+
+/* Node wrapper - contains item + children */
+.branch-node-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Children container with connecting line */
+.branch-children {
+  margin-left: 18px;
+  padding-left: 16px;
+  border-left: 2px solid var(--accent);
+  opacity: 0.9;
+}
+
+/* Fade the line at deeper levels */
+.branch-children .branch-children {
+  border-left-color: var(--border);
+}
+
+.branch-children .branch-children .branch-children {
+  border-left-color: var(--border);
+  opacity: 0.7;
 }
 
 /* Individual branch item */
@@ -29,6 +52,7 @@
   transition: background 0.15s, transform 0.1s;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
+  margin: 4px 0;
 }
 
 .branch-item:hover {
@@ -57,8 +81,6 @@
   gap: 10px;
   min-height: 60px;
 }
-
-/* Indentation handled via inline margin-left on items */
 
 /* Branch icon */
 .branch-item-icon {

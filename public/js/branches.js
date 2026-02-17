@@ -73,14 +73,11 @@ function renderTree(data) {
   const rootIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg>`;
   const branchIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3c0 3 3 3 6 3h3"/></svg>`;
 
-  function renderNode(node, depth, parentName = null) {
+  function renderNode(node, depth, parentName = null, isLastChild = true) {
     const isCurrent = node.id === data.currentId;
     const hasKids = node.children && node.children.length > 0;
     const isCollapsed = collapsedNodes.has(node.id);
     const isRoot = depth === 0;
-
-    // Indentation: actual left margin based on depth (capped)
-    const indentPx = Math.min(depth, 4) * 20;
 
     // Format relative time
     const timeAgo = formatRelativeTime(node.updatedAt || node.createdAt);
@@ -105,37 +102,43 @@ function renderTree(data) {
       : '';
 
     html += `
-      <div class="branch-item${isCurrent ? ' current' : ''}${isRoot ? ' root' : ''}" data-id="${node.id}" data-depth="${depth}" style="margin-left: ${indentPx}px">
-        <div class="branch-item-row">
-          <div class="branch-item-icon">${isRoot ? rootIcon : branchIcon}</div>
-          <div class="branch-item-content">
-            <div class="branch-item-header">
-              <span class="branch-item-name">${escapeHtml(node.name)}</span>
-              ${isCurrent ? '<span class="branch-current-badge">current</span>' : ''}
+      <div class="branch-node-wrapper${isRoot ? ' root-wrapper' : ''}" data-depth="${depth}">
+        <div class="branch-item${isCurrent ? ' current' : ''}${isRoot ? ' root' : ''}" data-id="${node.id}">
+          <div class="branch-item-row">
+            <div class="branch-item-icon">${isRoot ? rootIcon : branchIcon}</div>
+            <div class="branch-item-content">
+              <div class="branch-item-header">
+                <span class="branch-item-name">${escapeHtml(node.name)}</span>
+                ${isCurrent ? '<span class="branch-current-badge">current</span>' : ''}
+              </div>
+              <div class="branch-item-meta">
+                <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${node.messageCount}</span>
+                <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${timeAgo}</span>
+              </div>
+              ${forkInfo}
             </div>
-            <div class="branch-item-meta">
-              <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${node.messageCount}</span>
-              <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${timeAgo}</span>
-            </div>
-            ${forkInfo}
+            ${childrenBadge}
+            ${hasKids ? `
+              <button class="branch-collapse-btn${isCollapsed ? ' collapsed' : ''}" data-id="${node.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="${isCollapsed ? '9 18 15 12 9 6' : '6 9 12 15 18 9'}"/>
+                </svg>
+              </button>
+            ` : ''}
           </div>
-          ${childrenBadge}
-          ${hasKids ? `
-            <button class="branch-collapse-btn${isCollapsed ? ' collapsed' : ''}" data-id="${node.id}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="${isCollapsed ? '9 18 15 12 9 6' : '6 9 12 15 18 9'}"/>
-              </svg>
-            </button>
-          ` : ''}
-        </div>
-      </div>`;
+        </div>`;
 
-    // Render children if not collapsed, passing current node name as parent
+    // Render children in a nested container with connecting line
     if (hasKids && !isCollapsed) {
-      for (const child of node.children) {
-        renderNode(child, depth + 1, node.name);
+      html += `<div class="branch-children">`;
+      const kids = node.children;
+      for (let i = 0; i < kids.length; i++) {
+        renderNode(kids[i], depth + 1, node.name, i === kids.length - 1);
       }
+      html += `</div>`;
     }
+
+    html += `</div>`; // close branch-node-wrapper
   }
 
   // Count all descendants of a node
