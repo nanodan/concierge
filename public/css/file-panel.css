@@ -186,6 +186,11 @@
   cursor: default;
 }
 
+.file-panel-path-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
 .file-panel-path {
   font-size: 12px;
   color: var(--text-secondary);
@@ -312,6 +317,51 @@
   font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
+}
+
+/* Delete button (hidden by default, shown on hover/touch) */
+.file-tree-delete-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 18px;
+  font-weight: 600;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: -12px -8px -12px 0;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.file-tree-delete-btn:hover {
+  opacity: 1;
+  background: var(--danger-alpha-10, rgba(239, 68, 68, 0.1));
+}
+
+.file-tree-delete-btn:active {
+  opacity: 1;
+  background: var(--danger-alpha-20, rgba(239, 68, 68, 0.2));
+}
+
+.file-tree-item:hover .file-tree-delete-btn,
+.file-tree-item:focus-within .file-tree-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* On touch devices, always show delete button */
+@media (hover: none) {
+  .file-tree-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 /* File viewer */
@@ -938,27 +988,40 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 14px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  margin: -10px 0;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .changes-action-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast, #fff);
+  background: var(--accent-alpha-15);
+  color: var(--accent);
+}
+
+.changes-action-btn:active {
+  background: var(--accent-alpha-25);
+}
+
+.changes-action-btn.danger {
+  color: var(--danger);
 }
 
 .changes-action-btn.danger:hover {
-  background: var(--error, #e53935);
-  border-color: var(--error, #e53935);
+  background: var(--danger-alpha-10, rgba(239, 68, 68, 0.1));
+  color: var(--danger);
+}
+
+.changes-action-btn.danger:active {
+  background: var(--danger-alpha-20, rgba(239, 68, 68, 0.2));
 }
 
 /* Status Badge */
@@ -1654,11 +1717,8 @@
     max-width: unset;
   }
 
-  /* Fix mobile button touch targets */
+  /* Mobile button touch targets */
   .changes-action-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
