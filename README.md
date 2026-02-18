@@ -2,6 +2,8 @@
 
 A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Use Claude Code from your phone, tablet, or any browser with real-time streaming, conversation management, and git integration. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
 
+![Screenshot](docs/screenshots/concierge.png)
+
 ## Features
 
 ### Project Integration
