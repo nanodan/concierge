@@ -1,6 +1,6 @@
 # Claude Remote Chat
 
-A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Use Claude Code from your phone, tablet, or any browser with real-time streaming, conversation management, and git integration.
+A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Use Claude Code from your phone, tablet, or any browser with real-time streaming, conversation management, and git integration. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
 
 ## Features
 
@@ -66,6 +66,17 @@ openssl req -x509 -newkey rsa:2048 \
 ```
 
 The server auto-detects certs and enables HTTPS. Without certs, it falls back to HTTP.
+
+### Remote Access with Tailscale
+
+[Tailscale](https://tailscale.com) is the easiest way to access the app from your phone or anywhere:
+
+1. Install Tailscale on your server and mobile device
+2. Generate HTTPS certs: `tailscale cert your-machine.tailnet-name.ts.net`
+3. Copy certs to `certs/` (rename to `cert.pem` and `key.pem`)
+4. Access via `https://your-machine.tailnet-name.ts.net:3577`
+
+No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 
 ## Usage
 
