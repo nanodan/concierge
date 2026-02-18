@@ -5,16 +5,16 @@
 Claude Remote Chat is a mobile-first PWA interface for Claude Code. The architecture is a three-tier system: a Node.js backend manages Claude Code processes and streams output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk.
 
 ```
-┌─────────────┐     WebSocket      ┌──────────────┐     stdio      ┌─────────────┐
-│   Browser   │ ◄──────────────► │   server.js   │ ◄────────────► │ Claude Code │
-│   (PWA)     │     HTTP/REST     │  Express+WS   │   spawn/kill   │    CLI      │
-└─────────────┘                   └──────────────┘                 └─────────────┘
-                                        │
-                                   JSON files
-                                        │
-                                  ┌─────┴─────┐
-                                  │   data/   │
-                                  └───────────┘
++-------------+                  +--------------+                  +-------------+
+|   Browser   |  WebSocket/REST  |  server.js   |  stdio/spawn     | Claude Code |
+|    (PWA)    | <--------------> |  Express+WS  | <--------------> |     CLI     |
++-------------+                  +--------------+                  +-------------+
+                                        |
+                                        | JSON files
+                                        v
+                                 +--------------+
+                                 |    data/     |
+                                 +--------------+
 ```
 
 ## Backend
