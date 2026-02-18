@@ -1,5 +1,5 @@
 {
-  "name": "claude-remote-chat",
+  "name": "concierge",
   "version": "1.0.0",
   "license": "MIT",
   "description": "Mobile-friendly chat PWA wrapping Claude CLI",

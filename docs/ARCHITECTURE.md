@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Claude Remote Chat is a mobile-first PWA interface for Claude Code. The architecture is a three-tier system: a Node.js backend manages Claude Code processes and streams output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk.
+Concierge is a mobile-first PWA interface for Claude Code. The architecture is a three-tier system: a Node.js backend manages Claude Code processes and streams output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk.
 
 ```
 +-------------+                  +--------------+                  +-------------+

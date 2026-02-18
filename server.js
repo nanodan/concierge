@@ -388,7 +388,7 @@ if (require.main === module) {
   const PORT = process.env.PORT || 3577;
   const proto = server instanceof https.Server ? 'https' : 'http';
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Claude Remote Chat running on ${proto}://0.0.0.0:${PORT}`);
+    console.log(`Concierge running on ${proto}://0.0.0.0:${PORT}`);
   });
 }
 
