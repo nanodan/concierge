@@ -137,3 +137,7 @@ npm run lint  # Run ESLint
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - Detailed system design, data flow, APIs, and component breakdown
 - [Developer Reference](docs/REFERENCE.md) - Quick-reference for file map, data models, functions, and common patterns
+
+## License
+
+MIT

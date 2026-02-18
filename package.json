@@ -1,6 +1,7 @@
 {
   "name": "claude-remote-chat",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Mobile-friendly chat PWA wrapping Claude CLI",
   "main": "server.js",
   "scripts": {
