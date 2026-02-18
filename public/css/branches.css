@@ -1,4 +1,4 @@
-/* Branches Tree View */
+/* Branches Tree View - List Style */
 
 #branches-view {
   display: flex;
@@ -8,80 +8,245 @@
 
 .branches-content {
   flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.branches-container {
-  width: 100%;
-  height: 100%;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  padding: 12px;
 }
 
-.branches-svg {
-  display: block;
-  transform-origin: 0 0;
-  transition: transform 0.1s ease-out;
+/* List container */
+.branches-list {
+  display: flex;
+  flex-direction: column;
 }
 
-/* Connection lines */
-.branch-line {
-  fill: none;
-  stroke: var(--border);
-  stroke-width: 2;
+/* Node wrapper - contains item + children */
+.branch-node-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
-.branch-fork-label {
-  fill: var(--text-secondary);
-  font-size: 10px;
-  text-anchor: middle;
-  dominant-baseline: middle;
+/* Children container with connecting line */
+.branch-children {
+  margin-left: 18px;
+  padding-left: 16px;
+  border-left: 2px solid var(--accent);
+  opacity: 0.9;
 }
 
-/* Nodes */
-.branch-node {
+/* Fade the line at deeper levels */
+.branch-children .branch-children {
+  border-left-color: var(--border);
+}
+
+.branch-children .branch-children .branch-children {
+  border-left-color: var(--border);
+  opacity: 0.7;
+}
+
+/* Individual branch item */
+.branch-item {
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
+  border-radius: 12px;
+  transition: background 0.15s, transform 0.1s;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  margin: 4px 0;
 }
 
-.branch-node-bg {
-  fill: var(--bg-secondary);
-  stroke: var(--border);
-  stroke-width: 1.5;
-  transition: fill 0.15s, stroke 0.15s, stroke-width 0.15s;
+.branch-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-secondary);
 }
 
-.branch-node:hover .branch-node-bg {
-  fill: var(--bg-tertiary);
-  stroke: var(--accent);
-  stroke-width: 2;
+.branch-item:active {
+  transform: scale(0.98);
 }
 
-.branch-node.current .branch-node-bg {
-  fill: var(--accent);
-  stroke: var(--accent);
+.branch-item.current {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
 }
 
-.branch-node-name {
-  fill: var(--text);
-  font-size: 12px;
+.branch-item.current:hover {
+  background: var(--accent-subtle);
+}
+
+/* Main row with connectors and content */
+.branch-item-row {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  gap: 10px;
+  min-height: 60px;
+}
+
+/* Branch icon */
+.branch-item-icon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.branch-item.root .branch-item-icon {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.branch-item.current:not(.root) .branch-item-icon {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Collapse/expand button - 44px tap target */
+.branch-collapse-btn {
+  background: none;
+  border: none;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  margin-left: auto;
+  margin-right: -8px;
+}
+
+.branch-collapse-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.branch-collapse-btn:active {
+  background: var(--bg-tertiary);
+}
+
+.branch-collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Content section */
+.branch-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.branch-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.branch-item-name {
   font-weight: 500;
-  text-anchor: middle;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.branch-node.current .branch-node-name {
-  fill: var(--bg);
+.branch-current-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
-.branch-node-count {
-  fill: var(--text-secondary);
+.branch-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.branch-item-meta svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.6;
+}
+
+.branch-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Fork info with parent name and preview */
+.branch-fork-info {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  line-height: 1.4;
+}
+
+.branch-fork-info .fork-from {
+  color: var(--text-secondary);
+}
+
+.branch-fork-info .fork-from strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.branch-fork-info .fork-at {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.branch-fork-info .fork-preview {
+  font-style: italic;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Root node special styling */
+.branch-item.root {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border-width: 2px;
+}
+
+.branch-item.root .branch-item-name {
+  font-weight: 600;
+}
+
+/* Children count badge on parent items */
+.branch-children-badge {
   font-size: 10px;
-  text-anchor: middle;
-}
-
-.branch-node.current .branch-node-count {
-  fill: var(--bg);
-  opacity: 0.8;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Loading/empty states */
@@ -95,7 +260,7 @@
   font-size: 14px;
 }
 
-/* Tree icon button */
+/* Tree icon button in header */
 .branches-btn {
   background: none;
   border: none;
@@ -115,26 +280,34 @@
   display: block;
 }
 
-/* Mobile touch hint */
-@media (max-width: 600px) {
-  .branches-container::after {
-    content: '';
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 8px 16px;
-    background: var(--bg-secondary);
-    border-radius: 20px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    opacity: 0;
-    pointer-events: none;
-    animation: branches-hint 3s ease-in-out 1s forwards;
-  }
+/* Collapsed children hint */
+.branch-collapsed-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  text-align: center;
+  opacity: 0.7;
 }
 
-@keyframes branches-hint {
-  0%, 100% { opacity: 0; }
-  10%, 70% { opacity: 0.8; }
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  .branches-content {
+    padding: 8px;
+  }
+
+  .branch-item-row {
+    padding: 10px;
+  }
+
+  .branch-item-name {
+    font-size: 13px;
+  }
+
+  .branch-item-meta {
+    font-size: 11px;
+  }
+
+  .branch-fork-info {
+    font-size: 10px;
+  }
 }

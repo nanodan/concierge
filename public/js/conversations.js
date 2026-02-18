@@ -690,10 +690,37 @@ function showActionPopup(x, y, id) {
   const popupPinBtn = document.getElementById('popup-pin-btn');
   if (popupPinBtn) popupPinBtn.textContent = conv?.pinned ? 'Unpin' : 'Pin';
 
-  // Position popup near touch point
-  actionPopup.style.left = Math.min(x, window.innerWidth - 180) + 'px';
-  actionPopup.style.top = Math.min(y, window.innerHeight - 160) + 'px';
+  // Show popup off-screen first to measure its size
+  actionPopup.style.visibility = 'hidden';
   actionPopup.classList.remove('hidden');
+
+  const popupWidth = actionPopup.offsetWidth || 160;
+  const popupHeight = actionPopup.offsetHeight || 220;
+  const padding = 12;
+
+  // Horizontal: keep within viewport
+  let left = Math.min(x, window.innerWidth - popupWidth - padding);
+  left = Math.max(padding, left);
+
+  // Vertical: prefer below touch point, but flip above if not enough room
+  let top;
+  const spaceBelow = window.innerHeight - y - padding;
+  const spaceAbove = y - padding;
+
+  if (spaceBelow >= popupHeight) {
+    // Enough room below
+    top = y;
+  } else if (spaceAbove >= popupHeight) {
+    // Position above the touch point
+    top = y - popupHeight;
+  } else {
+    // Not enough room either way, position at bottom of viewport
+    top = window.innerHeight - popupHeight - padding;
+  }
+
+  actionPopup.style.left = left + 'px';
+  actionPopup.style.top = top + 'px';
+  actionPopup.style.visibility = '';
   actionPopupOverlay.classList.remove('hidden');
 }
 

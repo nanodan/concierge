@@ -1,4 +1,4 @@
-const CACHE_NAME = 'concierge-v96';
+const CACHE_NAME = 'concierge-v101';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -31,6 +31,11 @@ const STATIC_ASSETS = [
   '/js/branches.js',
   '/manifest.json',
   '/lib/highlight.min.js',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/screenshot-narrow.png',
+  '/icons/screenshot-wide.png',
 ];
 
 // API routes to cache for offline use
