@@ -617,3 +617,60 @@ if (appTitle) {
     }
   });
 }
+
+// --- PWA Install Prompt ---
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent Chrome's default mini-infobar
+  e.preventDefault();
+  deferredInstallPrompt = e;
+
+  // Show install menu item in the more menu
+  const installBtn = document.getElementById('pwa-install-btn');
+  const installDivider = document.getElementById('pwa-install-divider');
+  if (installBtn) installBtn.classList.remove('hidden');
+  if (installDivider) installDivider.classList.remove('hidden');
+  console.log('PWA install prompt ready');
+});
+
+// Handle install button click
+const pwaInstallBtn = document.getElementById('pwa-install-btn');
+const pwaInstallDivider = document.getElementById('pwa-install-divider');
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      import('./utils.js').then(({ showToast }) => {
+        showToast('App already installed or not available');
+      });
+      return;
+    }
+
+    // Close the more menu first
+    moreMenuDropdown?.classList.add('hidden');
+
+    haptic();
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      import('./utils.js').then(({ showToast }) => {
+        showToast('App installed! Find it on your home screen.');
+      });
+    }
+
+    deferredInstallPrompt = null;
+    pwaInstallBtn.classList.add('hidden');
+    if (pwaInstallDivider) pwaInstallDivider.classList.add('hidden');
+  });
+}
+
+// Hide install menu item if app is already installed
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const installBtn = document.getElementById('pwa-install-btn');
+  const installDivider = document.getElementById('pwa-install-divider');
+  if (installBtn) installBtn.classList.add('hidden');
+  if (installDivider) installDivider.classList.add('hidden');
+  console.log('PWA installed');
+});
