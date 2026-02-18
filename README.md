@@ -1,20 +1,10 @@
 # Claude Remote Chat
 
-A mobile-first Progressive Web App for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (Anthropic's agentic CLI). Claude autonomously executes multi-step workflows — running shell commands, editing files, searching code, fixing errors — while you watch the stream in real-time or come back later to see results.
-
-This isn't just a chat interface. Each conversation spawns Claude Code as a persistent agent that can loop, retry, use tools, and complete complex tasks autonomously. You provide direction; Claude does the work.
+A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Use Claude Code from your phone, tablet, or any browser with real-time streaming, conversation management, and git integration.
 
 ## Features
 
-### Agentic Workflows
-- **Autonomous execution** - Claude runs commands, edits files, searches code, and iterates until the task is done
-- **Real-time streaming** - Watch Claude think and act, token by token, tool call by tool call
-- **Tool visibility** - See which tools Claude is using (Bash, Read, Edit, Grep, etc.) as it works
-- **Session continuity** - Conversations persist Claude's full context; pick up where you left off
-- **Autopilot mode** - Skip permission prompts for trusted workflows (or require approval for each action)
-- **Multiple models** - Switch between Opus and Sonnet per conversation
-
-### Project Mode
+### Project Integration
 - **File browser** - Browse and view files in the conversation's working directory
 - **Git integration** - Full git workflow: status, stage/unstage, commit, push/pull, branches, stash
 - **Commit history** - View commits, diffs, revert changes, reset to commit
@@ -46,7 +36,7 @@ This isn't just a chat interface. Each conversation spawns Claude Code as a pers
 ### PWA
 - **Offline support** - Service worker caches the app shell for offline access
 - **Installable** - Add to home screen on iOS/Android for a native app feel
-- **Five color themes** - Darjeeling, Claude, Budapest, Moonrise, Aquatic
+- **Multiple color themes** - 8 built-in themes with light/dark variants
 - **Light/dark mode** - Auto, light, or dark mode per theme
 
 ## Quick Start
@@ -79,20 +69,9 @@ The server auto-detects certs and enables HTTPS. Without certs, it falls back to
 
 ## Usage
 
-1. **Create a conversation** - Tap the + button, give it a name, and optionally set a working directory
-2. **Chat** - Type a message and hit Enter (or tap Send). Claude streams its response in real time
-3. **Voice input** - Tap the mic icon to dictate (requires HTTPS)
-4. **Listen** - Tap the speaker icon on any assistant message to hear it read aloud
-5. **Switch models** - Tap the model name in the chat header to change models
-6. **Autopilot** - Tap the mode badge (AP/ASK) to toggle permission skipping
-7. **Browse files** - Tap the files icon to open the file browser panel
-8. **Git operations** - Use the Changes tab to stage, commit, push/pull, and manage branches
-9. **Fork conversations** - Long-press a message and tap "Fork from here"
-10. **View branches** - Tap the branches icon to see the conversation tree
-11. **Manage conversations** - Swipe left on a card to archive/delete, or long-press for more options
-12. **Search** - Use the search bar to find conversations by name or content
-13. **Stats** - Tap the chart icon to view usage analytics
-14. **Memory** - Save important context via the "Remember" option in message menus
+1. **Create a conversation** - Tap +, set a name and working directory
+2. **Chat** - Messages stream in real time; long-press for actions (fork, edit, copy)
+3. **Files & Git** - Use the file panel to browse files, stage changes, commit, and push
 
 ## Configuration
 
@@ -113,7 +92,7 @@ The server auto-detects certs and enables HTTPS. Without certs, it falls back to
 remote-llm/
 ├── server.js              # Express + WebSocket entry point
 ├── lib/
-│   ├── routes.js          # REST API endpoints (incl. git, files, memory)
+│   ├── routes/            # REST API endpoints (conversations, git, files, memory)
 │   ├── claude.js          # Claude CLI process management
 │   └── data.js            # Data storage and persistence
 ├── public/
@@ -122,32 +101,13 @@ remote-llm/
 │   ├── js/
 │   │   ├── app.js         # Frontend entry point
 │   │   ├── state.js       # Shared state management
-│   │   ├── utils.js       # Helper functions
-│   │   ├── websocket.js   # WebSocket connection
-│   │   ├── render.js      # Message rendering
-│   │   ├── markdown.js    # Markdown parser
-│   │   ├── conversations.js # Conversation CRUD
 │   │   ├── ui.js          # UI interactions
-│   │   ├── file-panel.js  # File browser + git
-│   │   └── branches.js    # Branch tree visualization
-│   ├── css/
-│   │   ├── base.css       # CSS variables, resets
-│   │   ├── layout.css     # Page layout, views
-│   │   ├── components.css # UI components
-│   │   ├── messages.css   # Chat messages
-│   │   ├── list.css       # Conversation list
-│   │   ├── file-panel.css # File browser styles
-│   │   ├── branches.css   # Branch tree styles
-│   │   └── themes/        # Color theme variants
+│   │   ├── file-panel/    # File browser + git integration
+│   │   └── ui/            # Modular UI features (stats, memory, voice, etc.)
+│   ├── css/               # Modular stylesheets + themes/
 │   ├── sw.js              # Service worker
-│   ├── manifest.json      # PWA manifest
-│   └── lib/
-│       └── highlight.min.js  # Syntax highlighting
-├── data/
-│   ├── index.json         # Conversation metadata
-│   ├── conv/              # Individual conversation files
-│   ├── uploads/           # File attachments
-│   └── memory/            # Persistent memories
+│   └── manifest.json      # PWA manifest
+├── data/                  # Conversations, uploads, memories (JSON files)
 ├── certs/                 # Optional HTTPS certificates
 ├── test/                  # Unit tests
 └── docs/
