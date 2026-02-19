@@ -623,7 +623,7 @@ export function recordActivity() {
   lastActivityTime = Date.now();
 }
 
-export function setThinking(thinking) {
+export function setThinking(thinking, startTime = null) {
   if (typingIndicator) {
     typingIndicator.classList.toggle('hidden', !thinking);
     // Reset status text and timer when stopping
@@ -643,8 +643,8 @@ export function setThinking(thinking) {
       thinkingStartTime = null;
       lastActivityTime = null;
     } else {
-      // Start timer
-      thinkingStartTime = Date.now();
+      // Start timer - use provided startTime or fall back to now
+      thinkingStartTime = startTime || Date.now();
       lastActivityTime = Date.now();
       updateThinkingTimer();
       thinkingTimerInterval = setInterval(updateThinkingTimer, 1000);
@@ -702,10 +702,10 @@ export function clearToolStatus() {
   if (statusEl) statusEl.textContent = '';
 }
 
-export function updateStatus(conversationId, status) {
+export function updateStatus(conversationId, status, thinkingStartTime = null) {
   if (conversationId === currentConversationId) {
     updateStatusDot(status);
-    setThinking(status === 'thinking');
+    setThinking(status === 'thinking', thinkingStartTime);
   }
 }
 

@@ -843,7 +843,7 @@ export async function openConversation(id) {
     contextBar.classList.add('hidden');
   }
 
-  state.setThinking(conv.status === 'thinking');
+  state.setThinking(conv.status === 'thinking', conv.thinkingStartTime);
 }
 
 export function showChatView() {

@@ -102,7 +102,7 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 ## Project Structure
 
 ```
-remote-llm/
+concierge/
 ├── server.js              # Express + WebSocket entry point
 ├── lib/
 │   ├── routes/            # REST API endpoints (conversations, git, files, memory)

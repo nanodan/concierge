@@ -110,6 +110,7 @@ async function resetConversationOnError(conversationId) {
   const conv = conversations.get(conversationId);
   if (conv) {
     conv.status = 'idle';
+    conv.thinkingStartTime = null;
     try {
       await saveConversation(conversationId);
     } catch (saveErr) {
@@ -140,8 +141,9 @@ async function handleMessage(ws, msg) {
       timestamp: Date.now(),
     });
     conv.status = 'thinking';
+    conv.thinkingStartTime = Date.now();
     await saveConversation(conversationId);
-    broadcastStatus(conversationId, 'thinking');
+    broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
     const memories = await loadConversationMemories(conv);
     spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
@@ -183,8 +185,9 @@ async function handleRegenerate(ws, msg) {
     // Reset session for fresh response
     conv.claudeSessionId = null;
     conv.status = 'thinking';
+    conv.thinkingStartTime = Date.now();
     await saveConversation(conversationId);
-    broadcastStatus(conversationId, 'thinking');
+    broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
     const memories = await loadConversationMemories(conv);
     spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
@@ -237,6 +240,7 @@ async function handleEdit(ws, msg) {
       if (messages[i].sessionId) { editSessionId = messages[i].sessionId; break; }
     }
 
+    const thinkingStartTime = Date.now();
     const forkedConv = {
       id: newId,
       name: `${conv.name} (edit)`,
@@ -244,6 +248,7 @@ async function handleEdit(ws, msg) {
       claudeSessionId: editSessionId, // Reuse session to preserve history
       messages,
       status: 'thinking',
+      thinkingStartTime,
       archived: false,
       pinned: false,
       autopilot: conv.autopilot,
@@ -264,7 +269,7 @@ async function handleEdit(ws, msg) {
       conversation: convMeta(forkedConv),
     }));
 
-    broadcastStatus(newId, 'thinking');
+    broadcastStatus(newId, 'thinking', thinkingStartTime);
 
     const memories = await loadConversationMemories(forkedConv);
     const userMsg = messages[messageIndex];
@@ -312,8 +317,9 @@ async function handleResend(ws, msg) {
     if (isLastMessage) {
       // Resend in place - just spawn Claude on this message
       conv.status = 'thinking';
+      conv.thinkingStartTime = Date.now();
       await saveConversation(conversationId);
-      broadcastStatus(conversationId, 'thinking');
+      broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
       const memories = await loadConversationMemories(conv);
       spawnClaude(ws, conversationId, conv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
@@ -331,6 +337,7 @@ async function handleResend(ws, msg) {
         if (messages[i].sessionId) { forkSessionId = messages[i].sessionId; break; }
       }
 
+      const thinkingStartTime = Date.now();
       const forkedConv = {
         id: newId,
         name: `${conv.name} (resend)`,
@@ -338,6 +345,7 @@ async function handleResend(ws, msg) {
         claudeSessionId: forkSessionId,
         messages,
         status: 'thinking',
+        thinkingStartTime,
         archived: false,
         pinned: false,
         autopilot: conv.autopilot,
@@ -357,7 +365,7 @@ async function handleResend(ws, msg) {
         conversation: convMeta(forkedConv),
       }));
 
-      broadcastStatus(newId, 'thinking');
+      broadcastStatus(newId, 'thinking', thinkingStartTime);
 
       const memories = await loadConversationMemories(forkedConv);
       spawnClaude(ws, newId, forkedConv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
@@ -373,8 +381,10 @@ async function handleResend(ws, msg) {
   }
 }
 
-function broadcastStatus(conversationId, status) {
-  const msg = JSON.stringify({ type: 'status', conversationId, status });
+function broadcastStatus(conversationId, status, thinkingStartTime) {
+  const payload = { type: 'status', conversationId, status };
+  if (thinkingStartTime) payload.thinkingStartTime = thinkingStartTime;
+  const msg = JSON.stringify(payload);
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(msg);

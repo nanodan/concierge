@@ -121,7 +121,7 @@ const messageHandlers = {
     }
 
     // Update current conversation UI
-    state.updateStatus(data.conversationId, data.status);
+    state.updateStatus(data.conversationId, data.status, data.thinkingStartTime);
 
     // Refresh list view to show thinking indicators
     import('./conversations.js').then(({ renderConversationList }) => {
