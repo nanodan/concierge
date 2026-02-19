@@ -65,13 +65,16 @@ function buildActionButtons({ includeTTS = true, includeRegen = false } = {}) {
 
 export function enhanceCodeBlocks(container) {
   container.querySelectorAll('pre code').forEach(el => {
-    if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
     const pre = el.parentElement;
     if (pre.parentElement?.classList.contains('code-block')) return;
 
-    // Detect language from class (e.g., "language-javascript" -> "javascript")
+    // Detect explicit language from class BEFORE hljs runs (e.g., "language-javascript" -> "javascript")
+    // This captures the language specified in markdown, not auto-detected by hljs
     const langClass = [...el.classList].find(c => c.startsWith('language-'));
     const lang = langClass ? langClass.replace('language-', '') : '';
+
+    // Run syntax highlighting after capturing explicit language
+    if (window.hljs && !el.dataset.highlighted) hljs.highlightElement(el);
 
     const wrapper = document.createElement('div');
     wrapper.className = 'code-block';

@@ -33,6 +33,14 @@ function renderMarkdown(text, { skipCache = false } = {}) {
   }
 
   // Extract trace blocks (tool calls) before escaping - they become collapsible
+  // First, combine consecutive trace blocks (only whitespace between them) into one
+  const mergePattern = /:::trace\n([\s\S]*?)\n:::\s*:::trace\n/g;
+  let prevText;
+  do {
+    prevText = text;
+    text = text.replace(mergePattern, ':::trace\n$1\n\n');
+  } while (text !== prevText);
+
   const traceBlocks = [];
   text = text.replace(/:::trace\n([\s\S]*?)\n:::/g, (_, content) => {
     traceBlocks.push(content);

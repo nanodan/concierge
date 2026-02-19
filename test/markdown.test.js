@@ -157,6 +157,17 @@ describe('renderMarkdown', () => {
     assert.equal(matches.length, 2);
   });
 
+  it('merges consecutive trace blocks with no text between', () => {
+    // Three consecutive trace blocks should merge into one
+    const result = renderMarkdown(':::trace\nFirst\n:::\n\n:::trace\nSecond\n:::\n\n:::trace\nThird\n:::');
+    const matches = result.match(/<details class="tool-trace">/g);
+    assert.equal(matches.length, 1, 'consecutive trace blocks should merge into one');
+    // All content should be present
+    assert.ok(result.includes('First'));
+    assert.ok(result.includes('Second'));
+    assert.ok(result.includes('Third'));
+  });
+
   it('renders code blocks without language', () => {
     const result = renderMarkdown('```\nplain code\n```');
     assert.ok(result.includes('<pre><code>'));
