@@ -47,10 +47,16 @@ export function initConversations(elements) {
 
   // Sync semantic toggle button state from localStorage
   if (semanticToggle) {
-    semanticToggle.classList.toggle('active', state.isSemanticSearchEnabled());
+    const updateSemanticUI = (enabled) => {
+      semanticToggle.classList.toggle('active', enabled);
+      if (searchInput) {
+        searchInput.placeholder = enabled ? 'Semantic search...' : 'Search conversations...';
+      }
+    };
+    updateSemanticUI(state.isSemanticSearchEnabled());
     semanticToggle.addEventListener('click', () => {
       const enabled = state.toggleSemanticSearch();
-      semanticToggle.classList.toggle('active', enabled);
+      updateSemanticUI(enabled);
       triggerSearch(); // Re-run search with new mode
     });
   }
