@@ -224,6 +224,7 @@ let convCwdInput = null;
 let recentDirs = null;
 let recentDirsList = null;
 let convAutopilot = null;
+let convSandboxed = null;
 let convModelSelect = null;
 let archiveToggle = null;
 let searchInput = null;
@@ -285,6 +286,7 @@ export function initUI(elements) {
   recentDirs = elements.recentDirs;
   recentDirsList = elements.recentDirsList;
   convAutopilot = elements.convAutopilot;
+  convSandboxed = elements.convSandboxed;
   convModelSelect = elements.convModelSelect;
   archiveToggle = elements.archiveToggle;
   searchInput = elements.searchInput;
@@ -833,10 +835,53 @@ function resendMessage(messageIndex) {
 
 // --- Model & Mode Badges ---
 export function updateModeBadge(isAutopilot) {
+  // Autopilot vs Read-only toggle (independent of sandbox)
   modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
   modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
   modeBadge.classList.toggle('autopilot', isAutopilot);
   modeBadge.classList.toggle('readonly', !isAutopilot);
+}
+
+export function updateSandboxBanner(isSandboxed) {
+  const banner = document.getElementById('unsafe-banner');
+  if (banner) {
+    banner.classList.toggle('hidden', isSandboxed);
+  }
+  // Also update the chat more menu label
+  const label = document.getElementById('chat-more-sandbox-label');
+  if (label) {
+    label.textContent = isSandboxed ? 'Sandbox: On' : 'Sandbox: Off';
+  }
+}
+
+export async function toggleSandboxMode() {
+  const currentConversationId = state.getCurrentConversationId();
+  if (!currentConversationId) return;
+
+  const newSandboxed = !state.getCurrentSandboxed();
+
+  // If disabling sandbox, show a confirmation dialog
+  if (!newSandboxed) {
+    const ok = await showDialog({
+      title: 'Disable sandbox?',
+      message: 'This gives Claude unrestricted access to your entire filesystem. Only do this if you trust the conversation and need access to files outside the project.',
+      confirmLabel: 'Disable Sandbox',
+      danger: true
+    });
+    if (!ok) return;
+  }
+
+  state.setCurrentSandboxed(newSandboxed);
+  updateSandboxBanner(newSandboxed);
+
+  await apiFetch(`/api/conversations/${currentConversationId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sandboxed: newSandboxed }),
+    silent: true,
+  });
+
+  showToast(newSandboxed ? 'Sandbox enabled' : 'Sandbox disabled — be careful!');
 }
 
 export function updateModelBadge(modelId) {
@@ -1028,9 +1073,10 @@ export function setupEventListeners(createConversation) {
     const name = convNameInput.value.trim();
     const cwd = convCwdInput.value.trim() || undefined;
     const autopilot = convAutopilot.checked;
+    const sandboxed = convSandboxed ? convSandboxed.checked : true;
     const model = convModelSelect.value;
     if (name) {
-      createConversation(name, cwd, autopilot, model);
+      createConversation(name, cwd, autopilot, model, sandboxed);
       modalOverlay.classList.add('hidden');
     }
   });
@@ -1169,7 +1215,7 @@ export function setupEventListeners(createConversation) {
     if (convStatsDropdown) convStatsDropdown.classList.add('hidden');
   });
 
-  // Mode badge click handler
+  // Mode badge click handler - toggles autopilot (independent of sandbox)
   modeBadge.addEventListener('click', async () => {
     const currentConversationId = state.getCurrentConversationId();
     if (!currentConversationId) return;
@@ -1371,6 +1417,17 @@ export function setupEventListeners(createConversation) {
         closeChatMoreMenu();
         showMemoryView();
       },
+    });
+  }
+
+  // Sandbox toggle handler
+  const chatMoreSandbox = document.getElementById('chat-more-sandbox');
+  if (chatMoreSandbox) {
+    chatMoreSandbox.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      haptic();
+      closeChatMoreMenu();
+      await toggleSandboxMode();
     });
   }
 

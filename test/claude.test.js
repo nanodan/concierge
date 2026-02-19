@@ -8,8 +8,9 @@ describe('MODELS', () => {
     assert.ok(MODELS.length >= 2);
 
     const ids = MODELS.map(m => m.id);
-    assert.ok(ids.includes('sonnet'));
-    assert.ok(ids.includes('opus'));
+    // Models now use full IDs like 'claude-sonnet-4.5', 'claude-opus-4.5'
+    assert.ok(ids.some(id => id.includes('sonnet')), 'should have a sonnet model');
+    assert.ok(ids.some(id => id.includes('opus')), 'should have an opus model');
   });
 
   it('each model has id, name, and context', () => {

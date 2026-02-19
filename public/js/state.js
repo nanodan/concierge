@@ -21,6 +21,7 @@ export let compressionPromptShown = false;
 export let models = [];
 export let currentModel = 'sonnet';
 export let currentAutopilot = true;
+export let currentSandboxed = true;
 
 // Streaming state
 export let streamingMessageEl = null;
@@ -128,6 +129,14 @@ export function setCurrentAutopilot(a) {
 
 export function getCurrentAutopilot() {
   return currentAutopilot;
+}
+
+export function setCurrentSandboxed(s) {
+  currentSandboxed = s;
+}
+
+export function getCurrentSandboxed() {
+  return currentSandboxed;
 }
 
 export function setStreamingMessageEl(el) {

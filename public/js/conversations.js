@@ -106,11 +106,11 @@ export async function getConversation(id) {
   return res.json();
 }
 
-export async function createConversation(name, cwd, autopilot, model) {
+export async function createConversation(name, cwd, autopilot, model, sandboxed = true) {
   const res = await apiFetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, cwd, autopilot, model }),
+    body: JSON.stringify({ name, cwd, autopilot, model, sandboxed }),
   });
   if (!res) return;
   const conv = await res.json();
@@ -825,12 +825,14 @@ export async function openConversation(id) {
 
   state.setCurrentModel(conv.model || 'sonnet');
   state.setCurrentAutopilot(conv.autopilot !== false);
+  state.setCurrentSandboxed(conv.sandboxed !== false);
 
   // Import UI functions dynamically to avoid circular dependency
   const ui = await import('./ui.js');
   ui.updateModelBadge(state.getCurrentModel());
   ui.updateModeBadge(state.getCurrentAutopilot());
   ui.updateMemoryIndicator(conv.useMemory);
+  ui.updateSandboxBanner(state.getCurrentSandboxed());
 
   renderMessages(conv.messages);
   showChatView();

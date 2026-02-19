@@ -67,6 +67,7 @@ const fileInput = document.getElementById('file-input');
 const attachmentPreview = document.getElementById('attachment-preview');
 const cancelBtn = document.getElementById('cancel-btn');
 const convAutopilot = document.getElementById('conv-autopilot');
+const convSandboxed = document.getElementById('conv-sandboxed');
 const dialogOverlay = document.getElementById('dialog-overlay');
 const dialogTitle = document.getElementById('dialog-title');
 const dialogBody = document.getElementById('dialog-body');
@@ -251,6 +252,7 @@ initUI({
   recentDirs,
   recentDirsList,
   convAutopilot,
+  convSandboxed,
   convModelSelect,
   archiveToggle,
   searchInput,
