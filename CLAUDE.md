@@ -47,10 +47,11 @@ Test helpers in `test/helpers/*.cjs` provide CommonJS wrappers for ES modules.
 ### Backend
 | File | Lines | Purpose |
 |------|-------|---------|
-| `server.js` | ~226 | Express + WebSocket server, entry point |
-| `lib/routes.js` | ~364 | REST API endpoints |
-| `lib/claude.js` | ~240 | Claude CLI process management, streaming |
+| `server.js` | ~230 | Express + WebSocket server, entry point |
+| `lib/routes.js` | ~400 | REST API endpoints |
+| `lib/claude.js` | ~250 | Claude CLI process management, streaming |
 | `lib/data.js` | ~170 | Data storage, atomic writes, lazy loading |
+| `lib/embeddings.js` | ~180 | Semantic embeddings for search (local transformers) |
 
 ### Frontend JS (`public/js/`)
 | File | Lines | Purpose |
@@ -114,6 +115,7 @@ See [docs/REFERENCE.md](docs/REFERENCE.md) for detailed line ranges within each 
 - `data/uploads/{id}/` — uploaded file attachments per conversation
 - `data/memory/global.json` — global memories (apply to all conversations)
 - `data/memory/{scope-hash}.json` — project-scoped memories (hash of cwd path)
+- `data/embeddings.json` — semantic search embeddings (conversation id → 384-dim vector)
 - Atomic writes: all saves go through `atomicWrite()` (write to .tmp, rename to target)
 
 ### HTTPS
@@ -140,12 +142,14 @@ Certs in `certs/key.pem` + `certs/cert.pem` enable HTTPS automatically. Required
 - **Keyboard shortcuts**: Cmd+K (search), Cmd+N (new chat), Cmd+E (export), Cmd+Shift+A (toggle archived), Escape (back/close).
 - **Memory system**: Persistent memories across conversations. Scoped globally or per-project (cwd). Memories injected via `--append-system-prompt`. Toggle per-conversation via brain icon in chat header. "Remember" option in message context menu to save snippets. Memory view accessible from more menu.
 - **Context compression**: Click the context bar to see token breakdown. When context reaches 50%+, a "Compress conversation" button appears. Compression summarizes older messages via Claude CLI and starts a fresh session with the summary injected. At 85% context, an auto-compression prompt appears. Compressed messages are hidden by default but can be expanded.
+- **Semantic search**: Toggle the brain icon next to the search bar to switch between keyword and semantic search. Semantic search uses local embeddings (`@xenova/transformers` with all-MiniLM-L6-v2) to find conversations by meaning rather than exact text matches. Embeddings are generated when conversations receive their first assistant response and stored in `data/embeddings.json`.
 
 ## REST API
 
 - `GET/POST /api/conversations` — list/create
 - `GET/PATCH/DELETE /api/conversations/:id` — detail/update/delete
-- `GET /api/conversations/search?q=` — full-text search
+- `GET /api/conversations/search?q=` — full-text search (keyword matching)
+- `GET /api/conversations/semantic-search?q=` — semantic search (meaning-based, using local embeddings)
 - `GET /api/models` — list available Claude models
 - `GET /api/stats` — aggregate usage statistics
 - `GET /api/browse?path=` / `POST /api/mkdir` — directory browser for setting conversation cwd

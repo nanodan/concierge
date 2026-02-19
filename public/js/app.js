@@ -152,6 +152,7 @@ const moreThemeLabel = document.getElementById('more-theme-label');
 const moreNotificationsToggle = document.getElementById('more-notifications-toggle');
 const moreNotificationsLabel = document.getElementById('more-notifications-label');
 const filterToggle = document.getElementById('filter-toggle');
+const semanticToggle = document.getElementById('semantic-toggle');
 const filterRow = document.getElementById('filter-row');
 const filterModelSelect = document.getElementById('filter-model');
 const loadMoreBtn = document.getElementById('load-more-btn');
@@ -234,7 +235,8 @@ initConversations({
   popupArchiveBtn,
   searchInput,
   filterRow,
-  filterModelSelect
+  filterModelSelect,
+  semanticToggle
 });
 
 // Initialize UI
