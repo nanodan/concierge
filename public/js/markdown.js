@@ -67,13 +67,26 @@ function renderMarkdown(text, { skipCache = false } = {}) {
 
   html = html.replace(/^---$/gm, '<hr>');
 
-  html = html.replace(/^[*-] (.+)$/gm, '<ul-li>$1</ul-li>');
-  html = html.replace(/(<ul-li>.*<\/ul-li>\n?)+/g, (m) => '<ul>' + m + '</ul>');
-  html = html.replace(/<\/?ul-li>/g, (t) => t === '<ul-li>' ? '<li>' : '</li>');
-
+  // Process ordered lists first
   html = html.replace(/^\d+\. (.+)$/gm, '<ol-li>$1</ol-li>');
-  html = html.replace(/(<ol-li>.*<\/ol-li>\n?)+/g, (m) => '<ol>' + m + '</ol>');
+
+  // Convert dash lines that follow ol-li into part of the list item (not separate ul items)
+  // This handles patterns like: "1. Item\n- Desc", "1. Item\n\n- Desc", "1. Item\n   - Desc"
+  // Keep applying until no more matches (handles multiple consecutive dash lines)
+  let prevHtml;
+  do {
+    prevHtml = html;
+    html = html.replace(/(<ol-li>.*?)(<\/ol-li>)\s*\n\s*- (.+)$/gm, '$1<br><span class="list-desc">— $3</span>$2');
+  } while (html !== prevHtml);
+
+  // Group consecutive ol-li items
+  html = html.replace(/(<ol-li>.*?<\/ol-li>\s*)+/g, (m) => '<ol>' + m.replace(/\s*(<ol-li>)/g, '$1') + '</ol>\n');
   html = html.replace(/<\/?ol-li>/g, (t) => t === '<ol-li>' ? '<li>' : '</li>');
+
+  // Process unordered lists (remaining dash/asterisk lines)
+  html = html.replace(/^[*-] (.+)$/gm, '<ul-li>$1</ul-li>');
+  html = html.replace(/(<ul-li>.*<\/ul-li>\s*)+/g, (m) => '<ul>' + m.replace(/\s*(<ul-li>)/g, '$1') + '</ul>\n');
+  html = html.replace(/<\/?ul-li>/g, (t) => t === '<ul-li>' ? '<li>' : '</li>');
 
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
     const decoded = url.replace(/&amp;/g, '&');
