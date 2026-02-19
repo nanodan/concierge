@@ -1136,8 +1136,42 @@
   color: var(--mode-readonly-text);
 }
 
+.mode-badge.unsandboxed {
+  background: var(--danger);
+  color: white;
+  animation: unsandboxed-pulse 2s ease-in-out infinite;
+}
+
+@keyframes unsandboxed-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .mode-badge:active {
   opacity: 0.7;
+}
+
+/* Unsafe banner (shown when sandbox is disabled) */
+.unsafe-banner {
+  background: var(--danger);
+  color: white;
+  padding: 6px 16px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.unsafe-banner.hidden {
+  display: none;
+}
+
+.unsafe-banner svg {
+  flex-shrink: 0;
 }
 
 /* Toast notifications */
