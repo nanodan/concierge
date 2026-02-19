@@ -48,7 +48,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolStart = sent.find(m => m.type === 'tool_start');
     assert.ok(toolStart);
@@ -71,7 +71,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const delta = sent.find(m => m.type === 'delta');
     assert.ok(delta.text.includes('Using Read'));
@@ -88,7 +88,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const delta = sent.find(m => m.type === 'delta');
     assert.ok(delta.text.includes('Using Grep'));
@@ -105,7 +105,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolResult = sent.find(m => m.type === 'tool_result');
     assert.ok(toolResult);
@@ -123,7 +123,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolResult = sent.find(m => m.type === 'tool_result');
     assert.ok(toolResult);
@@ -144,7 +144,7 @@ describe('processStreamEvent - tool calls', () => {
         ],
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const delta = sent.find(m => m.type === 'delta');
     assert.ok(delta.text.includes('(truncated)'));
@@ -175,7 +175,7 @@ describe('processStreamEvent - thinking', () => {
         delta: { type: 'thinking_delta', thinking: 'Let me think about this...' },
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const thinking = sent.find(m => m.type === 'thinking');
     assert.ok(thinking);
@@ -203,7 +203,7 @@ describe('processStreamEvent - content_block_start', () => {
       type: 'content_block_start',
       content_block: { type: 'tool_use', name: 'Write', id: 'tool-5' },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolStart = sent.find(m => m.type === 'tool_start');
     assert.ok(toolStart);
@@ -220,7 +220,7 @@ describe('processStreamEvent - content_block_start', () => {
         content_block: { type: 'tool_use', name: 'Edit', id: 'tool-6' },
       },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolStart = sent.find(m => m.type === 'tool_start');
     assert.ok(toolStart);
@@ -249,7 +249,7 @@ describe('processStreamEvent - system events', () => {
       subtype: 'tool_use',
       tool: 'Glob',
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     const toolStart = sent.find(m => m.type === 'tool_start');
     assert.ok(toolStart);
@@ -263,7 +263,7 @@ describe('processStreamEvent - system events', () => {
       subtype: 'init',
       session_id: 'sess-init-123',
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
 
     assert.equal(conv.claudeSessionId, 'sess-init-123');
   });
@@ -296,7 +296,7 @@ describe('processStreamEvent - result with tokens', () => {
       total_input_tokens: 1000,
       total_output_tokens: 200,
     };
-    processStreamEvent(fakeWs, 'conv-1', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
 
     assert.equal(conv.messages.length, 1);
     assert.equal(conv.messages[0].inputTokens, 1000);
@@ -314,7 +314,7 @@ describe('processStreamEvent - result with tokens', () => {
       result: 'Done!',
       usage: { input_tokens: 500, output_tokens: 100 },
     };
-    processStreamEvent(fakeWs, 'conv-1', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
 
     assert.equal(conv.messages[0].inputTokens, 500);
     assert.equal(conv.messages[0].outputTokens, 100);
@@ -326,20 +326,21 @@ describe('processStreamEvent - result with tokens', () => {
       type: 'result',
       result: 'Done!',
     };
-    processStreamEvent(fakeWs, 'conv-1', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
 
     assert.equal(conv.messages[0].inputTokens, 0);
     assert.equal(conv.messages[0].outputTokens, 0);
   });
 
-  it('wraps tool calls in trace block when both exist', () => {
+  it('preserves inline trace blocks in final message', () => {
     const conv = { claudeSessionId: null, messages: [], status: 'thinking' };
-    const toolCallsText = '**Using Bash**: `ls`\n```\nfile.txt\n```\n';
+    // Simulate streamed assistantText with inline trace block
+    const assistantText = ':::trace\n\n**Using Bash**: `ls`\n\n```\nfile.txt\n```\n:::\n\nI found file.txt';
     const event = {
       type: 'result',
       result: 'I found file.txt',
     };
-    processStreamEvent(fakeWs, 'conv-1', conv, event, '', toolCallsText, onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'conv-1', conv, event, assistantText, onSave, broadcastStatus);
 
     const msg = conv.messages[0];
     assert.ok(msg.text.includes(':::trace'));

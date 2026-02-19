@@ -124,7 +124,7 @@ describe('processStreamEvent', () => {
         delta: { type: 'text_delta', text: 'Hello' },
       },
     };
-    const result = processStreamEvent(fakeWs, 'conv-1', conv, event, '', '', onSave, broadcastStatus);
+    const result = processStreamEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'Hello');
     assert.equal(sent.length, 1);
     assert.equal(sent[0].type, 'delta');
@@ -142,8 +142,8 @@ describe('processStreamEvent', () => {
       type: 'stream_event',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'world' } },
     };
-    const r1 = processStreamEvent(fakeWs, 'c', conv, event1, '', '', onSave, broadcastStatus);
-    const r2 = processStreamEvent(fakeWs, 'c', conv, event2, r1.assistantText, '', onSave, broadcastStatus);
+    const r1 = processStreamEvent(fakeWs, 'c', conv, event1, '', onSave, broadcastStatus);
+    const r2 = processStreamEvent(fakeWs, 'c', conv, event2, r1.assistantText, onSave, broadcastStatus);
     assert.equal(r2.assistantText, 'Hello world');
   });
 
@@ -154,7 +154,7 @@ describe('processStreamEvent', () => {
       session_id: 'sess-abc',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'sess-abc');
   });
 
@@ -165,7 +165,7 @@ describe('processStreamEvent', () => {
       session_id: 'new-id',
       event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
     };
-    processStreamEvent(fakeWs, 'c', conv, event, '', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'existing');
   });
 
@@ -180,9 +180,7 @@ describe('processStreamEvent', () => {
       total_input_tokens: 10000,
       total_output_tokens: 2000,
     };
-    // Note: assistantText return value stays as the streaming accumulator,
-    // result text goes to conv.messages and WebSocket
-    processStreamEvent(fakeWs, 'conv-1', conv, event, 'partial', '', onSave, broadcastStatus);
+    processStreamEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
     assert.equal(conv.claudeSessionId, 'sess-final');
     assert.equal(conv.status, 'idle');
     assert.equal(conv.messages.length, 1);
@@ -198,6 +196,31 @@ describe('processStreamEvent', () => {
     assert.equal(resultMsg.duration, 1200);
   });
 
+  it('preserves message ordering with inline trace blocks', () => {
+    const conv = { claudeSessionId: null, messages: [], status: 'thinking', model: 'sonnet' };
+    // Simulate streamed assistantText with inline trace block (pre-tool, trace, post-tool)
+    const assistantText = 'Let me check.\n\n:::trace\n\n**Using Bash**: `ls`\n\n```\nfile.txt\n```\n:::\n\nHere is what I found.';
+    const event = {
+      type: 'result',
+      result: 'Here is what I found.',
+      session_id: 'sess-order',
+      duration_ms: 500,
+    };
+    processStreamEvent(fakeWs, 'conv-1', conv, event, assistantText, onSave, broadcastStatus);
+
+    const msg = conv.messages[0];
+    // Pre-tool text should come first, then trace, then post-tool text
+    assert.ok(msg.text.startsWith('Let me check.'));
+    assert.ok(msg.text.includes(':::trace'));
+    assert.ok(msg.text.includes('Here is what I found.'));
+    // Verify order: preToolText before trace
+    const preToolIdx = msg.text.indexOf('Let me check.');
+    const traceIdx = msg.text.indexOf(':::trace');
+    const postToolIdx = msg.text.lastIndexOf('Here is what I found.');
+    assert.ok(preToolIdx < traceIdx, 'pre-tool text should come before trace');
+    assert.ok(traceIdx < postToolIdx, 'trace should come before post-tool text');
+  });
+
   it('handles assistant events with content blocks', () => {
     const conv = { claudeSessionId: null, messages: [], status: 'thinking' };
     const event = {
@@ -209,7 +232,7 @@ describe('processStreamEvent', () => {
         ],
       },
     };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'Hello', '', onSave, broadcastStatus);
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'Hello', onSave, broadcastStatus);
     // Should send delta with the new portion only
     assert.equal(result.assistantText, 'Hello world');
     const delta = sent.find(m => m.type === 'delta');
@@ -223,7 +246,7 @@ describe('processStreamEvent', () => {
       type: 'assistant',
       message: { content: [{ type: 'text', text: 'same' }] },
     };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'same', '', onSave, broadcastStatus);
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'same', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'same');
     assert.equal(sent.length, 0);
   });
@@ -231,7 +254,7 @@ describe('processStreamEvent', () => {
   it('ignores unknown event types', () => {
     const conv = { messages: [], status: 'thinking' };
     const event = { type: 'unknown_type', data: 'foo' };
-    const result = processStreamEvent(fakeWs, 'c', conv, event, 'existing', '', onSave, broadcastStatus);
+    const result = processStreamEvent(fakeWs, 'c', conv, event, 'existing', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'existing');
     assert.equal(sent.length, 0);
   });
