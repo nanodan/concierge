@@ -40,6 +40,25 @@ export function setupContextBarEventListeners() {
 }
 
 /**
+ * Calculate cumulative tokens from all messages in the conversation.
+ * Since we're resuming sessions, each message's inputTokens/outputTokens
+ * represent just that turn, so we need to sum across all messages.
+ */
+export function calculateCumulativeTokens(messages) {
+  let totalInput = 0;
+  let totalOutput = 0;
+
+  for (const msg of messages || []) {
+    if (msg.role === 'assistant') {
+      totalInput += msg.inputTokens || 0;
+      totalOutput += msg.outputTokens || 0;
+    }
+  }
+
+  return { inputTokens: totalInput, outputTokens: totalOutput };
+}
+
+/**
  * Update the context bar display
  */
 export function updateContextBar(inputTokens, outputTokens, modelId) {

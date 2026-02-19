@@ -71,6 +71,7 @@ import {
   initContextBar,
   setupContextBarEventListeners,
   updateContextBar,
+  calculateCumulativeTokens,
   showCompressionPrompt,
 } from './ui/context-bar.js';
 
@@ -84,6 +85,7 @@ export {
   openFileBrowser,
   closeFileBrowser,
   updateContextBar,
+  calculateCumulativeTokens,
   showCompressionPrompt,
 };
 

@@ -835,10 +835,10 @@ export async function openConversation(id) {
   renderMessages(conv.messages);
   showChatView();
 
-  // Update context bar from last assistant message with tokens
-  const lastAssistant = [...conv.messages].reverse().find(m => m.role === 'assistant' && m.inputTokens);
-  if (lastAssistant) {
-    ui.updateContextBar(lastAssistant.inputTokens, lastAssistant.outputTokens, state.getCurrentModel());
+  // Update context bar with cumulative tokens from all messages
+  const { inputTokens, outputTokens } = ui.calculateCumulativeTokens(conv.messages);
+  if (inputTokens > 0 || outputTokens > 0) {
+    ui.updateContextBar(inputTokens, outputTokens, state.getCurrentModel());
   } else {
     contextBar.classList.add('hidden');
   }

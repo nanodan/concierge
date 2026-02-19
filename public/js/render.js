@@ -384,14 +384,16 @@ export function finalizeMessage(data) {
   if (data.inputTokens != null) {
     // Import dynamically to avoid circular dependency
     import('./ui.js').then(ui => {
-      ui.updateContextBar(data.inputTokens, data.outputTokens, state.getCurrentModel());
+      // Calculate cumulative tokens from all messages (since we resume sessions)
+      const { inputTokens, outputTokens } = ui.calculateCumulativeTokens(state.getAllMessages());
+      ui.updateContextBar(inputTokens, outputTokens, state.getCurrentModel());
 
       // Check if context is near limit (85%) and show compression prompt
       const models = state.getModels();
       const modelId = state.getCurrentModel();
       const model = models.find(m => m.id === modelId);
       const contextLimit = model ? model.context : 200000;
-      const totalTokens = (data.inputTokens || 0) + (data.outputTokens || 0);
+      const totalTokens = inputTokens + outputTokens;
       const pct = (totalTokens / contextLimit) * 100;
 
       if (pct >= 85 && !state.getCompressionPromptShown()) {
