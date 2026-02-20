@@ -13,9 +13,13 @@ let previewType = null;
 let previewUrl = null;
 let previewOpenBtn = null;
 let previewStopBtn = null;
+let previewInlineBtn = null;
+let previewIframeContainer = null;
+let previewIframe = null;
 
 // Preview state
 let previewState = { running: false, port: null, type: null, url: null };
+let inlinePreviewShown = false;
 
 /**
  * Initialize preview elements
@@ -31,6 +35,9 @@ export function initPreview(elements) {
   previewUrl = elements.previewUrl;
   previewOpenBtn = elements.previewOpenBtn;
   previewStopBtn = elements.previewStopBtn;
+  previewInlineBtn = elements.previewInlineBtn;
+  previewIframeContainer = elements.previewIframeContainer;
+  previewIframe = elements.previewIframe;
 }
 
 /**
@@ -42,6 +49,9 @@ export function setupPreviewEventListeners() {
   }
   if (previewStopBtn) {
     previewStopBtn.addEventListener('click', stopPreviewServer);
+  }
+  if (previewInlineBtn) {
+    previewInlineBtn.addEventListener('click', toggleInlinePreview);
   }
 }
 
@@ -80,9 +90,66 @@ function renderPreviewState(data) {
     previewEmpty.classList.remove('hidden');
     previewRunning.classList.add('hidden');
 
+    // Reset inline preview state when server stops
+    hideInlinePreview();
+
     if (previewMessage) {
       previewMessage.textContent = data.error || 'Not running';
     }
+  }
+}
+
+/**
+ * Toggle inline iframe preview
+ */
+function toggleInlinePreview() {
+  if (inlinePreviewShown) {
+    hideInlinePreview();
+  } else {
+    showInlinePreview();
+  }
+}
+
+/**
+ * Show inline iframe preview
+ */
+function showInlinePreview() {
+  if (!previewIframeContainer || !previewIframe || !previewState.url) return;
+
+  haptic(10);
+  inlinePreviewShown = true;
+
+  // Load the preview URL in the iframe
+  previewIframe.src = previewState.url;
+
+  // Show the iframe container
+  previewIframeContainer.classList.remove('hidden');
+  previewRunning.classList.add('has-iframe');
+
+  // Update button text
+  if (previewInlineBtn) {
+    previewInlineBtn.textContent = 'Hide Inline';
+  }
+}
+
+/**
+ * Hide inline iframe preview
+ */
+function hideInlinePreview() {
+  if (!previewIframeContainer || !previewIframe) return;
+
+  inlinePreviewShown = false;
+
+  // Clear and hide the iframe
+  previewIframe.src = 'about:blank';
+  previewIframeContainer.classList.add('hidden');
+  if (previewRunning) {
+    previewRunning.classList.remove('has-iframe');
+  }
+
+  // Update button text
+  if (previewInlineBtn) {
+    previewInlineBtn.textContent = 'Show Inline';
   }
 }
 
@@ -136,11 +203,6 @@ async function startPreview() {
   previewState = data;
   renderPreviewState(data);
   showToast(`Preview started on port ${data.port}`);
-
-  // Auto-open in new tab
-  if (data.url) {
-    window.open(data.url, '_blank');
-  }
 }
 
 /**

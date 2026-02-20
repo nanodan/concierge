@@ -2190,6 +2190,36 @@
   cursor: not-allowed;
 }
 
+/* Inline iframe preview */
+.preview-iframe-container {
+  width: 100%;
+  flex: 1;
+  min-height: 300px;
+  margin-top: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.preview-iframe-container.hidden {
+  display: none;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  border: none;
+  background: #fff;
+}
+
+/* When iframe is shown, make preview-running flex grow */
+.preview-running.has-iframe {
+  justify-content: flex-start;
+  flex: 1;
+}
+
 /* === Standalone Files View (with full git functionality) === */
 
 .files-standalone-panel {

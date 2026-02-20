@@ -132,6 +132,9 @@ export function initFilePanel(elements) {
     previewUrl: elements.previewUrl,
     previewOpenBtn: elements.previewOpenBtn,
     previewStopBtn: elements.previewStopBtn,
+    previewInlineBtn: elements.previewInlineBtn,
+    previewIframeContainer: elements.previewIframeContainer,
+    previewIframe: elements.previewIframe,
   });
 
   setupEventListeners();

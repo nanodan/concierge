@@ -297,8 +297,12 @@
             <span class="preview-url" id="preview-url">http://localhost:3600</span>
           </div>
           <div class="preview-actions">
-            <a id="preview-open-btn" class="preview-btn primary" href="#" target="_blank">Open Preview</a>
+            <button id="preview-inline-btn" class="preview-btn primary">Show Inline</button>
+            <a id="preview-open-btn" class="preview-btn" href="#" target="_blank">Open Tab</a>
             <button id="preview-stop-btn" class="preview-btn">Stop</button>
+          </div>
+          <div id="preview-iframe-container" class="preview-iframe-container hidden">
+            <iframe id="preview-iframe" class="preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
           </div>
         </div>
       </div>
