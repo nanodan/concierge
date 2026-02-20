@@ -395,12 +395,16 @@
 /* Semantic search score badge on results */
 .conv-card-score {
   font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--surface);
-  padding: 2px 6px;
-  border-radius: 8px;
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  padding: 3px 8px;
+  border-radius: 10px;
   margin-left: auto;
+  margin-right: 8px;
   flex-shrink: 0;
+  min-width: 70px;
+  text-align: center;
 }
 
 .filter-row {

@@ -362,7 +362,7 @@ export function renderConversationList(items) {
 
     // Semantic search score badge
     const scoreHtml = typeof c.score === 'number'
-      ? `<span class="conv-card-score">${Math.round(c.score * 100)}%</span>`
+      ? `<span class="conv-card-score">${Math.round(c.score * 100)}% match</span>`
       : '';
 
     const cwdHtml = showCwdOnCards && c.cwd
