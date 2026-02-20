@@ -720,6 +720,16 @@
   transform: translateX(20px);
 }
 
+/* Sandbox toggle row shows danger style when OFF (unchecked) */
+.toggle-row:has(#conv-sandboxed:not(:checked)) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, var(--input-bg));
+}
+
+#conv-sandboxed:not(:checked) + .toggle-slider {
+  background: var(--danger);
+}
+
 /* Dialog (replaces confirm/prompt/alert) */
 .dialog-overlay {
   position: fixed;
@@ -1564,6 +1574,13 @@
 
 .more-menu-item.danger:hover svg {
   color: #fff;
+}
+
+/* Disabled menu item */
+.more-menu-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
 }
 
 /* Mobile visibility helpers */

@@ -885,8 +885,12 @@ export function updateSandboxBanner(isSandboxed, provider = 'claude') {
     // Hide banner for non-Claude providers (no tool use, so sandbox is irrelevant)
     banner.classList.toggle('hidden', isSandboxed || !supportsTools);
   }
-  // Also update the chat more menu label
+  // Also update the chat more menu item
+  const menuItem = document.getElementById('chat-more-sandbox');
   const label = document.getElementById('chat-more-sandbox-label');
+  if (menuItem) {
+    menuItem.classList.toggle('disabled', !supportsTools);
+  }
   if (label) {
     if (supportsTools) {
       label.textContent = isSandboxed ? 'Sandbox: On' : 'Sandbox: Off';
@@ -1484,6 +1488,8 @@ export function setupEventListeners(createConversation) {
   if (chatMoreSandbox) {
     chatMoreSandbox.addEventListener('click', async (e) => {
       e.stopPropagation();
+      // Ignore click for non-Claude providers (no tool use)
+      if (state.getCurrentProvider() !== 'claude') return;
       haptic();
       closeChatMoreMenu();
       await toggleSandboxMode();
