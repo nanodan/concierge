@@ -84,6 +84,7 @@ export let selectedConversations = new Set();
 
 // Search
 export let searchDebounceTimer = null;
+export let semanticSearchEnabled = localStorage.getItem('semanticSearch') === 'true';
 
 // Pending attachments
 export let pendingAttachments = [];
@@ -525,6 +526,20 @@ export function getSearchDebounceTimer() {
 export function clearSearchDebounceTimer() {
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = null;
+}
+
+export function isSemanticSearchEnabled() {
+  return semanticSearchEnabled;
+}
+
+export function setSemanticSearchEnabled(enabled) {
+  semanticSearchEnabled = enabled;
+  localStorage.setItem('semanticSearch', enabled ? 'true' : 'false');
+}
+
+export function toggleSemanticSearch() {
+  setSemanticSearchEnabled(!semanticSearchEnabled);
+  return semanticSearchEnabled;
 }
 
 export function setPendingAttachments(attachments) {

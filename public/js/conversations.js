@@ -27,6 +27,7 @@ let popupArchiveBtn = null;
 let searchInput = null;
 let filterRow = null;
 let filterModelSelect = null;
+let semanticToggle = null;
 
 export function initConversations(elements) {
   listView = elements.listView;
@@ -42,6 +43,23 @@ export function initConversations(elements) {
   searchInput = elements.searchInput;
   filterRow = elements.filterRow;
   filterModelSelect = elements.filterModelSelect;
+  semanticToggle = elements.semanticToggle;
+
+  // Sync semantic toggle button state from localStorage
+  if (semanticToggle) {
+    const updateSemanticUI = (enabled) => {
+      semanticToggle.classList.toggle('active', enabled);
+      if (searchInput) {
+        searchInput.placeholder = enabled ? 'Semantic search...' : 'Search conversations...';
+      }
+    };
+    updateSemanticUI(state.isSemanticSearchEnabled());
+    semanticToggle.addEventListener('click', () => {
+      const enabled = state.toggleSemanticSearch();
+      updateSemanticUI(enabled);
+      triggerSearch(); // Re-run search with new mode
+    });
+  }
 
   // ESC key handler for collapsing expanded fork stacks
   document.addEventListener('keydown', (e) => {
@@ -234,6 +252,15 @@ export async function searchConversations(query, filters = {}) {
   return res.json();
 }
 
+export async function semanticSearchConversations(query) {
+  if (!query) return [];
+  const params = new URLSearchParams();
+  params.set('q', query);
+  const res = await apiFetch(`/api/conversations/semantic-search?${params}`, { silent: true });
+  if (!res) return [];
+  return res.json();
+}
+
 /**
  * Find the root conversation ID by traversing parentId chain.
  * @param {Array} list - Array of conversations
@@ -328,7 +355,15 @@ export function renderConversationList(items) {
     if (c.matchingMessages && c.matchingMessages.length > 0) {
       const snippet = truncate(c.matchingMessages[0].text, 80);
       matchHtml = `<div class="conv-card-match">${escapeHtml(snippet)}</div>`;
+    } else if (c.matchText) {
+      // Semantic search result - show matched text snippet
+      matchHtml = `<div class="conv-card-match">${escapeHtml(truncate(c.matchText, 80))}</div>`;
     }
+
+    // Semantic search score badge
+    const scoreHtml = typeof c.score === 'number'
+      ? `<span class="conv-card-score">${Math.round(c.score * 100)}% match</span>`
+      : '';
 
     const cwdHtml = showCwdOnCards && c.cwd
       ? `<div class="conv-card-cwd">${escapeHtml(c.cwd.replace(/^\/(?:Users|home)\/[^/]+/, '~'))}</div>`
@@ -355,7 +390,7 @@ export function renderConversationList(items) {
           <div class="conv-card-content">
             <div class="conv-card-top">
               ${isThinking ? '<span class="thinking-dot"></span>' : ''}${isUnread ? '<span class="unread-dot"></span>' : ''}${pinIcon}<span class="conv-card-name">${escapeHtml(c.name)}</span>
-              <span class="conv-card-time">${time}</span>
+              ${scoreHtml}<span class="conv-card-time">${time}</span>
             </div>
             <div class="conv-card-preview">${escapeHtml(preview)}</div>
             ${matchHtml}
@@ -799,8 +834,14 @@ export function triggerSearch() {
     return;
   }
   state.setSearchDebounceTimer(setTimeout(async () => {
-    const results = await searchConversations(q, filters);
-    renderConversationList(results);
+    // Use semantic search if enabled and no filters (semantic search doesn't support filters)
+    if (state.isSemanticSearchEnabled() && q && !hasFilters) {
+      const results = await semanticSearchConversations(q);
+      renderConversationList(results);
+    } else {
+      const results = await searchConversations(q, filters);
+      renderConversationList(results);
+    }
   }, 250));
 }
 

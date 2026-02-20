@@ -16,7 +16,12 @@ const {
   loadFromDisk,
   ensureMessages,
   loadMemories,
+  loadMessages,
 } = require('./lib/data');
+const {
+  loadEmbeddings,
+  backfillEmbeddings,
+} = require('./lib/embeddings');
 const {
   spawnClaude,
   processStreamEvent,
@@ -395,6 +400,17 @@ function broadcastStatus(conversationId, status, thinkingStartTime) {
 // Start server (guarded for testability)
 if (require.main === module) {
   loadFromDisk();
+
+  // Load embeddings and start backfill in background (non-blocking)
+  loadEmbeddings().then(() => {
+    // Run backfill after embeddings are loaded
+    backfillEmbeddings(conversations, loadMessages).catch(err => {
+      console.error('[EMBED] Backfill error:', err.message);
+    });
+  }).catch(err => {
+    console.error('[EMBED] Failed to load embeddings:', err.message);
+  });
+
   const PORT = process.env.PORT || 3577;
   const proto = server instanceof https.Server ? 'https' : 'http';
   server.listen(PORT, '0.0.0.0', () => {

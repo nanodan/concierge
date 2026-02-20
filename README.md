@@ -32,6 +32,7 @@ A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 
 ### Search & Stats
 - **Full-text search** - Search across conversation names and message content
+- **Semantic search** - Find conversations by meaning using local AI embeddings (toggle with sparkle icon)
 - **Date & model filters** - Filter search by date range or model
 - **Usage dashboard** - Cost tracking, activity charts, streaks, and fun facts
 
@@ -52,6 +53,8 @@ npm start
 ```
 
 The app runs at `https://localhost:3577` (or `http://` if no certs are configured).
+
+> **Note:** On first use of semantic search, a ~23MB embedding model downloads automatically and is cached locally.
 
 ### Prerequisites
 
@@ -107,7 +110,8 @@ concierge/
 ├── lib/
 │   ├── routes/            # REST API endpoints (conversations, git, files, memory)
 │   ├── claude.js          # Claude CLI process management
-│   └── data.js            # Data storage and persistence
+│   ├── data.js            # Data storage and persistence
+│   └── embeddings.js      # Semantic search with local embeddings
 ├── public/
 │   ├── index.html         # Single-page app HTML
 │   ├── style.css          # Main stylesheet (imports CSS modules)
@@ -120,7 +124,7 @@ concierge/
 │   ├── css/               # Modular stylesheets + themes/
 │   ├── sw.js              # Service worker
 │   └── manifest.json      # PWA manifest
-├── data/                  # Conversations, uploads, memories (JSON files)
+├── data/                  # Conversations, uploads, memories, embeddings (JSON files)
 ├── certs/                 # Optional HTTPS certificates
 ├── test/                  # Unit tests
 └── docs/
