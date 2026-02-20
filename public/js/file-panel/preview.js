@@ -14,12 +14,22 @@ let previewUrl = null;
 let previewOpenBtn = null;
 let previewStopBtn = null;
 let previewInlineBtn = null;
+let previewIframeWrapper = null;
 let previewIframeContainer = null;
 let previewIframe = null;
+let previewFileSelect = null;
+let previewFitToggle = null;
+let previewRefreshBtn = null;
 
 // Preview state
-let previewState = { running: false, port: null, type: null, url: null };
+let previewState = { running: false, port: null, type: null, url: null, htmlFiles: [], currentFile: null };
 let inlinePreviewShown = false;
+
+// Scaling constants
+const BASE_WIDTH = 1280;
+const BASE_HEIGHT = 800;
+let fitMode = localStorage.getItem('previewFitMode') !== 'actual'; // default to fit mode
+let resizeObserver = null;
 
 /**
  * Initialize preview elements
@@ -36,8 +46,17 @@ export function initPreview(elements) {
   previewOpenBtn = elements.previewOpenBtn;
   previewStopBtn = elements.previewStopBtn;
   previewInlineBtn = elements.previewInlineBtn;
+  previewIframeWrapper = elements.previewIframeWrapper;
   previewIframeContainer = elements.previewIframeContainer;
   previewIframe = elements.previewIframe;
+  previewFileSelect = elements.previewFileSelect;
+  previewFitToggle = elements.previewFitToggle;
+  previewRefreshBtn = elements.previewRefreshBtn;
+
+  // Initialize fit toggle state
+  if (previewFitToggle) {
+    previewFitToggle.classList.toggle('active', fitMode);
+  }
 }
 
 /**
@@ -52,6 +71,15 @@ export function setupPreviewEventListeners() {
   }
   if (previewInlineBtn) {
     previewInlineBtn.addEventListener('click', toggleInlinePreview);
+  }
+  if (previewFileSelect) {
+    previewFileSelect.addEventListener('change', handleFileSelect);
+  }
+  if (previewFitToggle) {
+    previewFitToggle.addEventListener('click', toggleFitMode);
+  }
+  if (previewRefreshBtn) {
+    previewRefreshBtn.addEventListener('click', refreshPreview);
   }
 }
 
@@ -86,6 +114,11 @@ function renderPreviewState(data) {
     if (previewType) previewType.textContent = data.type || 'dev';
     if (previewUrl) previewUrl.textContent = data.url || `http://localhost:${data.port}`;
     if (previewOpenBtn) previewOpenBtn.href = data.url || `http://localhost:${data.port}`;
+
+    // Populate file selector
+    if (previewFileSelect && data.htmlFiles) {
+      populateFileSelect(data.htmlFiles, data.currentFile);
+    }
   } else {
     previewEmpty.classList.remove('hidden');
     previewRunning.classList.add('hidden');
@@ -96,6 +129,132 @@ function renderPreviewState(data) {
     if (previewMessage) {
       previewMessage.textContent = data.error || 'Not running';
     }
+  }
+}
+
+/**
+ * Populate the file selector dropdown
+ */
+function populateFileSelect(htmlFiles, currentFile) {
+  if (!previewFileSelect) return;
+
+  previewFileSelect.innerHTML = '';
+
+  if (htmlFiles.length === 0) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No HTML files';
+    previewFileSelect.appendChild(option);
+    previewFileSelect.disabled = true;
+    return;
+  }
+
+  previewFileSelect.disabled = false;
+
+  for (const file of htmlFiles) {
+    const option = document.createElement('option');
+    option.value = file;
+    option.textContent = file;
+    if (file === currentFile) {
+      option.selected = true;
+    }
+    previewFileSelect.appendChild(option);
+  }
+}
+
+/**
+ * Handle file selection change
+ */
+function handleFileSelect() {
+  if (!previewFileSelect || !previewState.port) return;
+
+  const selectedFile = previewFileSelect.value;
+  if (!selectedFile) return;
+
+  haptic(10);
+
+  // Update state
+  previewState.currentFile = selectedFile;
+  const newUrl = `http://localhost:${previewState.port}/${selectedFile}`;
+  previewState.url = newUrl;
+
+  // Update UI
+  if (previewUrl) previewUrl.textContent = newUrl;
+  if (previewOpenBtn) previewOpenBtn.href = newUrl;
+
+  // Update iframe if visible
+  if (inlinePreviewShown && previewIframe) {
+    previewIframe.src = newUrl;
+  }
+}
+
+/**
+ * Toggle fit/actual mode
+ */
+function toggleFitMode() {
+  haptic(10);
+  fitMode = !fitMode;
+
+  // Save preference
+  localStorage.setItem('previewFitMode', fitMode ? 'fit' : 'actual');
+
+  // Update toggle button state
+  if (previewFitToggle) {
+    previewFitToggle.classList.toggle('active', fitMode);
+  }
+
+  // Update container mode
+  if (previewIframeContainer) {
+    previewIframeContainer.classList.toggle('fit-mode', fitMode);
+    previewIframeContainer.classList.toggle('actual-mode', !fitMode);
+  }
+
+  // Recalculate scale
+  updateIframeScale();
+}
+
+/**
+ * Refresh the preview iframe
+ */
+function refreshPreview() {
+  if (!previewIframe || !inlinePreviewShown) return;
+
+  haptic(10);
+
+  // Reload the iframe
+  const currentSrc = previewIframe.src;
+  previewIframe.src = 'about:blank';
+  setTimeout(() => {
+    previewIframe.src = currentSrc;
+  }, 50);
+}
+
+/**
+ * Update iframe scale based on container width (fit mode only)
+ */
+function updateIframeScale() {
+  if (!previewIframeContainer || !previewIframe) return;
+
+  if (fitMode) {
+    const containerWidth = previewIframeContainer.clientWidth;
+    if (containerWidth <= 0) return;
+
+    const scale = containerWidth / BASE_WIDTH;
+
+    previewIframe.style.width = `${BASE_WIDTH}px`;
+    previewIframe.style.height = `${BASE_HEIGHT}px`;
+    previewIframe.style.transform = `scale(${scale})`;
+    previewIframe.style.transformOrigin = '0 0';
+
+    // Adjust container height to match scaled content
+    previewIframeContainer.style.height = `${BASE_HEIGHT * scale}px`;
+  } else {
+    // Actual mode - natural sizing
+    previewIframe.style.width = '';
+    previewIframe.style.height = '';
+    previewIframe.style.transform = '';
+    previewIframe.style.transformOrigin = '';
+    previewIframeContainer.style.height = '';
   }
 }
 
@@ -114,7 +273,7 @@ function toggleInlinePreview() {
  * Show inline iframe preview
  */
 function showInlinePreview() {
-  if (!previewIframeContainer || !previewIframe || !previewState.url) return;
+  if (!previewIframeWrapper || !previewIframeContainer || !previewIframe || !previewState.url) return;
 
   haptic(10);
   inlinePreviewShown = true;
@@ -122,9 +281,30 @@ function showInlinePreview() {
   // Load the preview URL in the iframe
   previewIframe.src = previewState.url;
 
-  // Show the iframe container
-  previewIframeContainer.classList.remove('hidden');
+  // Show the iframe wrapper
+  previewIframeWrapper.classList.remove('hidden');
   previewRunning.classList.add('has-iframe');
+
+  // Set up fit mode
+  if (previewIframeContainer) {
+    previewIframeContainer.classList.toggle('fit-mode', fitMode);
+    previewIframeContainer.classList.toggle('actual-mode', !fitMode);
+  }
+
+  // Set up ResizeObserver for fit mode scaling
+  if (!resizeObserver && previewIframeContainer) {
+    resizeObserver = new ResizeObserver(() => {
+      if (inlinePreviewShown && fitMode) {
+        updateIframeScale();
+      }
+    });
+    resizeObserver.observe(previewIframeContainer);
+  }
+
+  // Initial scale calculation (after a brief delay to ensure layout)
+  setTimeout(() => {
+    updateIframeScale();
+  }, 50);
 
   // Update button text
   if (previewInlineBtn) {
@@ -136,16 +316,29 @@ function showInlinePreview() {
  * Hide inline iframe preview
  */
 function hideInlinePreview() {
-  if (!previewIframeContainer || !previewIframe) return;
+  if (!previewIframeWrapper || !previewIframeContainer || !previewIframe) return;
 
   inlinePreviewShown = false;
 
   // Clear and hide the iframe
   previewIframe.src = 'about:blank';
-  previewIframeContainer.classList.add('hidden');
+  previewIframeWrapper.classList.add('hidden');
   if (previewRunning) {
     previewRunning.classList.remove('has-iframe');
   }
+
+  // Clean up ResizeObserver
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+
+  // Reset iframe styles
+  previewIframe.style.width = '';
+  previewIframe.style.height = '';
+  previewIframe.style.transform = '';
+  previewIframe.style.transformOrigin = '';
+  previewIframeContainer.style.height = '';
 
   // Update button text
   if (previewInlineBtn) {

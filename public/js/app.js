@@ -144,8 +144,12 @@ const previewUrl = document.getElementById('preview-url');
 const previewOpenBtn = document.getElementById('preview-open-btn');
 const previewStopBtn = document.getElementById('preview-stop-btn');
 const previewInlineBtn = document.getElementById('preview-inline-btn');
+const previewIframeWrapper = document.getElementById('preview-iframe-wrapper');
 const previewIframeContainer = document.getElementById('preview-iframe-container');
 const previewIframe = document.getElementById('preview-iframe');
+const previewFileSelect = document.getElementById('preview-file-select');
+const previewFitToggle = document.getElementById('preview-fit-toggle');
+const previewRefreshBtn = document.getElementById('preview-refresh-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -374,8 +378,12 @@ initFilePanel({
   previewOpenBtn,
   previewStopBtn,
   previewInlineBtn,
+  previewIframeWrapper,
   previewIframeContainer,
-  previewIframe
+  previewIframe,
+  previewFileSelect,
+  previewFitToggle,
+  previewRefreshBtn
 });
 
 // Initialize branches view

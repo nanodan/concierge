@@ -133,8 +133,12 @@ export function initFilePanel(elements) {
     previewOpenBtn: elements.previewOpenBtn,
     previewStopBtn: elements.previewStopBtn,
     previewInlineBtn: elements.previewInlineBtn,
+    previewIframeWrapper: elements.previewIframeWrapper,
     previewIframeContainer: elements.previewIframeContainer,
     previewIframe: elements.previewIframe,
+    previewFileSelect: elements.previewFileSelect,
+    previewFitToggle: elements.previewFitToggle,
+    previewRefreshBtn: elements.previewRefreshBtn,
   });
 
   setupEventListeners();
