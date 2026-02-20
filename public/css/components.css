@@ -1151,6 +1151,25 @@
   opacity: 0.7;
 }
 
+/* Provider badge (shown for non-Claude providers) */
+.provider-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  user-select: none;
+  background: var(--text-muted);
+  color: var(--bg);
+}
+
+.provider-badge.ollama {
+  background: #7c3aed;
+  color: white;
+}
+
 /* Unsafe banner (shown when sandbox is disabled) */
 .unsafe-banner {
   background: var(--danger);

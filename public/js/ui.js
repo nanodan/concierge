@@ -225,6 +225,7 @@ let recentDirs = null;
 let recentDirsList = null;
 let convAutopilot = null;
 let convSandboxed = null;
+let convProviderSelect = null;
 let convModelSelect = null;
 let archiveToggle = null;
 let searchInput = null;
@@ -233,6 +234,7 @@ let attachBtn = null;
 let fileInput = null;
 let attachmentPreview = null;
 let modeBadge = null;
+let providerBadge = null;
 let modelBtn = null;
 let modelDropdown = null;
 let jumpToBottomBtn = null;
@@ -287,6 +289,7 @@ export function initUI(elements) {
   recentDirsList = elements.recentDirsList;
   convAutopilot = elements.convAutopilot;
   convSandboxed = elements.convSandboxed;
+  convProviderSelect = elements.convProviderSelect;
   convModelSelect = elements.convModelSelect;
   archiveToggle = elements.archiveToggle;
   searchInput = elements.searchInput;
@@ -295,6 +298,7 @@ export function initUI(elements) {
   fileInput = elements.fileInput;
   attachmentPreview = elements.attachmentPreview;
   modeBadge = elements.modeBadge;
+  providerBadge = elements.providerBadge;
   modelBtn = elements.modelBtn;
   modelDropdown = elements.modelDropdown;
   jumpToBottomBtn = elements.jumpToBottomBtn;
@@ -842,6 +846,18 @@ export function updateModeBadge(isAutopilot) {
   modeBadge.classList.toggle('readonly', !isAutopilot);
 }
 
+export function updateProviderBadge(provider) {
+  if (!providerBadge) return;
+  // Show badge for non-Claude providers
+  const isLocal = provider && provider !== 'claude';
+  providerBadge.classList.toggle('hidden', !isLocal);
+  providerBadge.classList.toggle('ollama', provider === 'ollama');
+  if (isLocal) {
+    providerBadge.textContent = provider === 'ollama' ? 'Local' : provider;
+    providerBadge.title = `Using ${provider} provider (local LLM)`;
+  }
+}
+
 export function updateSandboxBanner(isSandboxed) {
   const banner = document.getElementById('unsafe-banner');
   if (banner) {
@@ -1074,9 +1090,10 @@ export function setupEventListeners(createConversation) {
     const cwd = convCwdInput.value.trim() || undefined;
     const autopilot = convAutopilot.checked;
     const sandboxed = convSandboxed ? convSandboxed.checked : true;
+    const provider = convProviderSelect ? convProviderSelect.value : 'claude';
     const model = convModelSelect.value;
     if (name) {
-      createConversation(name, cwd, autopilot, model, sandboxed);
+      createConversation(name, cwd, autopilot, model, sandboxed, provider);
       modalOverlay.classList.add('hidden');
     }
   });

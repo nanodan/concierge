@@ -22,6 +22,9 @@ module.exports = [
         URLSearchParams: 'readonly',
         TextEncoder: 'readonly',
         TextDecoder: 'readonly',
+        // Node.js 18+ globals
+        fetch: 'readonly',
+        AbortController: 'readonly',
       },
     },
     rules: {

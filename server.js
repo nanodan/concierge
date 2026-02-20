@@ -28,6 +28,7 @@ const {
   cancelProcess,
   hasActiveProcess,
 } = require('./lib/claude');
+const { initProviders, getProvider } = require('./lib/providers');
 
 const app = express();
 
@@ -99,9 +100,23 @@ async function loadConversationMemories(conv) {
   return loadMemories(conv.cwd);
 }
 
-function handleCancel(ws, msg) {
+async function handleCancel(ws, msg) {
   const { conversationId } = msg;
-  if (!cancelProcess(conversationId)) {
+
+  // Try to get the conversation to determine the provider
+  const conv = conversations.get(conversationId);
+  const providerId = conv?.provider || 'claude';
+
+  let cancelled = false;
+  try {
+    const provider = getProvider(providerId);
+    cancelled = provider.cancel(conversationId);
+  } catch {
+    // Fallback to legacy cancel
+    cancelled = cancelProcess(conversationId);
+  }
+
+  if (!cancelled) {
     ws.send(JSON.stringify({ type: 'error', conversationId, error: 'No active process to cancel' }));
   }
 }
@@ -134,7 +149,17 @@ async function handleMessage(ws, msg) {
       return;
     }
 
-    if (hasActiveProcess(conversationId)) {
+    // Get the correct provider for this conversation
+    const providerId = conv.provider || 'claude';
+    let provider;
+    try {
+      provider = getProvider(providerId);
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', error: `Unknown provider: ${providerId}` }));
+      return;
+    }
+
+    if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', error: 'Conversation is busy' }));
       return;
     }
@@ -151,7 +176,7 @@ async function handleMessage(ws, msg) {
     broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
     const memories = await loadConversationMemories(conv);
-    spawnClaude(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
+    provider.chat(ws, conversationId, conv, text, attachments, UPLOAD_DIR, {
       onSave: saveConversation,
       broadcastStatus,
     }, memories);
@@ -171,7 +196,17 @@ async function handleRegenerate(ws, msg) {
       return;
     }
 
-    if (hasActiveProcess(conversationId)) {
+    // Get the correct provider for this conversation
+    const providerId = conv.provider || 'claude';
+    let provider;
+    try {
+      provider = getProvider(providerId);
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', error: `Unknown provider: ${providerId}` }));
+      return;
+    }
+
+    if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
       return;
     }
@@ -195,7 +230,7 @@ async function handleRegenerate(ws, msg) {
     broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
     const memories = await loadConversationMemories(conv);
-    spawnClaude(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
+    provider.chat(ws, conversationId, conv, lastUserMsg.text, lastUserMsg.attachments, UPLOAD_DIR, {
       onSave: saveConversation,
       broadcastStatus,
     }, memories);
@@ -216,7 +251,17 @@ async function handleEdit(ws, msg) {
       return;
     }
 
-    if (hasActiveProcess(conversationId)) {
+    // Get the correct provider for this conversation
+    const providerId = conv.provider || 'claude';
+    let provider;
+    try {
+      provider = getProvider(providerId);
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', error: `Unknown provider: ${providerId}` }));
+      return;
+    }
+
+    if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
       return;
     }
@@ -257,6 +302,7 @@ async function handleEdit(ws, msg) {
       archived: false,
       pinned: false,
       autopilot: conv.autopilot,
+      provider: conv.provider || 'claude',
       model: conv.model,
       createdAt: Date.now(),
       parentId: conversationId,
@@ -278,7 +324,7 @@ async function handleEdit(ws, msg) {
 
     const memories = await loadConversationMemories(forkedConv);
     const userMsg = messages[messageIndex];
-    spawnClaude(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
+    provider.chat(ws, newId, forkedConv, userMsg.text, userMsg.attachments, UPLOAD_DIR, {
       onSave: saveConversation,
       broadcastStatus,
     }, memories);
@@ -301,7 +347,17 @@ async function handleResend(ws, msg) {
       return;
     }
 
-    if (hasActiveProcess(conversationId)) {
+    // Get the correct provider for this conversation
+    const providerId = conv.provider || 'claude';
+    let provider;
+    try {
+      provider = getProvider(providerId);
+    } catch {
+      ws.send(JSON.stringify({ type: 'error', error: `Unknown provider: ${providerId}` }));
+      return;
+    }
+
+    if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
       return;
     }
@@ -320,19 +376,19 @@ async function handleResend(ws, msg) {
     const isLastMessage = messageIndex === conv.messages.length - 1;
 
     if (isLastMessage) {
-      // Resend in place - just spawn Claude on this message
+      // Resend in place - just spawn provider on this message
       conv.status = 'thinking';
       conv.thinkingStartTime = Date.now();
       await saveConversation(conversationId);
       broadcastStatus(conversationId, 'thinking', conv.thinkingStartTime);
 
       const memories = await loadConversationMemories(conv);
-      spawnClaude(ws, conversationId, conv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
+      provider.chat(ws, conversationId, conv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
         onSave: saveConversation,
         broadcastStatus,
       }, memories);
     } else {
-      // Fork from this message and spawn Claude on the fork
+      // Fork from this message and spawn provider on the fork
       newId = uuidv4();
       const messages = conv.messages.slice(0, messageIndex + 1);
 
@@ -354,6 +410,7 @@ async function handleResend(ws, msg) {
         archived: false,
         pinned: false,
         autopilot: conv.autopilot,
+        provider: conv.provider || 'claude',
         model: conv.model,
         createdAt: Date.now(),
         parentId: conversationId,
@@ -373,7 +430,7 @@ async function handleResend(ws, msg) {
       broadcastStatus(newId, 'thinking', thinkingStartTime);
 
       const memories = await loadConversationMemories(forkedConv);
-      spawnClaude(ws, newId, forkedConv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
+      provider.chat(ws, newId, forkedConv, targetMsg.text, targetMsg.attachments, UPLOAD_DIR, {
         onSave: saveConversation,
         broadcastStatus,
       }, memories);
@@ -399,6 +456,9 @@ function broadcastStatus(conversationId, status, thinkingStartTime) {
 
 // Start server (guarded for testability)
 if (require.main === module) {
+  // Initialize providers first
+  initProviders();
+
   loadFromDisk();
 
   // Load embeddings and start backfill in background (non-blocking)

@@ -124,11 +124,11 @@ export async function getConversation(id) {
   return res.json();
 }
 
-export async function createConversation(name, cwd, autopilot, model, sandboxed = true) {
+export async function createConversation(name, cwd, autopilot, model, sandboxed = true, provider = 'claude') {
   const res = await apiFetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, cwd, autopilot, model, sandboxed }),
+    body: JSON.stringify({ name, cwd, autopilot, model, sandboxed, provider }),
   });
   if (!res) return;
   const conv = await res.json();
@@ -872,6 +872,7 @@ export async function openConversation(id) {
   const ui = await import('./ui.js');
   ui.updateModelBadge(state.getCurrentModel());
   ui.updateModeBadge(state.getCurrentAutopilot());
+  ui.updateProviderBadge(conv.provider);
   ui.updateMemoryIndicator(conv.useMemory);
   ui.updateSandboxBanner(state.getCurrentSandboxed());
 
