@@ -75,6 +75,7 @@ const dialogInput = document.getElementById('dialog-input');
 const dialogCancel = document.getElementById('dialog-cancel');
 const dialogOk = document.getElementById('dialog-ok');
 const modeBadge = document.getElementById('mode-badge');
+const providerBadge = document.getElementById('provider-badge');
 const modelBtn = document.getElementById('model-btn');
 const modelDropdown = document.getElementById('model-dropdown');
 const convStatsBtn = document.getElementById('conv-stats-btn');
@@ -82,6 +83,7 @@ const convStatsDropdown = document.getElementById('conv-stats-dropdown');
 const contextBar = document.getElementById('context-bar');
 const contextBarFill = document.getElementById('context-bar-fill');
 const contextBarLabel = document.getElementById('context-bar-label');
+const convProviderSelect = document.getElementById('conv-provider');
 const convModelSelect = document.getElementById('conv-model');
 const jumpToBottomBtn = document.getElementById('jump-to-bottom');
 const toastContainer = document.getElementById('toast-container');
@@ -255,6 +257,7 @@ initUI({
   recentDirsList,
   convAutopilot,
   convSandboxed,
+  convProviderSelect,
   convModelSelect,
   archiveToggle,
   searchInput,
@@ -270,6 +273,7 @@ initUI({
   fileInput,
   attachmentPreview,
   modeBadge,
+  providerBadge,
   modelBtn,
   modelDropdown,
   convStatsBtn,
@@ -399,19 +403,48 @@ setupActionPopupHandlers(hideMsgActionPopup);
 setupEventListeners(createConversation);
 
 // --- Load models ---
-async function loadModels() {
-  const res = await apiFetch('/api/models', { silent: true });
+async function loadModels(provider = 'claude') {
+  const res = await apiFetch(`/api/models?provider=${provider}`, { silent: true });
   if (!res) {
-    state.setModels([{ id: 'sonnet', name: 'Sonnet 4.5', context: 200000 }]);
+    if (provider === 'claude') {
+      state.setModels([{ id: 'claude-sonnet-4.5', name: 'Sonnet 4.5', context: 200000 }]);
+    } else {
+      state.setModels([{ id: 'llama3.2', name: 'Llama 3.2', context: 128000 }]);
+    }
     return;
   }
   const models = await res.json();
   state.setModels(models);
-  // Populate modal select
+
+  // Populate modal select with first option selected
+  const defaultModel = models[0]?.id || (provider === 'claude' ? 'claude-sonnet-4.5' : 'llama3.2');
   convModelSelect.innerHTML = models.map(m =>
-    `<option value="${m.id}"${m.id === 'sonnet' ? ' selected' : ''}>${m.name}</option>`
+    `<option value="${m.id}"${m.id === defaultModel ? ' selected' : ''}>${m.name}</option>`
   ).join('');
-  populateFilterModels();
+
+  // Only populate filter for Claude (main provider)
+  if (provider === 'claude') {
+    populateFilterModels();
+  }
+}
+
+// Handle provider change in new conversation modal
+if (convProviderSelect) {
+  convProviderSelect.addEventListener('change', () => {
+    const provider = convProviderSelect.value;
+    loadModels(provider);
+
+    // Disable sandbox/autopilot toggles for non-Claude providers (no tool use)
+    const supportsTools = provider === 'claude';
+    if (convSandboxed) {
+      convSandboxed.disabled = !supportsTools;
+      convSandboxed.closest('.toggle-row')?.classList.toggle('disabled', !supportsTools);
+    }
+    if (convAutopilot) {
+      convAutopilot.disabled = !supportsTools;
+      convAutopilot.closest('.toggle-row')?.classList.toggle('disabled', !supportsTools);
+    }
+  });
 }
 
 // --- Init ---

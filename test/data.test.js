@@ -20,10 +20,10 @@ describe('convMeta', () => {
     assert.equal(meta.pinned, false);
   });
 
-  it('includes model defaulting to sonnet', () => {
+  it('includes model defaulting to claude-sonnet-4.5', () => {
     const conv = { id: 'x', name: 'X', messages: [] };
     const meta = convMeta(conv);
-    assert.equal(meta.model, 'sonnet');
+    assert.equal(meta.model, 'claude-sonnet-4.5');
   });
 
   it('preserves custom model', () => {

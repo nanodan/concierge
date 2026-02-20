@@ -17,9 +17,14 @@ export let memories = []; // Current project's memories
 // Compression prompt state (reset per conversation)
 export let compressionPromptShown = false;
 
-// Models
+// Models and Providers
+export let providers = [
+  { id: 'claude', name: 'Claude' },
+  { id: 'ollama', name: 'Ollama' },
+];
 export let models = [];
-export let currentModel = 'sonnet';
+export let currentProvider = 'claude';
+export let currentModel = 'claude-sonnet-4.5';
 export let currentAutopilot = true;
 export let currentSandboxed = true;
 
@@ -106,6 +111,22 @@ export function setCurrentConversationId(id) {
 
 export function getCurrentConversationId() {
   return currentConversationId;
+}
+
+export function setProviders(p) {
+  providers = p;
+}
+
+export function getProviders() {
+  return providers;
+}
+
+export function setCurrentProvider(p) {
+  currentProvider = p;
+}
+
+export function getCurrentProvider() {
+  return currentProvider;
 }
 
 export function setModels(m) {
