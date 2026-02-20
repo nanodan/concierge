@@ -864,6 +864,7 @@ export async function openConversation(id) {
   chatName.textContent = conv.name;
   state.updateStatusDot(conv.status);
 
+  state.setCurrentProvider(conv.provider || 'claude');
   state.setCurrentModel(conv.model || 'sonnet');
   state.setCurrentAutopilot(conv.autopilot !== false);
   state.setCurrentSandboxed(conv.sandboxed !== false);
@@ -871,10 +872,10 @@ export async function openConversation(id) {
   // Import UI functions dynamically to avoid circular dependency
   const ui = await import('./ui.js');
   ui.updateModelBadge(state.getCurrentModel());
-  ui.updateModeBadge(state.getCurrentAutopilot());
+  ui.updateModeBadge(state.getCurrentAutopilot(), state.getCurrentProvider());
   ui.updateProviderBadge(conv.provider);
   ui.updateMemoryIndicator(conv.useMemory);
-  ui.updateSandboxBanner(state.getCurrentSandboxed());
+  ui.updateSandboxBanner(state.getCurrentSandboxed(), state.getCurrentProvider());
 
   renderMessages(conv.messages);
   showChatView();

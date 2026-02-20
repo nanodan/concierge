@@ -433,6 +433,17 @@ if (convProviderSelect) {
   convProviderSelect.addEventListener('change', () => {
     const provider = convProviderSelect.value;
     loadModels(provider);
+
+    // Disable sandbox/autopilot toggles for non-Claude providers (no tool use)
+    const supportsTools = provider === 'claude';
+    if (convSandboxed) {
+      convSandboxed.disabled = !supportsTools;
+      convSandboxed.closest('.toggle-row')?.classList.toggle('disabled', !supportsTools);
+    }
+    if (convAutopilot) {
+      convAutopilot.disabled = !supportsTools;
+      convAutopilot.closest('.toggle-row')?.classList.toggle('disabled', !supportsTools);
+    }
   });
 }
 

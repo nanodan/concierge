@@ -472,6 +472,20 @@ export function openNewChatModal(cwd = '') {
   convCwdInput.value = cwd;
   dirBrowser.classList.add('hidden');
   populateRecentDirs();
+
+  // Reset provider to Claude and re-enable toggles
+  if (convProviderSelect) {
+    convProviderSelect.value = 'claude';
+  }
+  if (convSandboxed) {
+    convSandboxed.disabled = false;
+    convSandboxed.closest('.toggle-row')?.classList.remove('disabled');
+  }
+  if (convAutopilot) {
+    convAutopilot.disabled = false;
+    convAutopilot.closest('.toggle-row')?.classList.remove('disabled');
+  }
+
   modalOverlay.classList.remove('hidden');
   convNameInput.focus();
   haptic(15);
@@ -838,7 +852,12 @@ function resendMessage(messageIndex) {
 }
 
 // --- Model & Mode Badges ---
-export function updateModeBadge(isAutopilot) {
+export function updateModeBadge(isAutopilot, provider = 'claude') {
+  // Hide mode badge for non-Claude providers (no tool use)
+  const supportsTools = provider === 'claude';
+  modeBadge.classList.toggle('hidden', !supportsTools);
+  if (!supportsTools) return;
+
   // Autopilot vs Read-only toggle (independent of sandbox)
   modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
   modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
@@ -858,15 +877,22 @@ export function updateProviderBadge(provider) {
   }
 }
 
-export function updateSandboxBanner(isSandboxed) {
+export function updateSandboxBanner(isSandboxed, provider = 'claude') {
   const banner = document.getElementById('unsafe-banner');
+  const supportsTools = provider === 'claude';
+
   if (banner) {
-    banner.classList.toggle('hidden', isSandboxed);
+    // Hide banner for non-Claude providers (no tool use, so sandbox is irrelevant)
+    banner.classList.toggle('hidden', isSandboxed || !supportsTools);
   }
   // Also update the chat more menu label
   const label = document.getElementById('chat-more-sandbox-label');
   if (label) {
-    label.textContent = isSandboxed ? 'Sandbox: On' : 'Sandbox: Off';
+    if (supportsTools) {
+      label.textContent = isSandboxed ? 'Sandbox: On' : 'Sandbox: Off';
+    } else {
+      label.textContent = 'Sandbox: N/A';
+    }
   }
 }
 
@@ -888,7 +914,7 @@ export async function toggleSandboxMode() {
   }
 
   state.setCurrentSandboxed(newSandboxed);
-  updateSandboxBanner(newSandboxed);
+  updateSandboxBanner(newSandboxed, state.getCurrentProvider());
 
   await apiFetch(`/api/conversations/${currentConversationId}`, {
     method: 'PATCH',
@@ -1070,6 +1096,20 @@ export function setupEventListeners(createConversation) {
     convCwdInput.value = '';
     dirBrowser.classList.add('hidden');
     populateRecentDirs();
+
+    // Reset provider to Claude and re-enable toggles
+    if (convProviderSelect) {
+      convProviderSelect.value = 'claude';
+    }
+    if (convSandboxed) {
+      convSandboxed.disabled = false;
+      convSandboxed.closest('.toggle-row')?.classList.remove('disabled');
+    }
+    if (convAutopilot) {
+      convAutopilot.disabled = false;
+      convAutopilot.closest('.toggle-row')?.classList.remove('disabled');
+    }
+
     modalOverlay.classList.remove('hidden');
     convNameInput.focus();
   });
@@ -1236,9 +1276,11 @@ export function setupEventListeners(createConversation) {
   modeBadge.addEventListener('click', async () => {
     const currentConversationId = state.getCurrentConversationId();
     if (!currentConversationId) return;
+    // Mode toggle only applies to providers with tool use
+    if (state.getCurrentProvider() !== 'claude') return;
     const newAutopilot = !state.getCurrentAutopilot();
     state.setCurrentAutopilot(newAutopilot);
-    updateModeBadge(newAutopilot);
+    updateModeBadge(newAutopilot, state.getCurrentProvider());
     await apiFetch(`/api/conversations/${currentConversationId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

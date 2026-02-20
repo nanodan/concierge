@@ -651,6 +651,12 @@
   background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
+  transition: opacity 0.2s;
+}
+
+.toggle-row.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .toggle-label {
