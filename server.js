@@ -23,10 +23,10 @@ const {
   backfillEmbeddings,
 } = require('./lib/embeddings');
 const {
-  spawnClaude,
+  spawnClaude: _spawnClaude,
   processStreamEvent,
   cancelProcess,
-  hasActiveProcess,
+  hasActiveProcess: _hasActiveProcess,
 } = require('./lib/claude');
 const { initProviders, getProvider } = require('./lib/providers');
 

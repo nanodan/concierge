@@ -408,6 +408,49 @@
   }
 }
 
+/* Load to Data tab button */
+.file-tree-load-data-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--accent);
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  margin: -8px 0;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.file-tree-load-data-btn:hover {
+  opacity: 1;
+  background: var(--accent-bg);
+}
+
+.file-tree-load-data-btn:active {
+  opacity: 1;
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.file-tree-item:hover .file-tree-load-data-btn,
+.file-tree-item:focus-within .file-tree-load-data-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (hover: none) {
+  .file-tree-load-data-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 /* File viewer */
 .file-viewer {
   position: absolute;
@@ -3061,5 +3104,489 @@
   #files-standalone-view .file-panel-header {
     padding-top: env(safe-area-inset-top);
     height: calc(var(--file-panel-header-height) + env(safe-area-inset-top));
+  }
+}
+
+/* =================================
+   DATA TAB - DuckDB SQL Analysis
+   ================================= */
+
+.data-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.data-view.hidden {
+  display: none;
+}
+
+/* Tables row */
+.data-tab-tables-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.data-tab-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-height: 28px;
+  align-items: center;
+}
+
+.data-tab-no-tables {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.data-tab-table-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.data-tab-table-chip:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.data-tab-table-chip .table-name {
+  font-weight: 600;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-tab-table-chip .table-count {
+  opacity: 0.7;
+  font-size: 10px;
+}
+
+.data-tab-table-chip .table-arrow {
+  margin-left: 2px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* Table wrapper for dropdown positioning */
+.data-tab-table-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Schema dropdown */
+.data-tab-schema-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 220px;
+  max-width: min(300px, calc(100vw - 32px));
+  max-height: min(320px, 50vh);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.schema-header {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.schema-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schema-row-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.schema-columns {
+  flex: 1;
+  min-height: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 8px 0;
+}
+
+.schema-column {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
+.schema-column:hover {
+  background: var(--hover-bg);
+}
+
+.schema-col-name {
+  font-family: var(--font-mono, 'SF Mono', Monaco, monospace);
+  color: var(--text);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schema-col-type {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.schema-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.schema-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.schema-action-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.schema-action-btn:hover {
+  opacity: 0.85;
+}
+
+.schema-insert-btn {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.schema-drop-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.schema-drop-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.data-tab-load-btn {
+  padding: 4px 10px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+
+.data-tab-load-btn:hover {
+  opacity: 0.85;
+}
+
+/* SQL Editor */
+.data-tab-editor {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.data-tab-sql-editor {
+  width: 100%;
+  min-height: 60px;
+  max-height: 150px;
+  padding: 8px 10px;
+  font-family: var(--font-mono, 'SF Mono', Monaco, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.data-tab-sql-editor:focus {
+  border-color: var(--accent);
+}
+
+.data-tab-sql-editor::placeholder {
+  color: var(--text-tertiary);
+}
+
+.data-tab-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  position: relative;
+}
+
+.data-tab-run-btn {
+  padding: 6px 16px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.data-tab-run-btn:hover {
+  opacity: 0.85;
+}
+
+.data-tab-run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.data-tab-history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.data-tab-history-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+.data-tab-history-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  max-width: min(300px, calc(100vw - 32px));
+  max-height: min(280px, 50vh);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.data-tab-history-dropdown.hidden {
+  display: none;
+}
+
+.data-tab-history-dropdown .history-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.data-tab-history-dropdown .history-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--font-mono, 'SF Mono', Monaco, monospace);
+  font-size: 11px;
+  color: var(--text);
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-tab-history-dropdown .history-item:last-child {
+  border-bottom: none;
+}
+
+.data-tab-history-dropdown .history-item:hover {
+  background: var(--hover-bg);
+}
+
+.data-tab-history-dropdown .history-items {
+  flex: 1;
+  min-height: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.data-tab-history-dropdown .history-clear-btn {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: center;
+  background: var(--surface);
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.data-tab-history-dropdown .history-clear-btn:hover {
+  color: var(--danger);
+  background: var(--hover-bg);
+}
+
+.data-tab-status {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-tab-status.running {
+  color: var(--accent);
+}
+
+/* Results area */
+.data-tab-results {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg);
+}
+
+.data-tab-results-wrapper {
+  min-width: 100%;
+  overflow-x: auto;
+}
+
+.data-tab-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.data-tab-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 20px;
+  color: var(--error);
+  text-align: center;
+}
+
+.data-tab-error svg {
+  opacity: 0.7;
+}
+
+.data-tab-error p {
+  font-size: 12px;
+  max-width: 300px;
+  word-break: break-word;
+}
+
+/* Data tab reuses data-preview-table styles */
+.data-tab-results .data-preview-table th {
+  position: relative;
+}
+
+.data-tab-results .data-preview-table th .col-type {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.data-tab-results .null-cell {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .data-tab-tables-row {
+    padding: 6px 10px;
+  }
+
+  .data-tab-editor {
+    padding: 6px 10px;
+  }
+
+  .data-tab-sql-editor {
+    min-height: 50px;
+    font-size: 14px; /* Larger touch target */
   }
 }

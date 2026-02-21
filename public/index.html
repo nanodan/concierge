@@ -227,6 +227,7 @@
           <button id="files-tab" class="file-panel-tab active" data-tab="files">Files</button>
           <button id="changes-tab" class="file-panel-tab" data-tab="changes">Changes</button>
           <button id="history-tab" class="file-panel-tab" data-tab="history">History</button>
+          <button id="data-tab" class="file-panel-tab" data-tab="data">Data</button>
           <button id="preview-tab" class="file-panel-tab" data-tab="preview">Preview</button>
         </div>
         <button id="file-panel-fullscreen" class="file-panel-fullscreen" aria-label="Toggle fullscreen" title="Toggle fullscreen">
@@ -286,6 +287,27 @@
       <!-- History View (Git Commits) -->
       <div id="history-view" class="history-view hidden">
         <div id="history-list" class="history-list"></div>
+      </div>
+      <!-- Data View (DuckDB SQL Analysis) -->
+      <div id="data-view" class="data-view hidden">
+        <div class="data-tab-tables-row">
+          <div id="tables-container" class="data-tab-tables">
+            <span class="data-tab-no-tables">No tables loaded</span>
+          </div>
+          <button id="load-table-btn" class="data-tab-load-btn" title="Browse files to load">+ Browse</button>
+        </div>
+        <div class="data-tab-editor">
+          <textarea id="sql-editor" class="data-tab-sql-editor" placeholder="SELECT * FROM table LIMIT 100" spellcheck="false"></textarea>
+          <div class="data-tab-controls">
+            <button id="run-query-btn" class="data-tab-run-btn">Run</button>
+            <button id="query-history-btn" class="data-tab-history-btn" title="Query history">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </button>
+            <div id="query-history-dropdown" class="data-tab-history-dropdown hidden"></div>
+            <span id="query-status" class="data-tab-status"></span>
+          </div>
+        </div>
+        <div id="results-container" class="data-tab-results"></div>
       </div>
       <!-- Preview View (Live Preview) -->
       <div id="preview-view" class="preview-view hidden">

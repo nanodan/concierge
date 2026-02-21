@@ -35,6 +35,14 @@ import {
   setupPreviewEventListeners,
   loadPreviewStatus,
 } from './preview.js';
+import {
+  initDataTab,
+  setupDataTabEventListeners,
+  loadDataTabState,
+  refreshTables,
+  setSwitchToFilesTab,
+} from './data.js';
+import { setOnFileLoadedToDataTab } from './file-browser.js';
 
 // DOM elements
 let filePanel = null;
@@ -47,16 +55,18 @@ let chatView = null;
 let filesTab = null;
 let changesTab = null;
 let historyTab = null;
+let dataTab = null;
 let previewTab = null;
 let filesView = null;
 let changesView = null;
 let historyView = null;
+let dataView = null;
 let previewView = null;
 let gitRefreshBtn = null;
 
 // Panel state
 let isOpen = false;
-let currentTab = 'files'; // 'files' | 'changes' | 'history' | 'preview'
+let currentTab = 'files'; // 'files' | 'changes' | 'history' | 'data' | 'preview'
 
 /**
  * Initialize the file panel with all its submodules
@@ -73,10 +83,12 @@ export function initFilePanel(elements) {
   filesTab = elements.filesTab;
   changesTab = elements.changesTab;
   historyTab = elements.historyTab;
+  dataTab = elements.dataTab;
   previewTab = elements.previewTab;
   filesView = elements.filesView;
   changesView = elements.changesView;
   historyView = elements.historyView;
+  dataView = elements.dataView;
   previewView = elements.previewView;
   gitRefreshBtn = elements.gitRefreshBtn;
 
@@ -146,7 +158,29 @@ export function initFilePanel(elements) {
     previewHideBtn: elements.previewHideBtn,
   });
 
+  initDataTab({
+    dataView: elements.dataView,
+    sqlEditor: elements.sqlEditor,
+    runQueryBtn: elements.runQueryBtn,
+    queryHistoryBtn: elements.queryHistoryBtn,
+    queryHistoryDropdown: elements.queryHistoryDropdown,
+    tablesContainer: elements.tablesContainer,
+    loadTableBtn: elements.loadTableBtn,
+    resultsContainer: elements.resultsContainer,
+    queryStatus: elements.queryStatus,
+  });
+
   setupEventListeners();
+
+  // Wire up callback for when files are loaded to data tab from file browser
+  setOnFileLoadedToDataTab(() => {
+    refreshTables();
+  });
+
+  // Wire up callback for switching to files tab from data tab
+  setSwitchToFilesTab(() => {
+    switchTab('files');
+  });
 }
 
 /**
@@ -187,6 +221,9 @@ function setupEventListeners() {
   if (historyTab) {
     historyTab.addEventListener('click', () => switchTab('history'));
   }
+  if (dataTab) {
+    dataTab.addEventListener('click', () => switchTab('data'));
+  }
   if (previewTab) {
     previewTab.addEventListener('click', () => switchTab('preview'));
   }
@@ -196,6 +233,7 @@ function setupEventListeners() {
   setupGitChangesEventListeners(loadGitStatus, loadBranches, gitRefreshBtn);
   setupGitBranchesEventListeners();
   setupPreviewEventListeners();
+  setupDataTabEventListeners();
 
   // Initialize gestures (handles both mobile drag and desktop resize)
   if (filePanel) {
@@ -236,10 +274,12 @@ export function openFilePanel() {
   if (filesTab) filesTab.classList.add('active');
   if (changesTab) changesTab.classList.remove('active');
   if (historyTab) historyTab.classList.remove('active');
+  if (dataTab) dataTab.classList.remove('active');
   if (previewTab) previewTab.classList.remove('active');
   if (filesView) filesView.classList.remove('hidden');
   if (changesView) changesView.classList.add('hidden');
   if (historyView) historyView.classList.add('hidden');
+  if (dataView) dataView.classList.add('hidden');
   if (previewView) previewView.classList.add('hidden');
 
   // Reset git state
@@ -345,12 +385,14 @@ function switchTab(tab) {
   if (filesTab) filesTab.classList.toggle('active', tab === 'files');
   if (changesTab) changesTab.classList.toggle('active', tab === 'changes');
   if (historyTab) historyTab.classList.toggle('active', tab === 'history');
+  if (dataTab) dataTab.classList.toggle('active', tab === 'data');
   if (previewTab) previewTab.classList.toggle('active', tab === 'preview');
 
   // Update views
   if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
   if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
   if (historyView) historyView.classList.toggle('hidden', tab !== 'history');
+  if (dataView) dataView.classList.toggle('hidden', tab !== 'data');
   if (previewView) previewView.classList.toggle('hidden', tab !== 'preview');
 
   // Reset search state when switching to files tab
@@ -366,6 +408,8 @@ function switchTab(tab) {
     loadBranches();
   } else if (tab === 'history') {
     loadCommits();
+  } else if (tab === 'data') {
+    loadDataTabState();
   } else if (tab === 'preview') {
     loadPreviewStatus();
   }

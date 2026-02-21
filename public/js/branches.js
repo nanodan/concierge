@@ -73,7 +73,7 @@ function renderTree(data) {
   const rootIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg>`;
   const branchIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3c0 3 3 3 6 3h3"/></svg>`;
 
-  function renderNode(node, depth, parentName = null, isLastChild = true) {
+  function renderNode(node, depth, parentName = null, _isLastChild = true) {
     const isCurrent = node.id === data.currentId;
     const hasKids = node.children && node.children.length > 0;
     const isCollapsed = collapsedNodes.has(node.id);

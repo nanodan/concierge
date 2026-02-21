@@ -135,6 +135,16 @@ const aheadBehindBadge = document.getElementById('ahead-behind-badge');
 const historyTab = document.getElementById('history-tab');
 const historyView = document.getElementById('history-view');
 const historyList = document.getElementById('history-list');
+const dataTab = document.getElementById('data-tab');
+const dataView = document.getElementById('data-view');
+const sqlEditor = document.getElementById('sql-editor');
+const runQueryBtn = document.getElementById('run-query-btn');
+const queryHistoryBtn = document.getElementById('query-history-btn');
+const queryHistoryDropdown = document.getElementById('query-history-dropdown');
+const tablesContainer = document.getElementById('tables-container');
+const loadTableBtn = document.getElementById('load-table-btn');
+const resultsContainer = document.getElementById('results-container');
+const queryStatus = document.getElementById('query-status');
 const previewTab = document.getElementById('preview-tab');
 const previewView = document.getElementById('preview-view');
 const previewEmpty = document.getElementById('preview-empty');
@@ -373,6 +383,16 @@ initFilePanel({
   historyTab,
   historyView,
   historyList,
+  dataTab,
+  dataView,
+  sqlEditor,
+  runQueryBtn,
+  queryHistoryBtn,
+  queryHistoryDropdown,
+  tablesContainer,
+  loadTableBtn,
+  resultsContainer,
+  queryStatus,
   previewTab,
   previewView,
   previewEmpty,

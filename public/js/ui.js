@@ -19,8 +19,8 @@ import {
   closeMoreMenu,
   closeThemeDropdown,
   closeColorThemeDropdown,
-  toggleColorThemeDropdown,
-  toggleThemeDropdown,
+  toggleColorThemeDropdown as _toggleColorThemeDropdown,
+  toggleThemeDropdown as _toggleThemeDropdown,
   setupThemeEventListeners,
   selectTheme,
   selectColorTheme,
@@ -975,7 +975,7 @@ export function populateFilterModels() {
 }
 
 // Close all floating dropdowns/submenus
-function closeAllDropdowns() {
+function _closeAllDropdowns() {
   closeThemeDropdown();
   closeColorThemeDropdown();
   closeChatMoreMenu();
