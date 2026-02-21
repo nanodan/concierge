@@ -29,7 +29,6 @@ let inlinePreviewShown = false;
 
 // Scaling constants
 const BASE_WIDTH = 1280;
-const BASE_HEIGHT = 900; // Standard viewport height
 let fitMode = localStorage.getItem('previewFitMode') !== 'actual'; // default to fit mode
 let resizeObserver = null;
 let resizeRafId = null; // For throttling resize updates
@@ -261,28 +260,31 @@ function refreshPreview() {
 }
 
 /**
- * Update iframe scale based on container width (fit mode only)
+ * Update iframe scale based on container size (fit mode only)
  */
 function updateIframeScale() {
   if (!previewIframeContainer || !previewIframeScaler || !previewIframe) return;
 
   if (fitMode) {
     const containerWidth = previewIframeContainer.clientWidth;
-    if (containerWidth <= 0) return;
+    const containerHeight = previewIframeContainer.clientHeight;
+    if (containerWidth <= 0 || containerHeight <= 0) return;
 
+    // Scale based on width
     const scale = containerWidth / BASE_WIDTH;
-    const scaledWidth = BASE_WIDTH * scale;
-    const scaledHeight = BASE_HEIGHT * scale;
 
-    // Set iframe to base size and scale it
+    // Calculate iframe height to fill container when scaled
+    const iframeHeight = containerHeight / scale;
+
+    // Set iframe size and scale
     previewIframe.style.width = `${BASE_WIDTH}px`;
-    previewIframe.style.height = `${BASE_HEIGHT}px`;
+    previewIframe.style.height = `${iframeHeight}px`;
     previewIframe.style.transform = `scale(${scale})`;
     previewIframe.style.transformOrigin = '0 0';
 
-    // Set scaler wrapper to the visually scaled size
-    previewIframeScaler.style.width = `${scaledWidth}px`;
-    previewIframeScaler.style.height = `${scaledHeight}px`;
+    // Scaler matches the container size exactly
+    previewIframeScaler.style.width = `${containerWidth}px`;
+    previewIframeScaler.style.height = `${containerHeight}px`;
   } else {
     // Actual mode - natural sizing
     previewIframe.style.width = '';

@@ -2225,6 +2225,7 @@
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* Allow flex to shrink */
+  background: var(--surface);
 }
 
 .preview-iframe-wrapper.hidden {
@@ -2317,7 +2318,7 @@
   min-height: 0;
   border-radius: 0 0 8px 8px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--bg);
   position: relative;
 }
 
@@ -2328,12 +2329,14 @@
 /* Fit mode - scale content to fit container width, scroll if taller */
 .preview-iframe-container.fit-mode {
   overflow: auto;
+  background: var(--bg);
 }
 
 /* Scaler wrapper - sized to match the visually scaled iframe */
 .preview-iframe-scaler {
   position: relative;
   overflow: hidden;
+  background: var(--bg);
 }
 
 .preview-iframe-container.fit-mode .preview-iframe {
@@ -2374,9 +2377,11 @@
 
 /* When iframe is shown, make preview-running flex grow */
 .preview-running.has-iframe {
-  justify-content: flex-start;
   flex: 1;
   min-height: 0; /* Allow flex to shrink */
+  padding: 0;
+  gap: 0;
+  overflow: hidden; /* Wrapper handles scrolling */
 }
 
 /* === Standalone Files View (with full git functionality) === */
