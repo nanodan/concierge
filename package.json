@@ -1,8 +1,8 @@
 {
   "name": "concierge",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "license": "MIT",
-  "description": "Mobile-friendly chat PWA wrapping Claude CLI",
+  "description": "Mobile-first PWA for AI-assisted development with Claude Code and Ollama",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
-    "eslint": "^9.0.0",
+    "eslint": "^10.0.1",
     "sharp": "^0.34.5"
   },
   "dependencies": {
