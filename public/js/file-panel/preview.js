@@ -27,9 +27,11 @@ let inlinePreviewShown = false;
 
 // Scaling constants
 const BASE_WIDTH = 1280;
-const BASE_HEIGHT = 800;
+const BASE_HEIGHT = 900; // Standard viewport height
 let fitMode = localStorage.getItem('previewFitMode') !== 'actual'; // default to fit mode
 let resizeObserver = null;
+let resizeRafId = null; // For throttling resize updates
+let resizeEndTimeout = null; // For detecting resize end
 
 /**
  * Initialize preview elements
@@ -240,14 +242,15 @@ function updateIframeScale() {
     if (containerWidth <= 0) return;
 
     const scale = containerWidth / BASE_WIDTH;
+    const scaledHeight = BASE_HEIGHT * scale;
 
     previewIframe.style.width = `${BASE_WIDTH}px`;
     previewIframe.style.height = `${BASE_HEIGHT}px`;
     previewIframe.style.transform = `scale(${scale})`;
     previewIframe.style.transformOrigin = '0 0';
 
-    // Adjust container height to match scaled content
-    previewIframeContainer.style.height = `${BASE_HEIGHT * scale}px`;
+    // Set container to match scaled content height (capped for very tall pages)
+    previewIframeContainer.style.height = `${Math.min(scaledHeight, 800)}px`;
   } else {
     // Actual mode - natural sizing
     previewIframe.style.width = '';
@@ -291,20 +294,47 @@ function showInlinePreview() {
     previewIframeContainer.classList.toggle('actual-mode', !fitMode);
   }
 
-  // Set up ResizeObserver for fit mode scaling
+  // Set up ResizeObserver for fit mode scaling (throttled with rAF)
   if (!resizeObserver && previewIframeContainer) {
     resizeObserver = new ResizeObserver(() => {
       if (inlinePreviewShown && fitMode) {
-        updateIframeScale();
+        // Disable iframe pointer events during resize to prevent it capturing mouse
+        if (previewIframe) {
+          previewIframe.style.pointerEvents = 'none';
+        }
+
+        // Clear existing timeouts/frames
+        if (resizeEndTimeout) {
+          clearTimeout(resizeEndTimeout);
+        }
+        if (resizeRafId) {
+          cancelAnimationFrame(resizeRafId);
+        }
+
+        // Throttle scale updates using requestAnimationFrame
+        resizeRafId = requestAnimationFrame(() => {
+          updateIframeScale();
+          resizeRafId = null;
+        });
+
+        // Re-enable pointer events after resize stops
+        resizeEndTimeout = setTimeout(() => {
+          if (previewIframe) {
+            previewIframe.style.pointerEvents = '';
+          }
+          resizeEndTimeout = null;
+        }, 150);
       }
     });
     resizeObserver.observe(previewIframeContainer);
   }
 
-  // Initial scale calculation (after a brief delay to ensure layout)
-  setTimeout(() => {
-    updateIframeScale();
-  }, 50);
+  // Initial scale calculation (after layout settles)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      updateIframeScale();
+    });
+  });
 
   // Update button text
   if (previewInlineBtn) {
@@ -327,7 +357,15 @@ function hideInlinePreview() {
     previewRunning.classList.remove('has-iframe');
   }
 
-  // Clean up ResizeObserver
+  // Clean up ResizeObserver, pending rAF, and timeout
+  if (resizeEndTimeout) {
+    clearTimeout(resizeEndTimeout);
+    resizeEndTimeout = null;
+  }
+  if (resizeRafId) {
+    cancelAnimationFrame(resizeRafId);
+    resizeRafId = null;
+  }
   if (resizeObserver) {
     resizeObserver.disconnect();
     resizeObserver = null;
