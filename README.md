@@ -1,6 +1,6 @@
 # Concierge
 
-A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Use Claude Code from your phone, tablet, or any browser with real-time streaming, conversation management, and git integration. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
+A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or local LLMs (via [Ollama](https://ollama.ai)) from your phone, tablet, or any browser. Features real-time streaming, conversation management, git integration, and file preview. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
 
 ![Screenshot](docs/screenshots/concierge.png)
 
