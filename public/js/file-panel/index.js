@@ -85,6 +85,7 @@ export function initFilePanel(elements) {
     filePanelUp: elements.filePanelUp,
     filePanelPath: elements.filePanelPath,
     fileSearchInput: elements.fileSearchInput,
+    filePanelRefreshBtn: elements.filePanelRefreshBtn,
     filePanelUploadBtn: elements.filePanelUploadBtn,
     filePanelFileInput: elements.filePanelFileInput,
     fileTree: elements.fileTree,

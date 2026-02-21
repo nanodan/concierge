@@ -107,6 +107,7 @@ const filePanelFullscreen = document.getElementById('file-panel-fullscreen');
 const filePanelUp = document.getElementById('file-panel-up');
 const filePanelPath = document.getElementById('file-panel-path');
 const fileSearchInput = document.getElementById('file-search-input');
+const filePanelRefreshBtn = document.getElementById('file-panel-refresh-btn');
 const filePanelUploadBtn = document.getElementById('file-panel-upload-btn');
 const filePanelFileInput = document.getElementById('file-panel-file-input');
 const filePanelTree = document.getElementById('file-tree');
@@ -343,6 +344,7 @@ initFilePanel({
   filePanelUp,
   filePanelPath,
   fileSearchInput,
+  filePanelRefreshBtn,
   filePanelUploadBtn,
   filePanelFileInput,
   fileTree: filePanelTree,

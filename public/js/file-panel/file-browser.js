@@ -181,6 +181,7 @@ function renderNotebookOutput(output) {
 let filePanelUp = null;
 let filePanelPath = null;
 let fileSearchInput = null;
+let filePanelRefreshBtn = null;
 let filePanelUploadBtn = null;
 let filePanelFileInput = null;
 let fileTree = null;
@@ -204,6 +205,7 @@ export function initFileBrowser(elements) {
   filePanelUp = elements.filePanelUp;
   filePanelPath = elements.filePanelPath;
   fileSearchInput = elements.fileSearchInput;
+  filePanelRefreshBtn = elements.filePanelRefreshBtn;
   filePanelUploadBtn = elements.filePanelUploadBtn;
   filePanelFileInput = elements.filePanelFileInput;
   fileTree = elements.fileTree;
@@ -245,6 +247,14 @@ export function setupFileBrowserEventListeners() {
         exitSearchMode();
         fileSearchInput.blur();
       }
+    });
+  }
+
+  // Refresh button
+  if (filePanelRefreshBtn) {
+    filePanelRefreshBtn.addEventListener('click', () => {
+      haptic();
+      loadFileTree(currentPath);
     });
   }
 

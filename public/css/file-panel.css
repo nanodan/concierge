@@ -1893,6 +1893,31 @@
   opacity: 0.8;
 }
 
+/* Refresh button */
+.file-panel-refresh-btn {
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.file-panel-refresh-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.file-panel-refresh-btn:active {
+  transform: rotate(180deg);
+}
+
 /* Drag-and-drop state */
 .files-view.drag-over {
   background: var(--accent-muted, rgba(var(--accent-rgb, 99, 102, 241), 0.1));
