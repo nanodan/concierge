@@ -31,11 +31,16 @@
     width: var(--file-panel-width);
     border-left: 1px solid var(--border);
     transform: translateX(100%);
-    transition: transform var(--transition-smooth);
+    transition: transform var(--transition-smooth), width 0.2s ease;
   }
 
   .file-panel.open {
     transform: translateX(0);
+  }
+
+  /* Fullscreen mode - panel overlays content */
+  .file-panel.fullscreen {
+    width: calc(100vw - 60px) !important;
   }
 
   /* Adjust chat view when panel is open */
@@ -135,6 +140,43 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+}
+
+/* Fullscreen toggle button */
+.file-panel-fullscreen {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+@media (min-width: 768px) {
+  .file-panel-fullscreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.file-panel-fullscreen:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+.file-panel-fullscreen .collapse-icon {
+  display: none;
+}
+
+.file-panel.fullscreen .file-panel-fullscreen .expand-icon {
+  display: none;
+}
+
+.file-panel.fullscreen .file-panel-fullscreen .collapse-icon {
+  display: block;
 }
 
 .file-panel-close {
@@ -2107,10 +2149,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 20px;
   flex: 1;
-  padding: 32px 20px;
+  padding: 20px;
+  overflow-y: auto;
 }
 
 .preview-running.hidden {
@@ -2181,8 +2223,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 16px;
   overflow: hidden;
+  min-height: 0; /* Allow flex to shrink */
 }
 
 .preview-iframe-wrapper.hidden {
@@ -2272,9 +2314,8 @@
 .preview-iframe-container {
   width: 100%;
   flex: 1;
-  min-height: 300px;
+  min-height: 0;
   border-radius: 0 0 8px 8px;
-  overflow: hidden;
   border: 1px solid var(--border);
   background: #fff;
   position: relative;
@@ -2284,9 +2325,26 @@
   display: none;
 }
 
-/* Fit mode - scale content to fit container width */
+/* Fit mode - scale content to fit container width, scroll if taller */
 .preview-iframe-container.fit-mode {
+  overflow: auto;
+}
+
+/* Scaler wrapper - sized to match the visually scaled iframe */
+.preview-iframe-scaler {
+  position: relative;
   overflow: hidden;
+}
+
+.preview-iframe-container.fit-mode .preview-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Disable pointer events only while scrolling */
+.preview-iframe-container.scrolling .preview-iframe {
+  pointer-events: none;
 }
 
 .preview-iframe-container.fit-mode .preview-iframe {
@@ -2318,6 +2376,7 @@
 .preview-running.has-iframe {
   justify-content: flex-start;
   flex: 1;
+  min-height: 0; /* Allow flex to shrink */
 }
 
 /* === Standalone Files View (with full git functionality) === */

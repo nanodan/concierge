@@ -40,6 +40,7 @@ import {
 let filePanel = null;
 let filePanelBackdrop = null;
 let filePanelClose = null;
+let filePanelFullscreen = null;
 let chatView = null;
 
 // Tab elements
@@ -65,6 +66,7 @@ export function initFilePanel(elements) {
   filePanel = elements.filePanel;
   filePanelBackdrop = elements.filePanelBackdrop;
   filePanelClose = elements.filePanelClose;
+  filePanelFullscreen = elements.filePanelFullscreen;
   chatView = elements.chatView;
 
   // Tab elements
@@ -134,6 +136,7 @@ export function initFilePanel(elements) {
     previewActions: elements.previewActions,
     previewIframeWrapper: elements.previewIframeWrapper,
     previewIframeContainer: elements.previewIframeContainer,
+    previewIframeScaler: elements.previewIframeScaler,
     previewIframe: elements.previewIframe,
     previewFileSelect: elements.previewFileSelect,
     previewFitToggle: elements.previewFitToggle,
@@ -154,6 +157,14 @@ function setupEventListeners() {
     filePanelClose.addEventListener('click', () => {
       haptic();
       closeFilePanel();
+    });
+  }
+
+  // Fullscreen toggle
+  if (filePanelFullscreen) {
+    filePanelFullscreen.addEventListener('click', () => {
+      haptic();
+      toggleFullscreen();
     });
   }
 
@@ -274,7 +285,7 @@ export function openFilePanel() {
  */
 export function closeFilePanel() {
   isOpen = false;
-  filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90');
+  filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90', 'fullscreen');
   filePanelBackdrop.classList.remove('visible');
 
   // Preserve scroll position when panel closes (desktop only)
@@ -294,6 +305,13 @@ export function closeFilePanel() {
     filePanel.classList.add('hidden');
     closeFileViewer();
   }, 300);
+}
+
+/**
+ * Toggle fullscreen mode for the file panel
+ */
+function toggleFullscreen() {
+  filePanel.classList.toggle('fullscreen');
 }
 
 /**

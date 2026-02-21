@@ -15,6 +15,7 @@ let previewInlineBtn = null;
 let previewActions = null;
 let previewIframeWrapper = null;
 let previewIframeContainer = null;
+let previewIframeScaler = null;
 let previewIframe = null;
 let previewFileSelect = null;
 let previewFitToggle = null;
@@ -33,6 +34,7 @@ let fitMode = localStorage.getItem('previewFitMode') !== 'actual'; // default to
 let resizeObserver = null;
 let resizeRafId = null; // For throttling resize updates
 let resizeEndTimeout = null; // For detecting resize end
+let scrollEndTimeout = null; // For detecting scroll end
 
 /**
  * Initialize preview elements
@@ -50,6 +52,7 @@ export function initPreview(elements) {
   previewActions = elements.previewActions;
   previewIframeWrapper = elements.previewIframeWrapper;
   previewIframeContainer = elements.previewIframeContainer;
+  previewIframeScaler = elements.previewIframeScaler;
   previewIframe = elements.previewIframe;
   previewFileSelect = elements.previewFileSelect;
   previewFitToggle = elements.previewFitToggle;
@@ -221,6 +224,27 @@ function toggleFitMode() {
 }
 
 /**
+ * Handle scroll events - disable pointer events during scroll for smooth scrolling
+ */
+function handlePreviewScroll() {
+  if (!previewIframeContainer) return;
+
+  // Add scrolling class to disable pointer events on iframe
+  previewIframeContainer.classList.add('scrolling');
+
+  // Clear existing timeout
+  if (scrollEndTimeout) {
+    clearTimeout(scrollEndTimeout);
+  }
+
+  // Re-enable pointer events after scroll ends
+  scrollEndTimeout = setTimeout(() => {
+    previewIframeContainer.classList.remove('scrolling');
+    scrollEndTimeout = null;
+  }, 150);
+}
+
+/**
  * Refresh the preview iframe
  */
 function refreshPreview() {
@@ -240,29 +264,33 @@ function refreshPreview() {
  * Update iframe scale based on container width (fit mode only)
  */
 function updateIframeScale() {
-  if (!previewIframeContainer || !previewIframe) return;
+  if (!previewIframeContainer || !previewIframeScaler || !previewIframe) return;
 
   if (fitMode) {
     const containerWidth = previewIframeContainer.clientWidth;
     if (containerWidth <= 0) return;
 
     const scale = containerWidth / BASE_WIDTH;
+    const scaledWidth = BASE_WIDTH * scale;
     const scaledHeight = BASE_HEIGHT * scale;
 
+    // Set iframe to base size and scale it
     previewIframe.style.width = `${BASE_WIDTH}px`;
     previewIframe.style.height = `${BASE_HEIGHT}px`;
     previewIframe.style.transform = `scale(${scale})`;
     previewIframe.style.transformOrigin = '0 0';
 
-    // Set container to match scaled content height (capped for very tall pages)
-    previewIframeContainer.style.height = `${Math.min(scaledHeight, 800)}px`;
+    // Set scaler wrapper to the visually scaled size
+    previewIframeScaler.style.width = `${scaledWidth}px`;
+    previewIframeScaler.style.height = `${scaledHeight}px`;
   } else {
     // Actual mode - natural sizing
     previewIframe.style.width = '';
     previewIframe.style.height = '';
     previewIframe.style.transform = '';
     previewIframe.style.transformOrigin = '';
-    previewIframeContainer.style.height = '';
+    previewIframeScaler.style.width = '';
+    previewIframeScaler.style.height = '';
   }
 }
 
@@ -305,6 +333,11 @@ function showInlinePreview() {
   if (previewIframeContainer) {
     previewIframeContainer.classList.toggle('fit-mode', fitMode);
     previewIframeContainer.classList.toggle('actual-mode', !fitMode);
+  }
+
+  // Set up scroll handler to disable pointer events during scroll
+  if (previewIframeContainer) {
+    previewIframeContainer.addEventListener('scroll', handlePreviewScroll, { passive: true });
   }
 
   // Set up ResizeObserver for fit mode scaling (throttled with rAF)
@@ -374,7 +407,11 @@ function hideInlinePreview() {
   // Show the action buttons again
   if (previewActions) previewActions.classList.remove('hidden');
 
-  // Clean up ResizeObserver, pending rAF, and timeout
+  // Clean up ResizeObserver, pending rAF, and timeouts
+  if (scrollEndTimeout) {
+    clearTimeout(scrollEndTimeout);
+    scrollEndTimeout = null;
+  }
   if (resizeEndTimeout) {
     clearTimeout(resizeEndTimeout);
     resizeEndTimeout = null;

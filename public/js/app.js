@@ -103,6 +103,7 @@ const reconnectBanner = document.getElementById('reconnect-banner');
 const filePanel = document.getElementById('file-panel');
 const filePanelBackdrop = document.getElementById('file-panel-backdrop');
 const filePanelClose = document.getElementById('file-panel-close');
+const filePanelFullscreen = document.getElementById('file-panel-fullscreen');
 const filePanelUp = document.getElementById('file-panel-up');
 const filePanelPath = document.getElementById('file-panel-path');
 const fileSearchInput = document.getElementById('file-search-input');
@@ -145,6 +146,7 @@ const previewInlineBtn = document.getElementById('preview-inline-btn');
 const previewActions = document.getElementById('preview-actions');
 const previewIframeWrapper = document.getElementById('preview-iframe-wrapper');
 const previewIframeContainer = document.getElementById('preview-iframe-container');
+const previewIframeScaler = document.getElementById('preview-iframe-scaler');
 const previewIframe = document.getElementById('preview-iframe');
 const previewFileSelect = document.getElementById('preview-file-select');
 const previewFitToggle = document.getElementById('preview-fit-toggle');
@@ -337,6 +339,7 @@ initFilePanel({
   filePanel,
   filePanelBackdrop,
   filePanelClose,
+  filePanelFullscreen,
   filePanelUp,
   filePanelPath,
   fileSearchInput,
@@ -380,6 +383,7 @@ initFilePanel({
   previewActions,
   previewIframeWrapper,
   previewIframeContainer,
+  previewIframeScaler,
   previewIframe,
   previewFileSelect,
   previewFitToggle,

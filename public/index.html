@@ -229,6 +229,10 @@
           <button id="history-tab" class="file-panel-tab" data-tab="history">History</button>
           <button id="preview-tab" class="file-panel-tab" data-tab="preview">Preview</button>
         </div>
+        <button id="file-panel-fullscreen" class="file-panel-fullscreen" aria-label="Toggle fullscreen" title="Toggle fullscreen">
+          <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          <svg class="collapse-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/></svg>
+        </button>
         <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
       </div>
       <!-- Files View -->
@@ -320,7 +324,9 @@
               </div>
             </div>
             <div id="preview-iframe-container" class="preview-iframe-container fit-mode">
-              <iframe id="preview-iframe" class="preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+              <div id="preview-iframe-scaler" class="preview-iframe-scaler">
+                <iframe id="preview-iframe" class="preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+              </div>
             </div>
           </div>
         </div>
