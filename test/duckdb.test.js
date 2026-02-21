@@ -144,6 +144,20 @@ describe('duckdb module', () => {
       assert.ok(typeof result.executionTimeMs === 'number');
       assert.ok(result.executionTimeMs >= 0);
     });
+
+    it('handles date and timestamp values without [object Object]', async () => {
+      // Query with date functions
+      const result = await duckdb.query("SELECT DATE '2024-01-15' as date_col, TIMESTAMP '2024-01-15 10:30:00' as ts_col");
+
+      assert.equal(result.rows.length, 1);
+      const row = result.rows[0];
+
+      // Values should be strings, not [object Object]
+      assert.ok(typeof row[0] === 'string' || typeof row[0] === 'number', `date_col should be string or number, got ${typeof row[0]}`);
+      assert.ok(typeof row[1] === 'string' || typeof row[1] === 'number', `ts_col should be string or number, got ${typeof row[1]}`);
+      assert.ok(!String(row[0]).includes('[object'), `date_col should not be [object Object], got ${row[0]}`);
+      assert.ok(!String(row[1]).includes('[object'), `ts_col should not be [object Object], got ${row[1]}`);
+    });
   });
 
   describe('listTables', () => {
