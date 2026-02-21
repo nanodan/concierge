@@ -2343,6 +2343,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  min-height: 0; /* Override base min-height for dynamic sizing */
 }
 
 /* Disable pointer events only while scrolling */
