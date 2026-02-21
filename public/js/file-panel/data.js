@@ -19,6 +19,8 @@ let queryHistory = [];
 let maxHistory = 20;
 let loadedTables = [];
 let currentHistoryConvId = null;
+let lastQueryResults = null; // Store last results for export
+let lastQuerySQL = null; // Store last SQL for Parquet export
 
 // Callback for switching to files tab (set by index.js)
 let switchToFilesTabFn = null;
@@ -448,8 +450,9 @@ async function runQuery() {
     return;
   }
 
-  // Add to history
+  // Add to history and store for export
   addToHistory(sql);
+  lastQuerySQL = sql;
 
   // Update status
   if (queryStatus) {
@@ -473,9 +476,13 @@ function renderResults(data) {
   const { columns, rows } = data;
 
   if (!columns || columns.length === 0) {
+    lastQueryResults = null;
     resultsContainer.innerHTML = '<div class="data-tab-empty">No results</div>';
     return;
   }
+
+  // Store for export
+  lastQueryResults = { columns, rows };
 
   // Build table
   const headerCells = columns.map(col => `
@@ -493,6 +500,23 @@ function renderResults(data) {
   }).join('');
 
   resultsContainer.innerHTML = `
+    <div class="data-tab-results-header">
+      <span class="results-count">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
+      <div class="results-export-btns">
+        <button class="results-export-btn" data-format="csv" title="Export as CSV">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV
+        </button>
+        <button class="results-export-btn" data-format="json" title="Export as JSON">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          JSON
+        </button>
+        <button class="results-export-btn" data-format="parquet" title="Export as Parquet">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Parquet
+        </button>
+      </div>
+    </div>
     <div class="data-tab-results-wrapper">
       <table class="data-preview-table">
         <thead><tr><th class="row-num-header">#</th>${headerCells}</tr></thead>
@@ -511,6 +535,124 @@ function renderResults(data) {
       });
     });
   });
+
+  // Attach export handlers
+  resultsContainer.querySelectorAll('.results-export-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      haptic();
+      exportResults(btn.dataset.format);
+    });
+  });
+}
+
+/**
+ * Export query results
+ * @param {string} format - 'csv', 'json', or 'parquet'
+ */
+async function exportResults(format) {
+  if (!lastQueryResults) {
+    showToast('No results to export');
+    return;
+  }
+
+  // Prompt for filename
+  const defaultName = 'query-results';
+  const filename = window.prompt('Enter filename (without extension):', defaultName);
+  if (!filename) return; // Cancelled
+
+  const { columns, rows } = lastQueryResults;
+
+  // Parquet requires server-side export
+  if (format === 'parquet') {
+    if (!lastQuerySQL) {
+      showToast('No query to export');
+      return;
+    }
+
+    showToast('Exporting...', { duration: 1000 });
+
+    try {
+      const res = await fetch('/api/duckdb/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sql: lastQuerySQL,
+          format: 'parquet',
+          filename: filename
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.error || 'Export failed');
+        return;
+      }
+
+      // Download the blob
+      const blob = await res.blob();
+      const rowCount = res.headers.get('X-Row-Count') || rows.length;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.parquet`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(`Exported ${rowCount} rows as Parquet`);
+    } catch {
+      showToast('Export failed');
+    }
+    return;
+  }
+
+  // CSV and JSON can be done client-side
+  let content, mimeType, extension;
+
+  if (format === 'json') {
+    // Convert to array of objects
+    const data = rows.map(row => {
+      const obj = {};
+      columns.forEach((col, i) => {
+        obj[col.name] = row[i];
+      });
+      return obj;
+    });
+    content = JSON.stringify(data, null, 2);
+    mimeType = 'application/json';
+    extension = 'json';
+  } else {
+    // CSV format
+    const escapeCSV = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+
+    const header = columns.map(col => escapeCSV(col.name)).join(',');
+    const dataRows = rows.map(row => row.map(escapeCSV).join(','));
+    content = [header, ...dataRows].join('\n');
+    mimeType = 'text/csv';
+    extension = 'csv';
+  }
+
+  // Trigger download
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.${extension}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast(`Exported ${rows.length} rows as ${extension.toUpperCase()}`);
 }
 
 /**
