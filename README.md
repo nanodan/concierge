@@ -8,6 +8,7 @@ A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 
 ### Project Integration
 - **File browser** - Browse and view files in the conversation's working directory
+- **File preview** - View CSV, TSV, Parquet, and Jupyter notebook files inline
 - **Git integration** - Full git workflow: status, stage/unstage, commit, push/pull, branches, stash
 - **Commit history** - View commits, diffs, revert changes, reset to commit
 - **Code search** - Search files with git grep from within the app
@@ -17,6 +18,12 @@ A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 - **Branch visualization** - Visual tree of conversation forks with navigation
 - **Edit auto-fork** - Editing a message creates a fork instead of losing history
 - **Memory system** - Save important context that persists across conversations (global or per-project)
+
+### Multi-Provider Support
+- **Claude Code** - Full-featured integration with Claude CLI (default)
+- **Ollama** - Local LLM support for free, offline conversations
+- **Per-conversation provider** - Choose provider and model when creating conversations
+- **Provider-specific models** - Access Claude models (Sonnet, Opus, Haiku) or Ollama models (Llama, Mistral, etc.)
 
 ### Mobile UX
 - **Swipe gestures** - Swipe to reveal actions, swipe back to list
@@ -39,7 +46,7 @@ A mobile-first PWA for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 ### PWA
 - **Offline support** - Service worker caches the app shell for offline access
 - **Installable** - Add to home screen on iOS/Android for a native app feel
-- **Multiple color themes** - 8 built-in themes with light/dark variants
+- **Multiple color themes** - 8 built-in themes (Darjeeling, Budapest, Aquatic, Catppuccin, Fjord, Monokai, Moonrise, Paper) with light/dark variants
 - **Light/dark mode** - Auto, light, or dark mode per theme
 
 ## Quick Start
@@ -59,7 +66,8 @@ The app runs at `https://localhost:3577` (or `http://` if no certs are configure
 ### Prerequisites
 
 - **Node.js** (v18+)
-- **Claude CLI** installed and authenticated (`claude` must be available on PATH)
+- **Claude CLI** installed and authenticated (`claude` must be available on PATH) — required for Claude provider
+- **Ollama** (optional) - Install from [ollama.ai](https://ollama.ai) for local LLM support
 
 ### HTTPS Setup (required for voice input on non-localhost)
 
@@ -94,12 +102,13 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | `PORT` | `3577` | Server port |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express, WebSocket (`ws`), child_process
+- **Backend**: Node.js, Express, WebSocket (`ws`), child_process, @xenova/transformers (embeddings), parquetjs-lite (data files)
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3 (no framework, no bundler)
-- **Storage**: JSON files on disk (`data/` directory)
+- **Storage**: JSON files on disk (`data/` directory) — conversations, uploads, memories, embeddings
 - **PWA**: Service worker with cache-first strategy, web app manifest
 
 ## Project Structure
@@ -108,8 +117,20 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 concierge/
 ├── server.js              # Express + WebSocket entry point
 ├── lib/
-│   ├── routes/            # REST API endpoints (conversations, git, files, memory)
-│   ├── claude.js          # Claude CLI process management
+│   ├── routes/            # REST API endpoints
+│   │   ├── conversations.js  # Conversation CRUD, search, export, fork, compress
+│   │   ├── git.js            # Git operations
+│   │   ├── files.js          # File browser
+│   │   ├── memory.js         # Memory management
+│   │   ├── capabilities.js   # Provider/model capabilities
+│   │   ├── preview.js        # File preview (CSV, Parquet, notebooks)
+│   │   └── helpers.js        # Shared utilities
+│   ├── providers/         # LLM provider system
+│   │   ├── base.js        # Base provider interface
+│   │   ├── claude.js      # Claude CLI provider
+│   │   ├── ollama.js      # Ollama provider
+│   │   └── index.js       # Provider registry
+│   ├── claude.js          # Backwards compat wrapper
 │   ├── data.js            # Data storage and persistence
 │   └── embeddings.js      # Semantic search with local embeddings
 ├── public/
@@ -119,12 +140,17 @@ concierge/
 │   │   ├── app.js         # Frontend entry point
 │   │   ├── state.js       # Shared state management
 │   │   ├── ui.js          # UI interactions
-│   │   ├── file-panel/    # File browser + git integration
+│   │   ├── file-panel/    # File browser, git integration, file preview
 │   │   └── ui/            # Modular UI features (stats, memory, voice, etc.)
 │   ├── css/               # Modular stylesheets + themes/
 │   ├── sw.js              # Service worker
 │   └── manifest.json      # PWA manifest
 ├── data/                  # Conversations, uploads, memories, embeddings (JSON files)
+│   ├── index.json         # Conversation metadata
+│   ├── conv/              # Individual conversation messages
+│   ├── uploads/           # File attachments
+│   ├── memory/            # Global and project-scoped memories
+│   └── embeddings.json    # Semantic search vectors
 ├── certs/                 # Optional HTTPS certificates
 ├── test/                  # Unit tests
 └── docs/

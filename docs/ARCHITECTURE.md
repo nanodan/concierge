@@ -19,6 +19,42 @@ Concierge is a mobile-first PWA interface for Claude Code. The architecture is a
 
 ## Backend
 
+### Provider System
+
+Concierge supports multiple LLM providers through an abstract provider interface. Each provider implements the same API, allowing conversations to use different backends.
+
+**Available Providers:**
+- **Claude** (default) - Claude CLI integration with full feature support (tools, files, sessions, sandbox)
+- **Ollama** - Local LLM support via Ollama HTTP API (free, offline, no tool use)
+
+**Architecture:**
+```
+LLMProvider (base.js)          # Abstract interface
+    ├── getModels()            # List available models
+    ├── chat()                 # Send message, stream response
+    ├── cancel()               # Cancel generation
+    ├── isActive()             # Check if generating
+    └── generateSummary()      # Compress conversations
+
+ClaudeProvider extends LLMProvider
+OllamaProvider extends LLMProvider
+
+Provider Registry (index.js)
+    ├── registerProvider()     # Add provider to registry
+    ├── getProvider(id)        # Get provider instance
+    ├── getAllProviders()      # List all providers
+    └── initProviders()        # Initialize at startup
+```
+
+**Provider Selection:**
+- Set per conversation via `provider` field (defaults to 'claude')
+- Models are provider-specific (e.g., claude-sonnet-4.5 vs llama3.2)
+- Server calls appropriate provider based on conversation.provider
+
+**Limitations by Provider:**
+- **Claude**: Full features (tools, files, sessions, thinking, compression)
+- **Ollama**: Basic chat only (no files, no tools, stateless, free)
+
 ### Module Structure
 
 ```
@@ -26,46 +62,89 @@ server.js          # Entry point, Express/WS setup, WebSocket handlers
 lib/
   routes/          # REST API (modular)
     index.js       # Route setup
-    conversations.js
-    git.js
-    files.js
-    memory.js
-    capabilities.js
-    preview.js
-    helpers.js
-  claude.js        # CLI process spawning, stream parsing
+    conversations.js  # CRUD, search, export, fork, compress
+    git.js            # Git operations
+    files.js          # File browser
+    memory.js         # Memory management
+    capabilities.js   # Provider/model capabilities
+    preview.js        # File preview (CSV, Parquet, notebooks)
+    helpers.js        # Shared utilities (withConversation, etc.)
+  providers/       # LLM provider system
+    base.js        # Base provider interface
+    claude.js      # Claude CLI provider
+    ollama.js      # Ollama provider
+    index.js       # Provider registry
+  memory-prompt.txt  # Memory injection template
+  claude.js        # Backwards compat wrapper
   data.js          # Storage, atomic writes, lazy loading
+  embeddings.js    # Semantic search with local embeddings
   constants.js     # Shared constants
 ```
 
 ### Process Management
 
-Each conversation spawns one Claude CLI child process:
+**Claude Provider:** Each conversation spawns one Claude CLI child process:
 
 ```bash
 claude -p "{text}" --output-format stream-json --verbose \
   --model {model} --include-partial-messages \
-  [--dangerously-skip-permissions] \
+  [--settings {sandbox_json}] \            # Sandbox configuration
+  [--dangerously-skip-permissions] \       # Only if unsandboxed + autopilot
   [--resume {sessionId}] \
   [--add-dir {cwd}] \
   [--append-system-prompt {memories}]
 ```
 
+**Ollama Provider:** Stateless HTTP requests to Ollama API:
+- POST to `/api/chat` with full message history
+- Streaming response via newline-delimited JSON
+- No session persistence - history sent each time
+- AbortController for cancellation
+
 **Lifecycle:**
-- Process starts → `status: "thinking"` sent to client
-- stdout emits JSON lines → parsed and forwarded as `delta` events
-- Tool calls → `tool_start` and `tool_result` events
-- Process exits → `result` event with cost/duration/tokens, then `status: "idle"`
+- Process/request starts → `status: "thinking"` sent to client
+- Output stream → parsed and forwarded as `delta` events
+- Tool calls (Claude only) → `tool_start` and `tool_result` events
+- Process/request completes → `result` event with cost/duration/tokens, then `status: "idle"`
 - 5 minute timeout per message
+
+**Sandbox Mode:**
+Conversations default to sandboxed mode for safety. Sandbox configuration:
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowedDomains": ["github.com", "*.npmjs.org", "registry.yarnpkg.com", "api.github.com"]
+    }
+  },
+  "permissions": {
+    "allow": ["Edit(/{cwd}/**)", "Write(/{cwd}/**)"],
+    "deny": ["Read(**/.env)", "Read(**/.env.*)", "Read(**/credentials.json)",
+             "Read(~/.ssh/**)", "Read(~/.aws/**)", "Read(~/.config/**)"]
+  }
+}
+```
+
+**Permission Modes:**
+- **Sandboxed** (default): Uses --settings with restrictive permissions
+- **Autopilot + Unsandboxed**: Uses --dangerously-skip-permissions
+- **Unsandboxed only**: No special flags (prompts for each permission)
 
 ### Stream Event Processing
 
-Claude CLI outputs newline-delimited JSON. Key event types:
+**Claude Provider:** CLI outputs newline-delimited JSON. Key event types:
 - `content_block_delta` with `text_delta` → send as `delta`
-- `thinking_delta` → send as `thinking` event
-- `tool_use` → send as `tool_start` event
+- `content_block_delta` with `thinking_delta` → send as `thinking` event (extended thinking)
+- `content_block_start` with `tool_use` → send as `tool_start` event
 - `tool_result` → send as `tool_result` event
 - `result` → extract cost, duration, sessionId, tokens → send as `result`
+
+**Ollama Provider:** HTTP stream with newline-delimited JSON:
+- `message.content` → send as `delta`
+- `done: true` → send as `result` with token counts (cost always $0)
 
 ### Data Storage
 
@@ -77,15 +156,35 @@ Claude CLI outputs newline-delimited JSON. Key event types:
 
 **Atomic Writes:** All saves write to `.tmp` then `rename()` to prevent corruption.
 
+**Embeddings & Semantic Search:**
+- `data/embeddings.json` — 384-dim vectors generated by all-MiniLM-L6-v2
+- Embeddings created from conversation name + first user message (truncated to 512 chars)
+- Generated automatically after first assistant response
+- Backfill process runs at startup for existing conversations without embeddings
+- Search uses cosine similarity between query vector and conversation vectors
+- Model downloaded (~23MB) on first use and cached locally
+
+**Memory System:**
+- `data/memory/global.json` — memories that apply to all conversations
+- `data/memory/{hash}.json` — project-scoped memories (hash of cwd path)
+- Each memory has: id, text, scope, category (optional), enabled (default true), source, createdAt
+- Memories injected via --append-system-prompt using template from memory-prompt.txt
+- Template has placeholders for {{GLOBAL_MEMORIES}} and {{PROJECT_MEMORIES}}
+- Conversations can disable memory injection via useMemory flag
+
 **Conversation Metadata:**
 ```javascript
 {
   id, name, cwd, claudeSessionId, status,
-  archived, pinned, autopilot, useMemory, model, createdAt,
+  archived, pinned, autopilot, sandboxed, useMemory,
+  provider, model, createdAt,
   messageCount, parentId, forkIndex,
   lastMessage: { role, text, timestamp, cost, duration, sessionId }
 }
 ```
+- `sandboxed` - boolean, defaults to true for safety
+- `provider` - string, defaults to 'claude' ('claude' | 'ollama')
+- `model` - string, provider-specific model ID
 
 ### REST API
 
@@ -94,11 +193,13 @@ Claude CLI outputs newline-delimited JSON. Key event types:
 | `GET/POST` | `/api/conversations` | List/create conversations |
 | `GET/PATCH/DELETE` | `/api/conversations/:id` | Get/update/delete conversation |
 | `GET` | `/api/conversations/search` | Full-text search with filters |
+| `GET` | `/api/conversations/semantic-search` | Semantic search by meaning |
 | `GET` | `/api/conversations/:id/tree` | Branch tree (forks) |
 | `GET` | `/api/conversations/:id/export` | Export as markdown/JSON |
 | `POST` | `/api/conversations/:id/fork` | Fork from message index |
 | `POST` | `/api/conversations/:id/compress` | Compress old messages |
-| `GET` | `/api/models` | Available Claude models |
+| `GET` | `/api/providers` | List available providers |
+| `GET` | `/api/providers/:id/models` | Get models for a provider |
 | `GET` | `/api/stats` | Aggregate usage stats (cached 30s) |
 | `GET` | `/api/capabilities` | Skills/commands/agents |
 | `GET/POST/PATCH/DELETE` | `/api/memory` | Memory CRUD |
@@ -112,6 +213,7 @@ Claude CLI outputs newline-delimited JSON. Key event types:
 | `POST` | `/api/files/upload` | Upload file |
 | `GET` | `/api/conversations/:id/files` | List files in cwd |
 | `GET` | `/api/conversations/:id/files/content` | Get file content |
+| `GET` | `/api/conversations/:id/files/preview` | Preview data files (CSV, Parquet, notebooks) |
 | `GET` | `/api/conversations/:id/files/search` | Git grep search |
 
 **Git Integration:**
@@ -136,15 +238,27 @@ Claude CLI outputs newline-delimited JSON. Key event types:
 | `POST` | `.../git/reset` | Reset to commit |
 | `POST` | `.../git/undo-commit` | Undo last commit |
 
+**File Preview:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `.../files/preview?path=&type=` | Preview data files |
+
+Supported file types:
+- **CSV/TSV** - Parsed and rendered as tables
+- **Parquet** - Decoded using parquetjs-lite, rendered as tables
+- **Jupyter Notebooks (.ipynb)** - Rendered with code cells and outputs
+- **Images** - Displayed inline (handled via file content API)
+
 ### WebSocket Protocol
 
 **Client → Server:**
 | Type | Description |
 |------|-------------|
-| `message` | Send user message, spawns Claude process |
-| `cancel` | Kill active process |
+| `message` | Send user message, spawns provider process/request |
+| `cancel` | Kill active process or abort request |
 | `regenerate` | Re-generate last response (resets session) |
 | `edit` | Edit message, auto-forks conversation |
+| `resend` | Resend a previous message (forks if not last) |
 
 **Server → Client:**
 | Type | Description |
@@ -157,6 +271,7 @@ Claude CLI outputs newline-delimited JSON. Key event types:
 | `status` | `"thinking"` or `"idle"` |
 | `error` | Error message |
 | `edit_forked` | Edit created a fork |
+| `resend_forked` | Resend created a fork |
 
 ---
 
@@ -183,11 +298,11 @@ public/js/
 
 Five mutually exclusive views with CSS transform transitions:
 
-1. **List View** — Conversation browser grouped by cwd, search, archive toggle
-2. **Chat View** — Messages, input bar, file panel
-3. **Stats View** — Analytics dashboard
-4. **Branches View** — Fork tree visualization
-5. **Memory View** — Memory management
+1. **List View** — Conversation browser grouped by cwd, search (keyword + semantic), archive toggle
+2. **Chat View** — Messages, input bar, file panel with preview
+3. **Stats View** — Analytics dashboard with cost tracking, activity charts
+4. **Branches View** — Fork tree visualization with parent/child navigation
+5. **Memory View** — Memory management (global + project-scoped)
 
 ### Message Rendering
 
@@ -234,7 +349,7 @@ public/css/
   list.css        # Conversation list, cards, swipe
   file-panel.css  # File browser, git UI
   branches.css    # Branch tree
-  themes/         # 8 color themes (dark + light variants each)
+  themes/         # 8 color themes: darjeeling, budapest, aquatic, catppuccin, fjord, monokai, moonrise, paper
 ```
 
 ### Design System

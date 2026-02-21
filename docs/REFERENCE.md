@@ -8,15 +8,22 @@ server.js              # Entry point, WebSocket handlers
 lib/
   routes/              # REST API endpoints
     index.js           # Route setup
-    conversations.js   # CRUD, export, fork, compress
+    conversations.js   # CRUD, export, fork, compress, search
     git.js             # Git operations
     files.js           # File browser
     memory.js          # Memory system
     capabilities.js    # Model/CLI capabilities
-    preview.js         # File preview
-    helpers.js         # Shared utilities
-  claude.js            # CLI process management, stream parsing
+    preview.js         # File preview (CSV, Parquet, notebooks)
+    helpers.js         # Shared utilities (withConversation, etc.)
+  providers/           # LLM provider system
+    base.js            # Base provider interface
+    claude.js          # Claude CLI provider
+    ollama.js          # Ollama HTTP API provider
+    index.js           # Provider registry
+  memory-prompt.txt    # Memory injection template
+  claude.js            # Backwards compat wrapper
   data.js              # Storage, atomic writes
+  embeddings.js        # Semantic search with local embeddings
   constants.js         # Shared constants
 ```
 
@@ -33,7 +40,25 @@ public/js/
   markdown.js          # Markdown parser
   branches.js          # Fork tree visualization
   file-panel/          # File browser + git modules
-  ui/                  # Stats, memory, voice, theme modules
+  file-panel/          # File browser + git modules
+    index.js           # Main file panel module
+    file-browser.js    # File tree browser
+    git-branches.js    # Branch management
+    git-changes.js     # Stage/unstage/commit
+    git-commits.js     # Commit history
+    gestures.js        # Touch interactions
+    preview.js         # File preview (data files, images)
+  ui/                  # Modular UI features
+    capabilities.js    # Provider/model capabilities
+    context-bar.js     # Context usage indicator
+    directory-browser.js  # CWD picker
+    file-browser.js    # Standalone file browser
+    memory.js          # Memory management
+    stats.js           # Usage dashboard
+    theme.js           # Theme switcher
+    voice.js           # Speech input/output
+  constants.js         # Frontend constants
+  file-utils.js        # File handling utilities
 ```
 
 ### CSS
@@ -59,14 +84,16 @@ public/css/
   id: string,              // UUID
   name: string,
   cwd: string,             // Working directory
-  claudeSessionId: string, // For --resume
+  claudeSessionId: string, // For --resume (Claude only)
   messages: Message[],     // null when not loaded
   status: 'idle' | 'thinking',
   archived: boolean,
   pinned: boolean,
-  autopilot: boolean,      // --dangerously-skip-permissions
-  useMemory: boolean,
-  model: string,
+  autopilot: boolean,      // Skip permissions (when unsandboxed)
+  sandboxed: boolean,      // Default true - use sandbox settings
+  useMemory: boolean,      // Default true - inject memories
+  provider: string,        // 'claude' | 'ollama' (default: 'claude')
+  model: string,           // Provider-specific model ID
   createdAt: number,
   messageCount: number,
   parentId: string,        // Fork parent
@@ -105,10 +132,47 @@ public/css/
   id: string,
   text: string,
   scope: string,          // 'global' or cwd path
-  category: string,
-  enabled: boolean,
-  source: string,
+  category: string,       // optional
+  enabled: boolean,       // default true
+  source: string,         // where memory came from
   createdAt: number
+}
+```
+
+### Provider
+```javascript
+{
+  id: string,             // 'claude' | 'ollama'
+  name: string,           // Display name
+}
+```
+
+### Model
+```javascript
+{
+  id: string,             // e.g., 'claude-sonnet-4.5'
+  name: string,           // Display name
+  context: number,        // Context window size
+  inputPrice: number,     // Per million tokens (optional)
+  outputPrice: number,    // Per million tokens (optional)
+}
+```
+
+### Sandbox Settings
+```javascript
+{
+  sandbox: {
+    enabled: boolean,
+    autoAllowBashIfSandboxed: boolean,
+    allowUnsandboxedCommands: boolean,
+    network: {
+      allowedDomains: string[]
+    }
+  },
+  permissions: {
+    allow: string[],      // Glob patterns like "Edit(/path/**)"
+    deny: string[]        // Glob patterns like "Read(**/.env)"
+  }
 }
 ```
 
@@ -126,9 +190,19 @@ public/css/
 | `saveConversation(id)` | data.js | Persist messages |
 | `ensureMessages(id)` | data.js | Lazy-load messages |
 | `convMeta(conv)` | data.js | Extract metadata |
-| `spawnClaude(ws, convId, conv, ...)` | claude.js | Spawn CLI with streaming |
+| `spawnClaude(ws, convId, conv, ...)` | claude.js | Spawn CLI with streaming (backwards compat) |
 | `processStreamEvent(line)` | claude.js | Parse CLI JSON output |
 | `cancelProcess(convId)` | claude.js | Kill active process |
+| `initProviders()` | providers/index.js | Initialize all providers at startup |
+| `getProvider(id)` | providers/index.js | Get provider instance by ID |
+| `getAllProviders()` | providers/index.js | List all registered providers |
+| `provider.chat(ws, convId, ...)` | providers/base.js | Send message (provider-specific) |
+| `provider.cancel(convId)` | providers/base.js | Cancel active generation |
+| `provider.generateSummary(msgs, model, cwd)` | providers/base.js | Summarize for compression |
+| `embedConversation(conv)` | embeddings.js | Generate embedding for conversation |
+| `semanticSearch(query, topK)` | embeddings.js | Search by meaning |
+| `backfillEmbeddings(convs, loadMsgs)` | embeddings.js | Generate missing embeddings |
+| `deleteEmbedding(convId)` | embeddings.js | Remove embedding on delete |
 
 ### Frontend
 
@@ -175,6 +249,30 @@ public/css/
 4. Add option to theme dropdown in index.html
 5. Increment service worker cache version
 
+### Adding a new provider
+1. Create class extending LLMProvider in `lib/providers/`
+2. Implement required methods: `getModels()`, `chat()`, `cancel()`, `isActive()`, `generateSummary()`
+3. Set static `id` and `name` properties
+4. Register in `lib/providers/index.js` `initProviders()`
+5. Add UI option in new conversation modal
+6. Test with different conversation settings (autopilot, sandbox)
+
+### Working with sandbox settings
+1. Sandbox is enabled by default (`conv.sandboxed !== false`)
+2. Use --settings JSON flag to pass sandbox config to Claude CLI
+3. Permission patterns use glob syntax (e.g., `Edit(/path/**)`)
+4. Always deny sensitive paths (.env, .ssh, credentials) in deny list
+5. Unsandboxed + autopilot mode uses --dangerously-skip-permissions
+6. Unsandboxed without autopilot prompts for each permission
+
+### Adding file preview support
+1. Add route in `lib/routes/preview.js` for new file type
+2. Handle file reading and transformation (parse, format)
+3. Stream large files in chunks to avoid memory issues
+4. Add viewer component in `public/js/file-panel/preview.js`
+5. Update supported types check in file panel
+6. Add appropriate MIME type handling
+
 ---
 
 ## CSS Classes
@@ -191,6 +289,11 @@ public/css/
 | `.glass-bg` | Glass-morphism effect |
 | `.scope-group` | Conversation group by cwd |
 | `.selection-mode` | Bulk select active |
+| `.file-panel` | File browser side panel |
+| `.preview-container` | File preview display |
+| `.branch-tree` | Fork visualization |
+| `.memory-item` | Memory list item |
+| `.sandbox-badge` | Indicates sandboxed conversation |
 
 ---
 
@@ -202,10 +305,18 @@ claude -p "{text}" \
   --verbose \
   --model {model_id} \
   --include-partial-messages \
-  [--dangerously-skip-permissions]  # if autopilot
-  [--resume {sessionId}]            # continuing conversation
-  [--add-dir {cwd}]                 # working directory
-  [--append-system-prompt {memories}]
+  [--settings {sandbox_json}]          # if sandboxed (default)
+  [--dangerously-skip-permissions]     # if unsandboxed + autopilot
+  [--resume {sessionId}]               # continuing conversation
+  [--add-dir {cwd}]                    # working directory
+  [--append-system-prompt {memories}]  # inject memories
 ```
 
-Session IDs enable continuity: stored after first `result`, passed via `--resume` on subsequent messages. Reset to `null` when editing or regenerating.
+**Session IDs:** Stored after first `result`, passed via `--resume` on subsequent messages. Reset to `null` when editing or regenerating.
+
+**Sandbox Settings:** When `conv.sandboxed !== false`, the --settings flag passes a JSON config with permission rules:
+- `allow` patterns grant specific permissions (e.g., `Edit(/Users/me/project/**)`)
+- `deny` patterns block access (e.g., `Read(**/.env)`)
+- Network domains whitelist (e.g., `github.com`, `*.npmjs.org`)
+
+**Autopilot:** When `conv.sandboxed === false` AND `conv.autopilot !== false`, uses --dangerously-skip-permissions instead.
