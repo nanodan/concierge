@@ -17,6 +17,52 @@ const ICONS = {
 // Previewable binary files (can open in browser)
 const PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
 
+// Data files that can be loaded into DuckDB
+const DATA_FILE_EXTS = new Set(['csv', 'tsv', 'parquet', 'json', 'jsonl']);
+
+// Callback for when a file is loaded to data tab (set by data.js)
+let onFileLoadedToDataTab = null;
+
+/**
+ * Set callback for when file is loaded to data tab
+ */
+export function setOnFileLoadedToDataTab(callback) {
+  onFileLoadedToDataTab = callback;
+}
+
+/**
+ * Load a data file into DuckDB via the Data tab
+ */
+async function loadFileToDataTab(filePath) {
+  const convId = state.getCurrentConversationId();
+  if (!convId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  const res = await apiFetch('/api/duckdb/load', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: filePath, conversationId: convId })
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  if (data.error) {
+    showToast(data.error, { variant: 'error' });
+    return;
+  }
+
+  const rowCountStr = data.rowCount?.toLocaleString() || '0';
+  showToast(`Loaded ${data.tableName} (${rowCountStr} rows)`);
+
+  // Notify data tab to refresh
+  if (onFileLoadedToDataTab) {
+    onFileLoadedToDataTab(data);
+  }
+}
+
 /**
  * Render data preview (CSV/TSV/Parquet) as an HTML table
  */
@@ -489,11 +535,20 @@ function renderFileTree(entries) {
     // Build full path for delete
     const fullPath = baseCwd ? `${baseCwd}/${entry.path}` : entry.path;
 
+    // Check if this is a data file that can be loaded into DuckDB
+    const isDataFile = entry.type === 'file' && DATA_FILE_EXTS.has(entry.ext);
+    const loadDataBtn = isDataFile
+      ? `<button class="file-tree-load-data-btn" title="Load to Data tab">
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 15h6"/><path d="M9 12h6"/></svg>
+         </button>`
+      : '';
+
     return `
       <div class="file-tree-item" data-type="${entry.type}" data-path="${escapeHtml(entry.path)}" data-full-path="${escapeHtml(fullPath)}" data-ext="${entry.ext || ''}">
         ${iconHtml}
         <span class="file-tree-name">${escapeHtml(entry.name)}</span>
         ${meta ? `<span class="file-tree-meta">${meta}</span>` : ''}
+        ${loadDataBtn}
         <button class="file-tree-delete-btn" title="Delete">\u00d7</button>
       </div>`;
   }).join('');
@@ -501,8 +556,8 @@ function renderFileTree(entries) {
   // Attach event handlers
   fileTree.querySelectorAll('.file-tree-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      // Don't navigate if clicking delete button
-      if (e.target.closest('.file-tree-delete-btn')) return;
+      // Don't navigate if clicking action buttons
+      if (e.target.closest('.file-tree-delete-btn') || e.target.closest('.file-tree-load-data-btn')) return;
       haptic(5);
       const type = item.dataset.type;
       const filePath = item.dataset.path;
@@ -512,6 +567,17 @@ function renderFileTree(entries) {
       } else {
         viewFile(filePath);
       }
+    });
+  });
+
+  // Attach load data handlers
+  fileTree.querySelectorAll('.file-tree-load-data-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const item = btn.closest('.file-tree-item');
+      const filePath = item.dataset.path;
+      haptic();
+      await loadFileToDataTab(filePath);
     });
   });
 

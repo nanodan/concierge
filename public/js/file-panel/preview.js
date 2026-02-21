@@ -466,14 +466,14 @@ async function startPreview() {
   // Reset button
   if (previewStartBtn) {
     previewStartBtn.disabled = false;
-    previewStartBtn.textContent = 'Start Preview';
+    previewStartBtn.textContent = 'Start Preview Server';
   }
 
   if (!res) {
     if (previewMessage) {
-      previewMessage.textContent = 'Failed to start preview';
+      previewMessage.textContent = 'Failed to start preview server';
     }
-    showToast('Failed to start preview', 'error');
+    showToast('Failed to start preview server', 'error');
     return;
   }
 

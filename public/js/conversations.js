@@ -12,6 +12,7 @@ import {
 } from './constants.js';
 import { closeFilePanel } from './file-panel.js';
 import { openStandaloneFiles } from './files-standalone.js';
+import { copyQueryHistory } from './file-panel/data.js';
 
 // DOM elements (set by init)
 let listView = null;
@@ -236,6 +237,10 @@ export async function forkConversation(fromMessageIndex) {
   });
   if (!res) return;
   const conv = await res.json();
+
+  // Copy DuckDB query history to the forked conversation
+  await copyQueryHistory(currentConversationId, conv.id);
+
   showToast('Forked conversation', { duration: 1500 });
   await loadConversations();
   openConversation(conv.id);
