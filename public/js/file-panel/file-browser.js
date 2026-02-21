@@ -25,20 +25,21 @@ function renderDataPreview(data) {
   const rows = data.rows || [];
   const isParquet = data.parquet;
 
-  // Column headers
+  // Column headers with row number column
   const headerCells = columns.map(col => {
     if (isParquet && typeof col === 'object') {
-      return `<th title="Type: ${escapeHtml(col.type)}">${escapeHtml(col.name)}</th>`;
+      const typeBadge = `<span class="col-type-badge">${escapeHtml(col.type)}</span>`;
+      return `<th title="Type: ${escapeHtml(col.type)}">${escapeHtml(col.name)}${typeBadge}</th>`;
     }
     return `<th>${escapeHtml(col)}</th>`;
   }).join('');
 
-  // Data rows
-  const dataRows = rows.map(row =>
-    `<tr>${row.map(cell => {
+  // Data rows with row numbers and copyable cells
+  const dataRows = rows.map((row, idx) =>
+    `<tr><td class="row-num">${idx + 1}</td>${row.map(cell => {
       const cellStr = cell === null || cell === undefined ? '' : String(cell);
       const truncated = cellStr.length > 100 ? cellStr.slice(0, 100) + '...' : cellStr;
-      return `<td title="${escapeHtml(cellStr)}">${escapeHtml(truncated)}</td>`;
+      return `<td class="copyable-cell" data-value="${escapeHtml(cellStr)}" title="Click to copy">${escapeHtml(truncated)}</td>`;
     }).join('')}</tr>`
   ).join('');
 
@@ -62,13 +63,121 @@ function renderDataPreview(data) {
       ${infoBadge}
       <div class="data-preview-table-wrapper">
         <table class="data-preview-table">
-          <thead><tr>${headerCells}</tr></thead>
+          <thead><tr><th class="row-num-header">#</th>${headerCells}</tr></thead>
           <tbody>${dataRows}</tbody>
         </table>
       </div>
       ${truncationNotice}
     </div>
   `;
+}
+
+/**
+ * Attach copy handlers to data preview cells
+ */
+function attachCopyHandlers(container) {
+  container.querySelectorAll('.copyable-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const value = cell.dataset.value;
+      navigator.clipboard.writeText(value).then(() => {
+        cell.classList.add('copied');
+        setTimeout(() => cell.classList.remove('copied'), 1000);
+      });
+    });
+  });
+}
+
+/**
+ * Render JSON as collapsible tree
+ */
+function renderJsonPreview(content) {
+  try {
+    const data = JSON.parse(content);
+    const html = renderJsonNode(data, 0, true);
+    return `
+      <div class="json-preview">
+        <div class="json-toolbar">
+          <button class="json-expand-all" title="Expand all">Expand All</button>
+          <button class="json-collapse-all" title="Collapse all">Collapse All</button>
+        </div>
+        <div class="json-content">${html}</div>
+      </div>`;
+  } catch {
+    // Invalid JSON, fall back to plain text
+    return null;
+  }
+}
+
+/**
+ * Attach expand/collapse handlers to JSON preview
+ */
+function attachJsonHandlers(container) {
+  const expandBtn = container.querySelector('.json-expand-all');
+  const collapseBtn = container.querySelector('.json-collapse-all');
+
+  if (expandBtn) {
+    expandBtn.addEventListener('click', () => {
+      container.querySelectorAll('.json-collapsible').forEach(el => {
+        el.open = true;
+      });
+    });
+  }
+
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', () => {
+      container.querySelectorAll('.json-collapsible').forEach(el => {
+        el.open = false;
+      });
+    });
+  }
+}
+
+/**
+ * Recursively render a JSON node
+ */
+function renderJsonNode(value, depth, isLast) {
+  const comma = isLast ? '' : ',';
+
+  if (value === null) {
+    return `<span class="json-null">null</span>${comma}`;
+  }
+
+  if (typeof value === 'boolean') {
+    return `<span class="json-bool">${value}</span>${comma}`;
+  }
+
+  if (typeof value === 'number') {
+    return `<span class="json-num">${value}</span>${comma}`;
+  }
+
+  if (typeof value === 'string') {
+    const escaped = escapeHtml(value);
+    const truncated = escaped.length > 200 ? escaped.slice(0, 200) + '...' : escaped;
+    return `<span class="json-str">"${truncated}"</span>${comma}`;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return `<span class="json-bracket">[]</span>${comma}`;
+    }
+    const items = value.map((item, i) =>
+      `<div class="json-line">${renderJsonNode(item, depth + 1, i === value.length - 1)}</div>`
+    ).join('');
+    return `<details class="json-collapsible" open><summary class="json-bracket">[<span class="json-count">${value.length} items</span></summary><div class="json-children">${items}</div><span class="json-bracket">]</span>${comma}</details>`;
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (keys.length === 0) {
+      return `<span class="json-bracket">{}</span>${comma}`;
+    }
+    const items = keys.map((key, i) =>
+      `<div class="json-line"><span class="json-key">"${escapeHtml(key)}"</span>: ${renderJsonNode(value[key], depth + 1, i === keys.length - 1)}</div>`
+    ).join('');
+    return `<details class="json-collapsible" open><summary class="json-bracket">{<span class="json-count">${keys.length} keys</span></summary><div class="json-children">${items}</div><span class="json-bracket">}</span>${comma}</details>`;
+  }
+
+  return `<span>${escapeHtml(String(value))}</span>${comma}`;
 }
 
 /**
@@ -508,12 +617,14 @@ export async function viewFile(filePath) {
   // CSV/TSV preview - render as table
   if (data.csv) {
     fileViewerContent.innerHTML = renderDataPreview(data);
+    attachCopyHandlers(fileViewerContent);
     return;
   }
 
   // Parquet preview - render as table with column types
   if (data.parquet) {
     fileViewerContent.innerHTML = renderDataPreview(data);
+    attachCopyHandlers(fileViewerContent);
     return;
   }
 
@@ -588,6 +699,37 @@ export async function viewFile(filePath) {
   }
 
   const fileUrl = `/api/conversations/${convId}/files/download?path=${encodeURIComponent(filePath)}&inline=true`;
+
+  // Markdown preview - render as formatted HTML
+  if (data.ext === 'md' || data.ext === 'markdown') {
+    fileViewerContent.innerHTML = `
+      <div class="markdown-preview">
+        <div class="markdown-body">${renderMarkdown(data.content)}</div>
+      </div>
+      <button class="file-viewer-open-tab-btn" title="Open in new tab">
+        ${ICONS.openExternal}
+      </button>`;
+    const openBtn = fileViewerContent.querySelector('.file-viewer-open-tab-btn');
+    if (openBtn) openBtn.addEventListener('click', () => window.open(fileUrl, '_blank'));
+    return;
+  }
+
+  // JSON preview - collapsible tree
+  if (data.ext === 'json') {
+    const jsonHtml = renderJsonPreview(data.content);
+    if (jsonHtml) {
+      fileViewerContent.innerHTML = `
+        ${jsonHtml}
+        <button class="file-viewer-open-tab-btn" title="Open in new tab">
+          ${ICONS.openExternal}
+        </button>`;
+      attachJsonHandlers(fileViewerContent);
+      const openBtn = fileViewerContent.querySelector('.file-viewer-open-tab-btn');
+      if (openBtn) openBtn.addEventListener('click', () => window.open(fileUrl, '_blank'));
+      return;
+    }
+    // Fall through to plain text if JSON parsing fails
+  }
 
   // Render content with syntax highlighting + button to open in new tab
   const langClass = data.language ? `language-${data.language}` : '';
