@@ -139,17 +139,18 @@ const previewEmpty = document.getElementById('preview-empty');
 const previewRunning = document.getElementById('preview-running');
 const previewMessage = document.getElementById('preview-message');
 const previewStartBtn = document.getElementById('preview-start-btn');
-const previewType = document.getElementById('preview-type');
-const previewUrl = document.getElementById('preview-url');
 const previewOpenBtn = document.getElementById('preview-open-btn');
 const previewStopBtn = document.getElementById('preview-stop-btn');
 const previewInlineBtn = document.getElementById('preview-inline-btn');
+const previewActions = document.getElementById('preview-actions');
 const previewIframeWrapper = document.getElementById('preview-iframe-wrapper');
 const previewIframeContainer = document.getElementById('preview-iframe-container');
 const previewIframe = document.getElementById('preview-iframe');
 const previewFileSelect = document.getElementById('preview-file-select');
 const previewFitToggle = document.getElementById('preview-fit-toggle');
 const previewRefreshBtn = document.getElementById('preview-refresh-btn');
+const previewOpenBtnToolbar = document.getElementById('preview-open-btn-toolbar');
+const previewHideBtn = document.getElementById('preview-hide-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -373,17 +374,18 @@ initFilePanel({
   previewRunning,
   previewMessage,
   previewStartBtn,
-  previewType,
-  previewUrl,
   previewOpenBtn,
   previewStopBtn,
   previewInlineBtn,
+  previewActions,
   previewIframeWrapper,
   previewIframeContainer,
   previewIframe,
   previewFileSelect,
   previewFitToggle,
-  previewRefreshBtn
+  previewRefreshBtn,
+  previewOpenBtnToolbar,
+  previewHideBtn
 });
 
 // Initialize branches view

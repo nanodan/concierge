@@ -128,17 +128,18 @@ export function initFilePanel(elements) {
     previewRunning: elements.previewRunning,
     previewMessage: elements.previewMessage,
     previewStartBtn: elements.previewStartBtn,
-    previewType: elements.previewType,
-    previewUrl: elements.previewUrl,
     previewOpenBtn: elements.previewOpenBtn,
     previewStopBtn: elements.previewStopBtn,
     previewInlineBtn: elements.previewInlineBtn,
+    previewActions: elements.previewActions,
     previewIframeWrapper: elements.previewIframeWrapper,
     previewIframeContainer: elements.previewIframeContainer,
     previewIframe: elements.previewIframe,
     previewFileSelect: elements.previewFileSelect,
     previewFitToggle: elements.previewFitToggle,
     previewRefreshBtn: elements.previewRefreshBtn,
+    previewOpenBtnToolbar: elements.previewOpenBtnToolbar,
+    previewHideBtn: elements.previewHideBtn,
   });
 
   setupEventListeners();

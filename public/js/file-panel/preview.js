@@ -9,17 +9,18 @@ let previewEmpty = null;
 let previewRunning = null;
 let previewMessage = null;
 let previewStartBtn = null;
-let previewType = null;
-let previewUrl = null;
 let previewOpenBtn = null;
 let previewStopBtn = null;
 let previewInlineBtn = null;
+let previewActions = null;
 let previewIframeWrapper = null;
 let previewIframeContainer = null;
 let previewIframe = null;
 let previewFileSelect = null;
 let previewFitToggle = null;
 let previewRefreshBtn = null;
+let previewOpenBtnToolbar = null;
+let previewHideBtn = null;
 
 // Preview state
 let previewState = { running: false, port: null, type: null, url: null, htmlFiles: [], currentFile: null };
@@ -43,17 +44,18 @@ export function initPreview(elements) {
   previewRunning = elements.previewRunning;
   previewMessage = elements.previewMessage;
   previewStartBtn = elements.previewStartBtn;
-  previewType = elements.previewType;
-  previewUrl = elements.previewUrl;
   previewOpenBtn = elements.previewOpenBtn;
   previewStopBtn = elements.previewStopBtn;
   previewInlineBtn = elements.previewInlineBtn;
+  previewActions = elements.previewActions;
   previewIframeWrapper = elements.previewIframeWrapper;
   previewIframeContainer = elements.previewIframeContainer;
   previewIframe = elements.previewIframe;
   previewFileSelect = elements.previewFileSelect;
   previewFitToggle = elements.previewFitToggle;
   previewRefreshBtn = elements.previewRefreshBtn;
+  previewOpenBtnToolbar = elements.previewOpenBtnToolbar;
+  previewHideBtn = elements.previewHideBtn;
 
   // Initialize fit toggle state
   if (previewFitToggle) {
@@ -82,6 +84,9 @@ export function setupPreviewEventListeners() {
   }
   if (previewRefreshBtn) {
     previewRefreshBtn.addEventListener('click', refreshPreview);
+  }
+  if (previewHideBtn) {
+    previewHideBtn.addEventListener('click', hideInlinePreview);
   }
 }
 
@@ -113,9 +118,9 @@ function renderPreviewState(data) {
     previewEmpty.classList.add('hidden');
     previewRunning.classList.remove('hidden');
 
-    if (previewType) previewType.textContent = data.type || 'dev';
-    if (previewUrl) previewUrl.textContent = data.url || `http://localhost:${data.port}`;
-    if (previewOpenBtn) previewOpenBtn.href = data.url || `http://localhost:${data.port}`;
+    const url = data.url || `http://localhost:${data.port}`;
+    if (previewOpenBtn) previewOpenBtn.href = url;
+    if (previewOpenBtnToolbar) previewOpenBtnToolbar.href = url;
 
     // Populate file selector
     if (previewFileSelect && data.htmlFiles) {
@@ -181,8 +186,8 @@ function handleFileSelect() {
   previewState.url = newUrl;
 
   // Update UI
-  if (previewUrl) previewUrl.textContent = newUrl;
   if (previewOpenBtn) previewOpenBtn.href = newUrl;
+  if (previewOpenBtnToolbar) previewOpenBtnToolbar.href = newUrl;
 
   // Update iframe if visible
   if (inlinePreviewShown && previewIframe) {
@@ -284,6 +289,14 @@ function showInlinePreview() {
   // Load the preview URL in the iframe
   previewIframe.src = previewState.url;
 
+  // Hide the action buttons (consolidated into toolbar)
+  if (previewActions) previewActions.classList.add('hidden');
+
+  // Update toolbar open button href
+  if (previewOpenBtnToolbar) {
+    previewOpenBtnToolbar.href = previewState.url;
+  }
+
   // Show the iframe wrapper
   previewIframeWrapper.classList.remove('hidden');
   previewRunning.classList.add('has-iframe');
@@ -348,6 +361,7 @@ function showInlinePreview() {
 function hideInlinePreview() {
   if (!previewIframeWrapper || !previewIframeContainer || !previewIframe) return;
 
+  haptic(10);
   inlinePreviewShown = false;
 
   // Clear and hide the iframe
@@ -356,6 +370,9 @@ function hideInlinePreview() {
   if (previewRunning) {
     previewRunning.classList.remove('has-iframe');
   }
+
+  // Show the action buttons again
+  if (previewActions) previewActions.classList.remove('hidden');
 
   // Clean up ResizeObserver, pending rAF, and timeout
   if (resizeEndTimeout) {
