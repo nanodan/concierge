@@ -1,5 +1,5 @@
 // --- File Browser (file tree, navigation, upload, search) ---
-import { escapeHtml } from '../markdown.js';
+import { escapeHtml, renderMarkdown } from '../markdown.js';
 import { haptic, showToast, showDialog, apiFetch, formatFileSize } from '../utils.js';
 import * as state from '../state.js';
 import { getFileIcon, FILE_ICONS, IMAGE_EXTS } from '../file-utils.js';
@@ -16,6 +16,166 @@ const ICONS = {
 
 // Previewable binary files (can open in browser)
 const PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
+
+/**
+ * Render data preview (CSV/TSV/Parquet) as an HTML table
+ */
+function renderDataPreview(data) {
+  const columns = data.columns || [];
+  const rows = data.rows || [];
+  const isParquet = data.parquet;
+
+  // Column headers
+  const headerCells = columns.map(col => {
+    if (isParquet && typeof col === 'object') {
+      return `<th title="Type: ${escapeHtml(col.type)}">${escapeHtml(col.name)}</th>`;
+    }
+    return `<th>${escapeHtml(col)}</th>`;
+  }).join('');
+
+  // Data rows
+  const dataRows = rows.map(row =>
+    `<tr>${row.map(cell => {
+      const cellStr = cell === null || cell === undefined ? '' : String(cell);
+      const truncated = cellStr.length > 100 ? cellStr.slice(0, 100) + '...' : cellStr;
+      return `<td title="${escapeHtml(cellStr)}">${escapeHtml(truncated)}</td>`;
+    }).join('')}</tr>`
+  ).join('');
+
+  // Build info badge
+  const colNames = isParquet
+    ? columns.map(c => c.name)
+    : columns;
+  const colCount = colNames.length;
+  const rowDisplay = data.truncated
+    ? `Showing ${rows.length} of ${data.totalRows.toLocaleString()}`
+    : `${data.totalRows.toLocaleString()}`;
+  const infoBadge = `<div class="data-preview-info">${rowDisplay} rows × ${colCount} cols</div>`;
+
+  // Truncation notice
+  const truncationNotice = data.truncated
+    ? `<div class="data-preview-truncated">Data truncated. Showing first ${rows.length} rows.</div>`
+    : '';
+
+  return `
+    <div class="data-preview">
+      ${infoBadge}
+      <div class="data-preview-table-wrapper">
+        <table class="data-preview-table">
+          <thead><tr>${headerCells}</tr></thead>
+          <tbody>${dataRows}</tbody>
+        </table>
+      </div>
+      ${truncationNotice}
+    </div>
+  `;
+}
+
+/**
+ * Render Jupyter notebook cells
+ */
+function renderNotebookPreview(data) {
+  const cells = data.cells || [];
+  const metadata = data.metadata || {};
+  const language = metadata.language_info?.name || 'python';
+
+  const cellsHtml = cells.map((cell) => {
+    if (cell.type === 'markdown') {
+      return `
+        <div class="nb-cell nb-markdown">
+          <div class="nb-cell-content markdown-body">${renderMarkdown(cell.source)}</div>
+        </div>`;
+    }
+
+    if (cell.type === 'raw') {
+      return `
+        <div class="nb-cell nb-raw">
+          <div class="nb-cell-content"><pre>${escapeHtml(cell.source)}</pre></div>
+        </div>`;
+    }
+
+    // Code cell
+    const execCount = cell.execution_count !== null && cell.execution_count !== undefined
+      ? cell.execution_count
+      : ' ';
+    const outputs = (cell.outputs || []).map(renderNotebookOutput).join('');
+
+    return `
+      <div class="nb-cell nb-code">
+        <div class="nb-cell-input">
+          <span class="nb-exec-count">[${execCount}]:</span>
+          <pre><code class="language-${language}">${escapeHtml(cell.source)}</code></pre>
+        </div>
+        ${outputs ? `<div class="nb-cell-outputs">${outputs}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  // Metadata header
+  const kernelName = metadata.kernelspec?.display_name || metadata.kernelspec?.name || '';
+  const headerInfo = kernelName ? `<div class="nb-header">${escapeHtml(kernelName)}</div>` : '';
+
+  // Truncation notice
+  const truncationNotice = data.truncated
+    ? `<div class="nb-truncated">Showing ${cells.length} of ${data.totalCells} cells</div>`
+    : '';
+
+  return `
+    <div class="notebook-preview">
+      ${headerInfo}
+      <div class="nb-cells">${cellsHtml}</div>
+      ${truncationNotice}
+    </div>
+  `;
+}
+
+/**
+ * Render a single notebook output
+ */
+function renderNotebookOutput(output) {
+  if (output.output_type === 'stream') {
+    const streamClass = output.name === 'stderr' ? 'nb-output-stderr' : 'nb-output-stdout';
+    return `<div class="nb-output ${streamClass}"><pre>${escapeHtml(output.text)}</pre></div>`;
+  }
+
+  if (output.output_type === 'error') {
+    // Clean ANSI codes from traceback and join
+    const traceback = (output.traceback || [])
+      .map(line => line.replace(/\x1b\[[0-9;]*m/g, ''))
+      .join('\n');
+    return `
+      <div class="nb-output nb-output-error">
+        <div class="nb-error-name">${escapeHtml(output.ename)}: ${escapeHtml(output.evalue)}</div>
+        <pre>${escapeHtml(traceback)}</pre>
+      </div>`;
+  }
+
+  if (output.output_type === 'execute_result' || output.output_type === 'display_data') {
+    const data = output.data || {};
+
+    // Prefer images
+    if (data['image/png']) {
+      return `<div class="nb-output nb-output-image"><img src="data:image/png;base64,${data['image/png']}" alt="output" /></div>`;
+    }
+    if (data['image/jpeg']) {
+      return `<div class="nb-output nb-output-image"><img src="data:image/jpeg;base64,${data['image/jpeg']}" alt="output" /></div>`;
+    }
+    if (data['image/svg+xml']) {
+      return `<div class="nb-output nb-output-image">${data['image/svg+xml']}</div>`;
+    }
+
+    // HTML output
+    if (data['text/html']) {
+      return `<div class="nb-output nb-output-html">${data['text/html']}</div>`;
+    }
+
+    // Plain text fallback
+    if (data['text/plain']) {
+      return `<div class="nb-output nb-output-text"><pre>${escapeHtml(data['text/plain'])}</pre></div>`;
+    }
+  }
+
+  return '';
+}
 
 // DOM elements (set by init)
 let filePanelUp = null;
@@ -332,6 +492,30 @@ export async function viewFile(filePath) {
         ${ICONS.error}
         <p>${escapeHtml(data.error)}</p>
       </div>`;
+    return;
+  }
+
+  // CSV/TSV preview - render as table
+  if (data.csv) {
+    fileViewerContent.innerHTML = renderDataPreview(data);
+    return;
+  }
+
+  // Parquet preview - render as table with column types
+  if (data.parquet) {
+    fileViewerContent.innerHTML = renderDataPreview(data);
+    return;
+  }
+
+  // Jupyter notebook preview
+  if (data.notebook) {
+    fileViewerContent.innerHTML = renderNotebookPreview(data);
+    // Apply syntax highlighting to code cells
+    fileViewerContent.querySelectorAll('pre code').forEach(block => {
+      if (window.hljs && !block.dataset.highlighted) {
+        hljs.highlightElement(block);
+      }
+    });
     return;
   }
 
