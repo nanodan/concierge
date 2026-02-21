@@ -40,6 +40,7 @@ import {
 let filePanel = null;
 let filePanelBackdrop = null;
 let filePanelClose = null;
+let filePanelFullscreen = null;
 let chatView = null;
 
 // Tab elements
@@ -65,6 +66,7 @@ export function initFilePanel(elements) {
   filePanel = elements.filePanel;
   filePanelBackdrop = elements.filePanelBackdrop;
   filePanelClose = elements.filePanelClose;
+  filePanelFullscreen = elements.filePanelFullscreen;
   chatView = elements.chatView;
 
   // Tab elements
@@ -83,6 +85,7 @@ export function initFilePanel(elements) {
     filePanelUp: elements.filePanelUp,
     filePanelPath: elements.filePanelPath,
     fileSearchInput: elements.fileSearchInput,
+    filePanelRefreshBtn: elements.filePanelRefreshBtn,
     filePanelUploadBtn: elements.filePanelUploadBtn,
     filePanelFileInput: elements.filePanelFileInput,
     fileTree: elements.fileTree,
@@ -128,10 +131,19 @@ export function initFilePanel(elements) {
     previewRunning: elements.previewRunning,
     previewMessage: elements.previewMessage,
     previewStartBtn: elements.previewStartBtn,
-    previewType: elements.previewType,
-    previewUrl: elements.previewUrl,
     previewOpenBtn: elements.previewOpenBtn,
     previewStopBtn: elements.previewStopBtn,
+    previewInlineBtn: elements.previewInlineBtn,
+    previewActions: elements.previewActions,
+    previewIframeWrapper: elements.previewIframeWrapper,
+    previewIframeContainer: elements.previewIframeContainer,
+    previewIframeScaler: elements.previewIframeScaler,
+    previewIframe: elements.previewIframe,
+    previewFileSelect: elements.previewFileSelect,
+    previewFitToggle: elements.previewFitToggle,
+    previewRefreshBtn: elements.previewRefreshBtn,
+    previewOpenBtnToolbar: elements.previewOpenBtnToolbar,
+    previewHideBtn: elements.previewHideBtn,
   });
 
   setupEventListeners();
@@ -146,6 +158,14 @@ function setupEventListeners() {
     filePanelClose.addEventListener('click', () => {
       haptic();
       closeFilePanel();
+    });
+  }
+
+  // Fullscreen toggle
+  if (filePanelFullscreen) {
+    filePanelFullscreen.addEventListener('click', () => {
+      haptic();
+      toggleFullscreen();
     });
   }
 
@@ -266,7 +286,7 @@ export function openFilePanel() {
  */
 export function closeFilePanel() {
   isOpen = false;
-  filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90');
+  filePanel.classList.remove('open', 'snap-30', 'snap-60', 'snap-90', 'fullscreen');
   filePanelBackdrop.classList.remove('visible');
 
   // Preserve scroll position when panel closes (desktop only)
@@ -286,6 +306,13 @@ export function closeFilePanel() {
     filePanel.classList.add('hidden');
     closeFileViewer();
   }, 300);
+}
+
+/**
+ * Toggle fullscreen mode for the file panel
+ */
+function toggleFullscreen() {
+  filePanel.classList.toggle('fullscreen');
 }
 
 /**

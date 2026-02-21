@@ -229,6 +229,10 @@
           <button id="history-tab" class="file-panel-tab" data-tab="history">History</button>
           <button id="preview-tab" class="file-panel-tab" data-tab="preview">Preview</button>
         </div>
+        <button id="file-panel-fullscreen" class="file-panel-fullscreen" aria-label="Toggle fullscreen" title="Toggle fullscreen">
+          <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          <svg class="collapse-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/></svg>
+        </button>
         <button id="file-panel-close" class="file-panel-close" aria-label="Close">&times;</button>
       </div>
       <!-- Files View -->
@@ -240,6 +244,9 @@
           <svg class="file-panel-path-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           <span id="file-panel-path" class="file-panel-path">.</span>
           <input type="text" id="file-search-input" class="file-search-input" placeholder="Search files..." autocomplete="off">
+          <button id="file-panel-refresh-btn" class="file-panel-refresh-btn" aria-label="Refresh">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
           <button id="file-panel-upload-btn" class="file-panel-upload-btn" aria-label="Upload file">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
@@ -292,13 +299,38 @@
           <button id="preview-start-btn" class="preview-start-btn">Start Preview</button>
         </div>
         <div class="preview-running hidden" id="preview-running">
-          <div class="preview-info">
-            <span class="preview-type" id="preview-type">vite</span>
-            <span class="preview-url" id="preview-url">http://localhost:3600</span>
+          <div class="preview-file-row">
+            <select id="preview-file-select" class="preview-file-select">
+              <option value="">Select file...</option>
+            </select>
           </div>
-          <div class="preview-actions">
-            <a id="preview-open-btn" class="preview-btn primary" href="#" target="_blank">Open Preview</a>
+          <div class="preview-actions" id="preview-actions">
+            <button id="preview-inline-btn" class="preview-btn primary">Show Inline</button>
+            <a id="preview-open-btn" class="preview-btn" href="#" target="_blank">Open Tab</a>
             <button id="preview-stop-btn" class="preview-btn">Stop</button>
+          </div>
+          <div id="preview-iframe-wrapper" class="preview-iframe-wrapper hidden">
+            <div class="preview-toolbar">
+              <div class="preview-toolbar-actions">
+                <button id="preview-fit-toggle" class="preview-fit-toggle active" aria-label="Toggle fit mode" title="Fit to width">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                </button>
+                <button id="preview-refresh-btn" class="preview-refresh-btn" aria-label="Refresh" title="Refresh">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+                <a id="preview-open-btn-toolbar" class="preview-toolbar-btn" href="#" target="_blank" aria-label="Open in new tab" title="Open in new tab">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+                <button id="preview-hide-btn" class="preview-toolbar-btn" aria-label="Hide inline preview" title="Hide">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="preview-iframe-container" class="preview-iframe-container fit-mode">
+              <div id="preview-iframe-scaler" class="preview-iframe-scaler">
+                <iframe id="preview-iframe" class="preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -363,6 +395,9 @@
           </button>
           <svg class="file-panel-path-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           <span id="files-standalone-path" class="file-panel-path">.</span>
+          <button id="files-standalone-refresh-btn" class="file-panel-refresh-btn" aria-label="Refresh">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
           <button id="files-standalone-upload-btn" class="file-panel-upload-btn" aria-label="Upload file">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>

@@ -103,9 +103,11 @@ const reconnectBanner = document.getElementById('reconnect-banner');
 const filePanel = document.getElementById('file-panel');
 const filePanelBackdrop = document.getElementById('file-panel-backdrop');
 const filePanelClose = document.getElementById('file-panel-close');
+const filePanelFullscreen = document.getElementById('file-panel-fullscreen');
 const filePanelUp = document.getElementById('file-panel-up');
 const filePanelPath = document.getElementById('file-panel-path');
 const fileSearchInput = document.getElementById('file-search-input');
+const filePanelRefreshBtn = document.getElementById('file-panel-refresh-btn');
 const filePanelUploadBtn = document.getElementById('file-panel-upload-btn');
 const filePanelFileInput = document.getElementById('file-panel-file-input');
 const filePanelTree = document.getElementById('file-tree');
@@ -139,10 +141,19 @@ const previewEmpty = document.getElementById('preview-empty');
 const previewRunning = document.getElementById('preview-running');
 const previewMessage = document.getElementById('preview-message');
 const previewStartBtn = document.getElementById('preview-start-btn');
-const previewType = document.getElementById('preview-type');
-const previewUrl = document.getElementById('preview-url');
 const previewOpenBtn = document.getElementById('preview-open-btn');
 const previewStopBtn = document.getElementById('preview-stop-btn');
+const previewInlineBtn = document.getElementById('preview-inline-btn');
+const previewActions = document.getElementById('preview-actions');
+const previewIframeWrapper = document.getElementById('preview-iframe-wrapper');
+const previewIframeContainer = document.getElementById('preview-iframe-container');
+const previewIframeScaler = document.getElementById('preview-iframe-scaler');
+const previewIframe = document.getElementById('preview-iframe');
+const previewFileSelect = document.getElementById('preview-file-select');
+const previewFitToggle = document.getElementById('preview-fit-toggle');
+const previewRefreshBtn = document.getElementById('preview-refresh-btn');
+const previewOpenBtnToolbar = document.getElementById('preview-open-btn-toolbar');
+const previewHideBtn = document.getElementById('preview-hide-btn');
 const themeDropdown = document.getElementById('theme-dropdown');
 const colorThemeDropdown = document.getElementById('color-theme-dropdown');
 const moreMenuBtn = document.getElementById('more-menu-btn');
@@ -329,9 +340,11 @@ initFilePanel({
   filePanel,
   filePanelBackdrop,
   filePanelClose,
+  filePanelFullscreen,
   filePanelUp,
   filePanelPath,
   fileSearchInput,
+  filePanelRefreshBtn,
   filePanelUploadBtn,
   filePanelFileInput,
   fileTree: filePanelTree,
@@ -366,10 +379,19 @@ initFilePanel({
   previewRunning,
   previewMessage,
   previewStartBtn,
-  previewType,
-  previewUrl,
   previewOpenBtn,
-  previewStopBtn
+  previewStopBtn,
+  previewInlineBtn,
+  previewActions,
+  previewIframeWrapper,
+  previewIframeContainer,
+  previewIframeScaler,
+  previewIframe,
+  previewFileSelect,
+  previewFitToggle,
+  previewRefreshBtn,
+  previewOpenBtnToolbar,
+  previewHideBtn
 });
 
 // Initialize branches view

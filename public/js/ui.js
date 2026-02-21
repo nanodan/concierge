@@ -476,6 +476,8 @@ export function openNewChatModal(cwd = '') {
   // Reset provider to Claude and re-enable toggles
   if (convProviderSelect) {
     convProviderSelect.value = 'claude';
+    // Trigger change event to reload Claude models
+    convProviderSelect.dispatchEvent(new Event('change'));
   }
   if (convSandboxed) {
     convSandboxed.disabled = false;
@@ -1104,6 +1106,8 @@ export function setupEventListeners(createConversation) {
     // Reset provider to Claude and re-enable toggles
     if (convProviderSelect) {
       convProviderSelect.value = 'claude';
+      // Trigger change event to reload Claude models
+      convProviderSelect.dispatchEvent(new Event('change'));
     }
     if (convSandboxed) {
       convSandboxed.disabled = false;
