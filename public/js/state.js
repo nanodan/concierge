@@ -20,6 +20,7 @@ export let compressionPromptShown = false;
 // Models and Providers
 export let providers = [
   { id: 'claude', name: 'Claude' },
+  { id: 'codex', name: 'OpenAI Codex' },
   { id: 'ollama', name: 'Ollama' },
 ];
 export let models = [];

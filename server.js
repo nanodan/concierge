@@ -23,10 +23,8 @@ const {
   backfillEmbeddings,
 } = require('./lib/embeddings');
 const {
-  spawnClaude: _spawnClaude,
   processStreamEvent,
   cancelProcess,
-  hasActiveProcess: _hasActiveProcess,
 } = require('./lib/claude');
 const { initProviders, getProvider } = require('./lib/providers');
 
@@ -100,6 +98,31 @@ async function loadConversationMemories(conv) {
   return loadMemories(conv.cwd);
 }
 
+function getProviderSessionField(providerId) {
+  return providerId === 'codex' ? 'codexSessionId' : 'claudeSessionId';
+}
+
+function getLatestSessionId(messages = []) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].sessionId) return messages[i].sessionId;
+  }
+  return null;
+}
+
+function setConversationSession(conv, providerId, sessionId) {
+  conv.claudeSessionId = null;
+  conv.codexSessionId = null;
+  if (!sessionId) return;
+  conv[getProviderSessionField(providerId)] = sessionId;
+}
+
+function hydrateSessionFromMessages(conv, providerId) {
+  const key = getProviderSessionField(providerId);
+  if (conv[key]) return;
+  const sessionId = getLatestSessionId(conv.messages);
+  if (sessionId) conv[key] = sessionId;
+}
+
 async function handleCancel(ws, msg) {
   const { conversationId } = msg;
 
@@ -164,6 +187,8 @@ async function handleMessage(ws, msg) {
       return;
     }
 
+    hydrateSessionFromMessages(conv, providerId);
+
     conv.messages.push({
       role: 'user',
       text,
@@ -223,7 +248,7 @@ async function handleRegenerate(ws, msg) {
     }
 
     // Reset session for fresh response
-    conv.claudeSessionId = null;
+    setConversationSession(conv, providerId, null);
     conv.status = 'thinking';
     conv.thinkingStartTime = Date.now();
     await saveConversation(conversationId);
@@ -289,13 +314,17 @@ async function handleEdit(ws, msg) {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].sessionId) { editSessionId = messages[i].sessionId; break; }
     }
+    if (!editSessionId) {
+      editSessionId = conv[getProviderSessionField(providerId)] || null;
+    }
 
     const thinkingStartTime = Date.now();
     const forkedConv = {
       id: newId,
       name: `${conv.name} (edit)`,
       cwd: conv.cwd,
-      claudeSessionId: editSessionId, // Reuse session to preserve history
+      claudeSessionId: providerId === 'claude' ? editSessionId : null,
+      codexSessionId: providerId === 'codex' ? editSessionId : null,
       messages,
       status: 'thinking',
       thinkingStartTime,
@@ -377,6 +406,7 @@ async function handleResend(ws, msg) {
 
     if (isLastMessage) {
       // Resend in place - just spawn provider on this message
+      hydrateSessionFromMessages(conv, providerId);
       conv.status = 'thinking';
       conv.thinkingStartTime = Date.now();
       await saveConversation(conversationId);
@@ -397,13 +427,17 @@ async function handleResend(ws, msg) {
       for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].sessionId) { forkSessionId = messages[i].sessionId; break; }
       }
+      if (!forkSessionId) {
+        forkSessionId = conv[getProviderSessionField(providerId)] || null;
+      }
 
       const thinkingStartTime = Date.now();
       const forkedConv = {
         id: newId,
         name: `${conv.name} (resend)`,
         cwd: conv.cwd,
-        claudeSessionId: forkSessionId,
+        claudeSessionId: providerId === 'claude' ? forkSessionId : null,
+        codexSessionId: providerId === 'codex' ? forkSessionId : null,
         messages,
         status: 'thinking',
         thinkingStartTime,

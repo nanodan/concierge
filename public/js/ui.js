@@ -855,8 +855,8 @@ function resendMessage(messageIndex) {
 
 // --- Model & Mode Badges ---
 export function updateModeBadge(isAutopilot, provider = 'claude') {
-  // Hide mode badge for non-Claude providers (no tool use)
-  const supportsTools = provider === 'claude';
+  // Show mode badge for providers with tool use (Claude and Codex).
+  const supportsTools = provider !== 'ollama';
   modeBadge.classList.toggle('hidden', !supportsTools);
   if (!supportsTools) return;
 
@@ -869,19 +869,28 @@ export function updateModeBadge(isAutopilot, provider = 'claude') {
 
 export function updateProviderBadge(provider) {
   if (!providerBadge) return;
-  // Show badge for non-Claude providers
-  const isLocal = provider && provider !== 'claude';
-  providerBadge.classList.toggle('hidden', !isLocal);
+  // Show badge for non-Claude providers.
+  const showBadge = provider && provider !== 'claude';
+  providerBadge.classList.toggle('hidden', !showBadge);
   providerBadge.classList.toggle('ollama', provider === 'ollama');
-  if (isLocal) {
-    providerBadge.textContent = provider === 'ollama' ? 'Local' : provider;
-    providerBadge.title = `Using ${provider} provider (local LLM)`;
+  providerBadge.classList.toggle('codex', provider === 'codex');
+  if (showBadge) {
+    if (provider === 'ollama') {
+      providerBadge.textContent = 'Local';
+      providerBadge.title = 'Using Ollama provider (local LLM)';
+    } else if (provider === 'codex') {
+      providerBadge.textContent = 'Codex';
+      providerBadge.title = 'Using OpenAI Codex provider';
+    } else {
+      providerBadge.textContent = provider;
+      providerBadge.title = `Using ${provider} provider`;
+    }
   }
 }
 
 export function updateSandboxBanner(isSandboxed, provider = 'claude') {
   const banner = document.getElementById('unsafe-banner');
-  const supportsTools = provider === 'claude';
+  const supportsTools = provider !== 'ollama';
 
   if (banner) {
     // Hide banner for non-Claude providers (no tool use, so sandbox is irrelevant)
@@ -910,9 +919,10 @@ export async function toggleSandboxMode() {
 
   // If disabling sandbox, show a confirmation dialog
   if (!newSandboxed) {
+    const provider = state.getCurrentProvider() === 'codex' ? 'Codex' : 'Claude';
     const ok = await showDialog({
       title: 'Disable sandbox?',
-      message: 'This gives Claude unrestricted access to your entire filesystem. Only do this if you trust the conversation and need access to files outside the project.',
+      message: `This gives ${provider} unrestricted access to your entire filesystem. Only do this if you trust the conversation and need access to files outside the project.`,
       confirmLabel: 'Disable Sandbox',
       danger: true
     });
@@ -1285,7 +1295,7 @@ export function setupEventListeners(createConversation) {
     const currentConversationId = state.getCurrentConversationId();
     if (!currentConversationId) return;
     // Mode toggle only applies to providers with tool use
-    if (state.getCurrentProvider() !== 'claude') return;
+    if (state.getCurrentProvider() === 'ollama') return;
     const newAutopilot = !state.getCurrentAutopilot();
     state.setCurrentAutopilot(newAutopilot);
     updateModeBadge(newAutopilot, state.getCurrentProvider());
@@ -1492,8 +1502,8 @@ export function setupEventListeners(createConversation) {
   if (chatMoreSandbox) {
     chatMoreSandbox.addEventListener('click', async (e) => {
       e.stopPropagation();
-      // Ignore click for non-Claude providers (no tool use)
-      if (state.getCurrentProvider() !== 'claude') return;
+      // Ignore click for providers without tool use.
+      if (state.getCurrentProvider() === 'ollama') return;
       haptic();
       closeChatMoreMenu();
       await toggleSandboxMode();

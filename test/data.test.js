@@ -32,6 +32,12 @@ describe('convMeta', () => {
     assert.equal(meta.model, 'opus');
   });
 
+  it('defaults model based on provider', () => {
+    const conv = { id: 'x', name: 'X', provider: 'codex', messages: [] };
+    const meta = convMeta(conv);
+    assert.equal(meta.model, 'gpt-5.3-codex');
+  });
+
   it('computes messageCount from messages array', () => {
     const conv = {
       id: 'x',
@@ -76,6 +82,12 @@ describe('convMeta', () => {
     const conv = { id: 'x', name: 'X', claudeSessionId: 'sess-123', messages: [] };
     const meta = convMeta(conv);
     assert.equal(meta.claudeSessionId, 'sess-123');
+  });
+
+  it('includes codexSessionId', () => {
+    const conv = { id: 'x', name: 'X', codexSessionId: 'thread-123', messages: [] };
+    const meta = convMeta(conv);
+    assert.equal(meta.codexSessionId, 'thread-123');
   });
 });
 
