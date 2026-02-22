@@ -164,6 +164,180 @@ describe('processCodexEvent - item.completed', () => {
     assert.ok(toolResult);
     assert.equal(toolResult.isError, true);
   });
+
+  it('handles function_call style tool start events', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const event = {
+      type: 'item.started',
+      item: {
+        type: 'function_call',
+        function_name: 'write_file',
+        call_id: 'call-123',
+        input: { file_path: 'test.txt' },
+      },
+    };
+    processCodexEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
+
+    const toolStart = sent.find(m => m.type === 'tool_start');
+    assert.ok(toolStart);
+    assert.equal(toolStart.tool, 'write_file');
+    assert.equal(toolStart.id, 'call-123');
+  });
+
+  it('handles function_call_output style tool results', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const event = {
+      type: 'item.completed',
+      item: {
+        type: 'function_call_output',
+        call_id: 'call-123',
+        output: 'created test.txt',
+      },
+    };
+    processCodexEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
+
+    const toolResult = sent.find(m => m.type === 'tool_result');
+    assert.ok(toolResult);
+    assert.equal(toolResult.toolUseId, 'call-123');
+  });
+
+  it('includes command details from command_line style tool input', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const event = {
+      type: 'item.started',
+      item: {
+        type: 'function_call',
+        function_name: 'command_execution',
+        call_id: 'call-cmd-1',
+        input: { command_line: "/bin/zsh -lc 'touch testing.txt && ls -l testing.txt'" },
+      },
+    };
+    const result = processCodexEvent(fakeWs, 'c', conv, event, '', onSave, broadcastStatus);
+    assert.ok(result.assistantText.includes('touch testing.txt'));
+  });
+
+  it('extracts tool result text from output array', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const start = {
+      type: 'item.started',
+      item: {
+        type: 'tool_use',
+        id: 'tool-array-1',
+        name: 'command_execution',
+      },
+    };
+    const done = {
+      type: 'item.completed',
+      item: {
+        type: 'tool_result',
+        tool_use_id: 'tool-array-1',
+        output: [{ type: 'output_text', text: '-rw-r--r-- 0 testing.txt' }],
+      },
+    };
+    let result = processCodexEvent(fakeWs, 'c', conv, start, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, done, result.assistantText, onSave, broadcastStatus);
+    assert.ok(result.assistantText.includes('testing.txt'));
+  });
+
+  it('shows command text when present on tool result item', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const start = {
+      type: 'item.started',
+      item: { type: 'tool_use', id: 'tool-cmd-1', name: 'command_execution' },
+    };
+    const done = {
+      type: 'item.completed',
+      item: {
+        type: 'tool_result',
+        tool_use_id: 'tool-cmd-1',
+        command: "touch testing.txt && ls -l testing.txt",
+        output: "-rw-r--r-- 0 testing.txt",
+      },
+    };
+    let result = processCodexEvent(fakeWs, 'c', conv, start, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, done, result.assistantText, onSave, broadcastStatus);
+    assert.ok(result.assistantText.includes('$ touch testing.txt && ls -l testing.txt'));
+  });
+
+  it('deduplicates tool start when both item.started and item.completed are emitted', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const started = {
+      type: 'item.started',
+      item: {
+        type: 'tool_use',
+        name: 'command_execution',
+        id: 'tool-dup-1',
+      },
+    };
+    const completed = {
+      type: 'item.completed',
+      item: {
+        type: 'tool_use',
+        name: 'command_execution',
+        id: 'tool-dup-1',
+      },
+    };
+
+    let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, completed, result.assistantText, onSave, broadcastStatus);
+
+    const starts = sent.filter(m => m.type === 'tool_start');
+    assert.equal(starts.length, 1);
+  });
+
+  it('closes trace blocks even when tool ids are missing', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const started = {
+      type: 'item.started',
+      item: {
+        type: 'tool_use',
+        name: 'command_execution',
+      },
+    };
+    const completed = {
+      type: 'item.completed',
+      item: {
+        type: 'tool_result',
+        output: 'ok',
+      },
+    };
+
+    let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, completed, result.assistantText, onSave, broadcastStatus);
+
+    assert.ok(result.assistantText.includes(':::trace'));
+    assert.ok(result.assistantText.includes('\n:::\n\n'));
+  });
+
+  it('auto-closes open trace on turn completion with newline-delimited closer', () => {
+    const conv = { messages: [], status: 'thinking', model: 'gpt-5.3-codex' };
+    const started = {
+      type: 'item.started',
+      item: {
+        type: 'tool_use',
+        name: 'command_execution',
+      },
+    };
+    const textEvent = {
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: 'Created empty file.',
+      },
+    };
+    const done = {
+      type: 'turn.completed',
+      usage: { input_tokens: 10, output_tokens: 5 },
+    };
+
+    let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, textEvent, result.assistantText, onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, done, result.assistantText, onSave, broadcastStatus);
+
+    const saved = conv.messages[0].text;
+    assert.ok(saved.includes(':::trace'));
+    assert.ok(saved.includes('\n:::\n\n'));
+  });
 });
 
 describe('processCodexEvent - turn.completed', () => {
@@ -292,6 +466,25 @@ describe('processCodexEvent - turn.completed', () => {
     assert.equal(conv.messages[0].cachedInputTokens, 11000);
     assert.equal(conv.messages[0].inputTokens, 1000);
     assert.equal(conv.messages[0].displayInputTokens, 1);
+  });
+
+  it('renders tool calls from batched turn.completed items', () => {
+    const conv = { codexSessionId: 'sess-123', messages: [], status: 'thinking', model: 'gpt-5.3-codex' };
+    const event = {
+      type: 'turn.completed',
+      items: [
+        { type: 'tool_use', id: 'tool-batch-1', name: 'command_execution', input: { command: 'ls -l' } },
+        { type: 'tool_result', tool_use_id: 'tool-batch-1', output: 'ok' },
+      ],
+      usage: { input_tokens: 20, output_tokens: 10 },
+    };
+    const result = processCodexEvent(fakeWs, 'conv-1', conv, event, 'Done.', onSave, broadcastStatus);
+
+    const toolStart = sent.find(m => m.type === 'tool_start');
+    const toolResult = sent.find(m => m.type === 'tool_result');
+    assert.ok(toolStart);
+    assert.ok(toolResult);
+    assert.ok(result.assistantText.includes(':::trace'));
   });
 });
 
