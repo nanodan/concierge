@@ -112,7 +112,7 @@ function renderCapabilities(data, filter = '') {
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 17l6-6-6-6"/><path d="M12 19h8"/>
         </svg>
-        <p>${filter ? 'No matching commands found' : 'No commands or skills available'}</p>
+        <p>${filter ? 'No matching capabilities found' : 'No commands, skills, or agents available'}</p>
       </div>`;
     return;
   }
@@ -153,6 +153,7 @@ function renderCapabilities(data, filter = '') {
 }
 
 function renderCapabilityItem(item, type) {
+  const prefix = capabilityPrefix(type);
   const icons = {
     skill: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
     command: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>',
@@ -163,22 +164,27 @@ function renderCapabilityItem(item, type) {
     <div class="capability-item" data-name="${escapeHtml(item.name)}" data-type="${type}">
       <div class="capability-icon ${type}">${icons[type]}</div>
       <div class="capability-info">
-        <div class="capability-name"><code>/${escapeHtml(item.name)}</code></div>
+        <div class="capability-name"><code>${prefix}${escapeHtml(item.name)}</code></div>
         ${item.description ? `<div class="capability-desc">${escapeHtml(item.description)}</div>` : ''}
       </div>
       ${item.source === 'project' ? '<span class="capability-source">Project</span>' : ''}
     </div>`;
 }
 
-function insertCapability(name, _type) {
+function capabilityPrefix(type) {
+  if (type === 'agent') return '@';
+  return '/';
+}
+
+function insertCapability(name, type) {
   if (!messageInput) return;
   haptic();
-  const prefix = `/${name} `;
+  const prefix = `${capabilityPrefix(type)}${name} `;
   messageInput.value = prefix + messageInput.value;
   messageInput.focus();
   messageInput.setSelectionRange(prefix.length, prefix.length);
   closeCapabilitiesModal();
-  showToast(`Inserted /${name}`);
+  showToast(`Inserted ${prefix.trim()}`);
 }
 
 // Export for use in search filtering

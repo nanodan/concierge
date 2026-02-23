@@ -1,6 +1,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { processStreamEvent, MODELS } = require('../lib/claude');
+const { handleNoOutputClose } = require('../lib/providers/claude');
 
 describe('MODELS', () => {
   it('contains expected models', () => {
@@ -347,5 +348,51 @@ describe('processStreamEvent - result with tokens', () => {
     assert.ok(msg.text.includes(':::trace'));
     assert.ok(msg.text.includes('Using Bash'));
     assert.ok(msg.text.includes('I found file.txt'));
+  });
+});
+
+describe('handleNoOutputClose', () => {
+  it('emits actionable slash-only error and marks conversation idle', () => {
+    const sent = [];
+    const fakeWs = {
+      send(data) { sent.push(JSON.parse(data)); },
+    };
+    const conv = { status: 'thinking', thinkingStartTime: Date.now() };
+    const statuses = [];
+    const broadcastStatus = (id, status) => statuses.push({ id, status });
+
+    const handled = handleNoOutputClose(fakeWs, 'conv-1', conv, {
+      code: 0,
+      providerName: 'Claude',
+      broadcastStatus,
+      isSlashOnlyPrompt: true,
+    });
+
+    assert.equal(handled, true);
+    assert.equal(conv.status, 'idle');
+    assert.equal(conv.thinkingStartTime, null);
+    assert.deepEqual(statuses, [{ id: 'conv-1', status: 'idle' }]);
+
+    const error = sent.find(m => m.type === 'error');
+    assert.ok(error);
+    assert.ok(error.error.includes('without producing a response'));
+    assert.ok(error.error.includes('Slash-only skill/agent selections need a task'));
+  });
+
+  it('does not emit an error when conversation is not thinking', () => {
+    const sent = [];
+    const fakeWs = {
+      send(data) { sent.push(JSON.parse(data)); },
+    };
+    const conv = { status: 'idle', thinkingStartTime: null };
+
+    const handled = handleNoOutputClose(fakeWs, 'conv-1', conv, {
+      code: 0,
+      providerName: 'Claude',
+      broadcastStatus: () => {},
+    });
+
+    assert.equal(handled, false);
+    assert.equal(sent.length, 0);
   });
 });

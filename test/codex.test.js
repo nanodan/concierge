@@ -1,6 +1,6 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { processCodexEvent, MODELS } = require('../lib/providers/codex');
+const { processCodexEvent, MODELS, handleNoOutputClose } = require('../lib/providers/codex');
 
 describe('Codex MODELS', () => {
   it('contains expected models', () => {
@@ -520,5 +520,54 @@ describe('processCodexEvent - unknown events', () => {
     const result = processCodexEvent(fakeWs, 'c', conv, event, 'existing', onSave, broadcastStatus);
     assert.equal(result.assistantText, 'existing');
     assert.equal(sent.length, 0);
+  });
+});
+
+describe('handleNoOutputClose', () => {
+  it('emits actionable slash-only error and marks conversation idle', () => {
+    const sent = [];
+    const fakeWs = {
+      send(data) { sent.push(JSON.parse(data)); },
+    };
+    const conv = { status: 'thinking', thinkingStartTime: Date.now() };
+    const statuses = [];
+    const broadcastStatus = (id, status) => statuses.push({ id, status });
+
+    const handled = handleNoOutputClose(fakeWs, 'conv-1', conv, {
+      code: 0,
+      providerName: 'Codex',
+      broadcastStatus,
+      isSlashOnlyPrompt: true,
+    });
+
+    assert.equal(handled, true);
+    assert.equal(conv.status, 'idle');
+    assert.equal(conv.thinkingStartTime, null);
+    assert.deepEqual(statuses, [{ id: 'conv-1', status: 'idle' }]);
+
+    const error = sent.find(m => m.type === 'error');
+    assert.ok(error);
+    assert.ok(error.error.includes('without producing a response'));
+    assert.ok(error.error.includes('Slash-only skill/agent selections need a task'));
+  });
+
+  it('includes stderr details on non-zero exits', () => {
+    const sent = [];
+    const fakeWs = {
+      send(data) { sent.push(JSON.parse(data)); },
+    };
+    const conv = { status: 'thinking', thinkingStartTime: Date.now() };
+
+    const handled = handleNoOutputClose(fakeWs, 'conv-1', conv, {
+      code: 2,
+      providerName: 'Codex',
+      broadcastStatus: () => {},
+      stderr: 'invalid flag',
+    });
+
+    assert.equal(handled, true);
+    const error = sent.find(m => m.type === 'error');
+    assert.ok(error);
+    assert.ok(error.error.includes('Codex process exited with code 2: invalid flag'));
   });
 });
