@@ -9,6 +9,7 @@ import { createCwdContext } from './explorer/context.js';
 import { sortEntries, deleteFilePath } from './explorer/files-core.js';
 import { createExplorerShell } from './explorer/shell.js';
 import { bindExplorerShellUi } from './explorer/shell-ui-bindings.js';
+import { createGitDiffViewer } from './explorer/git-diff-viewer.js';
 import {
   createExplorerIcons,
   createExplorerFeedbackHandlers,
@@ -65,17 +66,9 @@ let gitStatus = null;
 let stashes = null;
 let commits = null;
 let unpushedCount = 0;
-let granularMode = localStorage.getItem('gitGranularMode') === 'true';
-let currentDiffData = null;
 let _viewingDiff = null;
 let explorerShell = null;
-let diffNavEntries = [];
-let currentDiffIndex = -1;
-let diffTouchStartX = 0;
-let diffTouchStartY = 0;
-let diffTouchMoveX = 0;
-
-const DIFF_SWIPE_THRESHOLD = 50;
+let diffViewer = null;
 
 // Icons (minimal set needed here)
 const ICONS = createExplorerIcons({
@@ -107,6 +100,50 @@ export function initStandaloneFiles(elements) {
   fileViewerName = elements.fileViewerName;
   fileViewerClose = elements.fileViewerClose;
   fileViewerContent = elements.fileViewerContent;
+  diffViewer = createGitDiffViewer({
+    fileViewer,
+    fileViewerName,
+    fileViewerContent,
+    granularToggleBtn: document.getElementById('sa-diff-granular-toggle'),
+    escapeHtml,
+    haptic,
+    showDialog,
+    showToast,
+    animationDelayMs: ANIMATION_DELAY_SHORT,
+    getNavigationStatus: () => gitStatus,
+    setViewingDiff: (diff) => { _viewingDiff = diff; },
+    fetchDiff: async (filePath, staged) => {
+      const res = await apiFetch(getGitApiUrl('diff'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath, staged, cwd: rootPath }),
+        silent: true,
+      });
+      if (!res) return { ok: false, error: 'Failed to load diff' };
+
+      const data = await res.json();
+      if (data.error) return { ok: false, error: data.error };
+      return { ok: true, data };
+    },
+    revertDiffHunk: async (filePath, _hunkIndex, hunk, staged) => {
+      const res = await apiFetch(getGitApiUrl('revert-hunk'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath, hunk, staged, cwd: rootPath }),
+      });
+      if (!res) return { ok: false, error: 'Failed to revert hunk' };
+
+      const data = await res.json();
+      if (data.error) return { ok: false, error: data.error };
+      return { ok: true };
+    },
+    closeAfterRevert: () => {
+      closeFileViewer();
+    },
+    refreshAfterRevert: () => {
+      loadGitStatus();
+    },
+  });
   const feedbackHandlers = createExplorerFeedbackHandlers({
     haptic,
     showDialog,
@@ -148,9 +185,7 @@ export function initStandaloneFiles(elements) {
       if (granularToggleBtn) granularToggleBtn.classList.add('hidden');
     },
     onViewerWillClose: () => {
-      _viewingDiff = null;
-      currentDiffData = null;
-      clearDiffNavigation();
+      diffViewer?.clearDiffState();
       if (granularToggleBtn) granularToggleBtn.classList.add('hidden');
     },
     isNavigationBlocked: () => _viewingDiff,
@@ -216,8 +251,6 @@ export function initStandaloneFiles(elements) {
     onViewerTouchEnd: (e) => explorerShell?.handleViewerTouchEnd(e),
   });
 
-  setupDiffNavigationHandlers();
-
   // Tab switching
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -248,15 +281,6 @@ export function initStandaloneFiles(elements) {
 
   if (stashBtn) {
     stashBtn.addEventListener('click', handleStash);
-  }
-
-  // Granular toggle
-  if (granularToggleBtn) {
-    granularToggleBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      haptic();
-      toggleGranularMode();
-    });
   }
 
   // Escape key to close
@@ -983,328 +1007,12 @@ async function handlePull() {
 
 // === Diff Viewer ===
 
-function buildDiffNavigationEntries() {
-  if (!gitStatus) return [];
-
-  const entries = [];
-  (gitStatus.staged || []).forEach((file) => {
-    entries.push({ path: file.path, staged: true });
-  });
-  (gitStatus.unstaged || []).forEach((file) => {
-    entries.push({ path: file.path, staged: false });
-  });
-  return entries;
-}
-
-function syncDiffNavigation(path, staged) {
-  diffNavEntries = buildDiffNavigationEntries();
-  currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path && entry.staged === staged);
-  if (currentDiffIndex === -1) {
-    currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path);
-  }
-  updateDiffNavigationUi();
-}
-
-function clearDiffNavigation() {
-  diffNavEntries = [];
-  currentDiffIndex = -1;
-
-  if (!fileViewer) return;
-  const nav = fileViewer.querySelector('.file-viewer-nav');
-  if (!nav) return;
-  nav.classList.remove('diff-nav-mode');
-}
-
-function updateDiffNavigationUi() {
-  if (!fileViewer) return;
-
-  const nav = fileViewer.querySelector('.file-viewer-nav');
-  if (!nav) return;
-
-  const prevBtn = nav.querySelector('.file-nav-prev');
-  const nextBtn = nav.querySelector('.file-nav-next');
-  const counter = nav.querySelector('.file-nav-counter');
-
-  if (!prevBtn || !nextBtn || !counter) return;
-
-  const total = diffNavEntries.length;
-  if (total <= 1 || currentDiffIndex < 0) {
-    nav.classList.add('hidden');
-    nav.classList.remove('diff-nav-mode');
-    prevBtn.disabled = true;
-    nextBtn.disabled = true;
-    counter.textContent = '';
-    return;
-  }
-
-  nav.classList.remove('hidden');
-  nav.classList.add('diff-nav-mode');
-  prevBtn.disabled = currentDiffIndex <= 0;
-  nextBtn.disabled = currentDiffIndex >= total - 1;
-  counter.textContent = `${currentDiffIndex + 1} / ${total}`;
-}
-
-function navigateDiff(direction) {
-  if (currentDiffIndex < 0 || diffNavEntries.length <= 1) return;
-
-  const nextIndex = currentDiffIndex + direction;
-  if (nextIndex < 0 || nextIndex >= diffNavEntries.length) return;
-
-  const nextEntry = diffNavEntries[nextIndex];
-  void viewDiff(nextEntry.path, nextEntry.staged);
-}
-
-function isDiffNavigationActive() {
-  return currentDiffIndex >= 0 && diffNavEntries.length > 0 && !!fileViewer && fileViewer.classList.contains('open');
-}
-
-function setupDiffNavigationHandlers() {
-  if (!fileViewer) return;
-
-  fileViewer.addEventListener('click', (e) => {
-    if (!isDiffNavigationActive()) return;
-
-    const btn = e.target.closest('.file-nav-btn');
-    if (!btn) return;
-
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    haptic();
-
-    if (btn.classList.contains('file-nav-prev')) {
-      navigateDiff(-1);
-    } else if (btn.classList.contains('file-nav-next')) {
-      navigateDiff(1);
-    }
-  }, true);
-
-  document.addEventListener('keydown', (e) => {
-    if (!isDiffNavigationActive()) return;
-
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      haptic();
-      navigateDiff(-1);
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      haptic();
-      navigateDiff(1);
-    }
-  }, true);
-
-  fileViewer.addEventListener('touchstart', (e) => {
-    if (!isDiffNavigationActive()) return;
-    diffTouchStartX = e.touches[0].clientX;
-    diffTouchStartY = e.touches[0].clientY;
-    diffTouchMoveX = diffTouchStartX;
-  }, { capture: true, passive: true });
-
-  fileViewer.addEventListener('touchmove', (e) => {
-    if (!isDiffNavigationActive()) return;
-    diffTouchMoveX = e.touches[0].clientX;
-  }, { capture: true, passive: true });
-
-  fileViewer.addEventListener('touchend', (e) => {
-    if (!isDiffNavigationActive()) return;
-
-    const deltaX = diffTouchMoveX - diffTouchStartX;
-    const deltaY = e.changedTouches[0].clientY - diffTouchStartY;
-    if (Math.abs(deltaX) > DIFF_SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-      haptic();
-      if (deltaX > 0) {
-        navigateDiff(-1);
-      } else {
-        navigateDiff(1);
-      }
-    }
-
-    diffTouchStartX = 0;
-    diffTouchStartY = 0;
-    diffTouchMoveX = 0;
-  }, { capture: true, passive: true });
-}
-
 async function viewDiff(filePath, staged) {
-  const filename = filePath.split('/').pop();
-  fileViewerName.textContent = filename;
-  fileViewerContent.innerHTML = '<code>Loading diff...</code>';
-  _viewingDiff = { path: filePath, staged };
-  syncDiffNavigation(filePath, staged);
-
-  // Show viewer
-  fileViewer.classList.remove('hidden');
-  setTimeout(() => fileViewer.classList.add('open'), ANIMATION_DELAY_SHORT);
-
-  const res = await apiFetch(getGitApiUrl('diff'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: filePath, staged, cwd: rootPath }),
-    silent: true,
-  });
-  if (!res) {
-    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>Failed to load diff</p></div>`;
-    currentDiffData = null;
-    return;
-  }
-  const data = await res.json();
-
-  if (data.error) {
-    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
-    currentDiffData = null;
-    return;
-  }
-
-  if (!data.raw || data.raw.trim() === '') {
-    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>No changes to display</p></div>`;
-    currentDiffData = null;
-    return;
-  }
-
-  currentDiffData = { ...data, path: filePath, staged };
-  renderDiff(currentDiffData);
-}
-
-function toggleGranularMode() {
-  granularMode = !granularMode;
-  localStorage.setItem('gitGranularMode', granularMode.toString());
-  updateGranularToggleState();
-  if (currentDiffData) {
-    renderDiff(currentDiffData);
-  }
-}
-
-function updateGranularToggleState() {
-  if (granularToggleBtn) {
-    granularToggleBtn.classList.toggle('active', granularMode);
-    granularToggleBtn.title = granularMode ? 'Switch to simple view' : 'Switch to granular view (per-hunk revert)';
-  }
+  await diffViewer?.openDiff(filePath, staged);
 }
 
 function renderDiff(data) {
-  const { hunks, raw, path, staged } = data;
-  const hasHunks = hunks && hunks.length > 0;
-
-  if (granularToggleBtn) {
-    granularToggleBtn.classList.toggle('hidden', !hasHunks);
-    updateGranularToggleState();
-  }
-
-  if (granularMode && hasHunks) {
-    renderHunksView(hunks, path, staged);
-  } else {
-    renderSimpleView(raw);
-  }
-}
-
-function renderSimpleView(raw) {
-  const lines = raw.split('\n');
-  let html = '';
-
-  for (const line of lines) {
-    let className = 'diff-context';
-    if (line.startsWith('+') && !line.startsWith('+++')) {
-      className = 'diff-add';
-    } else if (line.startsWith('-') && !line.startsWith('---')) {
-      className = 'diff-del';
-    } else if (line.startsWith('@@')) {
-      className = 'diff-hunk-header';
-    } else if (line.startsWith('diff ') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++')) {
-      className = 'diff-meta';
-    }
-
-    html += `<div class="${className}">${escapeHtml(line)}</div>`;
-  }
-
-  fileViewerContent.innerHTML = `<code class="diff-view">${html}</code>`;
-}
-
-function renderHunksView(hunks, filePath, staged) {
-  let html = '';
-
-  hunks.forEach((hunk, index) => {
-    const headerMatch = hunk.header.match(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)?/);
-    const context = headerMatch && headerMatch[5] ? headerMatch[5].trim() : '';
-    const lineInfo = `Lines ${hunk.oldStart}-${hunk.oldStart + hunk.oldLines - 1}`;
-
-    let additions = 0, deletions = 0;
-    for (const line of hunk.lines) {
-      if (line.startsWith('+')) additions++;
-      else if (line.startsWith('-')) deletions++;
-    }
-
-    html += `
-      <div class="diff-hunk" data-hunk-index="${index}">
-        <div class="diff-hunk-toolbar">
-          <div class="diff-hunk-info">
-            <span class="diff-hunk-lines">${lineInfo}</span>
-            ${context ? `<span class="diff-hunk-context">${escapeHtml(context)}</span>` : ''}
-            <span class="diff-hunk-stats">
-              ${additions > 0 ? `<span class="diff-stat-add">+${additions}</span>` : ''}
-              ${deletions > 0 ? `<span class="diff-stat-del">-${deletions}</span>` : ''}
-            </span>
-          </div>
-          <button class="diff-hunk-revert-btn" data-hunk-index="${index}" title="Revert this change">
-            Revert
-          </button>
-        </div>
-        <code class="diff-hunk-code">`;
-
-    for (const line of hunk.lines) {
-      let className = 'diff-context';
-      if (line.startsWith('+')) className = 'diff-add';
-      else if (line.startsWith('-')) className = 'diff-del';
-      html += `<div class="${className}">${escapeHtml(line)}</div>`;
-    }
-
-    html += `</code></div>`;
-  });
-
-  fileViewerContent.innerHTML = `<div class="diff-hunks-view">${html}</div>`;
-
-  // Attach revert button listeners
-  fileViewerContent.querySelectorAll('.diff-hunk-revert-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      haptic();
-
-      const hunkIndex = parseInt(btn.dataset.hunkIndex, 10);
-      const hunk = hunks[hunkIndex];
-      await revertHunk(filePath, hunkIndex, hunk, staged);
-    });
-  });
-}
-
-async function revertHunk(filePath, hunkIndex, hunk, staged) {
-  const confirmed = await showDialog({
-    title: 'Revert this change?',
-    message: 'This will undo just this section of changes.',
-    danger: true,
-    confirmLabel: 'Revert'
-  });
-  if (!confirmed) return;
-
-  const res = await apiFetch(getGitApiUrl('revert-hunk'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: filePath, hunk, staged, cwd: rootPath })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Change reverted');
-
-  // Close the diff viewer and refresh git status
-  closeFileViewer();
-  loadGitStatus();
+  diffViewer?.renderDiff(data);
 }
 
 // === History Tab ===
