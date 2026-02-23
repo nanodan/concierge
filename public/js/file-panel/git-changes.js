@@ -27,6 +27,13 @@ let granularMode = localStorage.getItem('gitGranularMode') === 'true';
 let currentDiffData = null;  // Store current diff data for re-rendering
 let untrackedSelectionMode = false;
 let selectedUntracked = new Set();
+let diffNavEntries = [];
+let currentDiffIndex = -1;
+let diffTouchStartX = 0;
+let diffTouchStartY = 0;
+let diffTouchMoveX = 0;
+
+const DIFF_SWIPE_THRESHOLD = 50;
 
 /**
  * Initialize git changes elements
@@ -54,6 +61,8 @@ export function initGitChanges(elements) {
       toggleGranularMode();
     });
   }
+
+  setupDiffNavigationHandlers();
 }
 
 /**
@@ -880,6 +889,149 @@ async function handlePull() {
 
 // === Diff Viewer ===
 
+function buildDiffNavigationEntries() {
+  if (!gitStatus) return [];
+
+  const entries = [];
+  (gitStatus.staged || []).forEach((file) => {
+    entries.push({ path: file.path, staged: true });
+  });
+  (gitStatus.unstaged || []).forEach((file) => {
+    entries.push({ path: file.path, staged: false });
+  });
+  return entries;
+}
+
+function syncDiffNavigation(path, staged) {
+  diffNavEntries = buildDiffNavigationEntries();
+  currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path && entry.staged === staged);
+  if (currentDiffIndex === -1) {
+    currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path);
+  }
+  updateDiffNavigationUi();
+}
+
+function clearDiffNavigation() {
+  diffNavEntries = [];
+  currentDiffIndex = -1;
+
+  if (!fileViewer) return;
+  const nav = fileViewer.querySelector('.file-viewer-nav');
+  if (!nav) return;
+  nav.classList.remove('diff-nav-mode');
+}
+
+function updateDiffNavigationUi() {
+  if (!fileViewer) return;
+
+  const nav = fileViewer.querySelector('.file-viewer-nav');
+  if (!nav) return;
+
+  const prevBtn = nav.querySelector('.file-nav-prev');
+  const nextBtn = nav.querySelector('.file-nav-next');
+  const counter = nav.querySelector('.file-nav-counter');
+
+  if (!prevBtn || !nextBtn || !counter) return;
+
+  const total = diffNavEntries.length;
+  if (total <= 1 || currentDiffIndex < 0) {
+    nav.classList.add('hidden');
+    nav.classList.remove('diff-nav-mode');
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    counter.textContent = '';
+    return;
+  }
+
+  nav.classList.remove('hidden');
+  nav.classList.add('diff-nav-mode');
+  prevBtn.disabled = currentDiffIndex <= 0;
+  nextBtn.disabled = currentDiffIndex >= total - 1;
+  counter.textContent = `${currentDiffIndex + 1} / ${total}`;
+}
+
+function navigateDiff(direction) {
+  if (currentDiffIndex < 0 || diffNavEntries.length <= 1) return;
+
+  const nextIndex = currentDiffIndex + direction;
+  if (nextIndex < 0 || nextIndex >= diffNavEntries.length) return;
+
+  const nextEntry = diffNavEntries[nextIndex];
+  void viewDiff(nextEntry.path, nextEntry.staged);
+}
+
+function isDiffNavigationActive() {
+  return currentDiffIndex >= 0 && diffNavEntries.length > 0 && !!fileViewer && fileViewer.classList.contains('open');
+}
+
+function setupDiffNavigationHandlers() {
+  if (!fileViewer) return;
+
+  fileViewer.addEventListener('click', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    const btn = e.target.closest('.file-nav-btn');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    haptic();
+
+    if (btn.classList.contains('file-nav-prev')) {
+      navigateDiff(-1);
+    } else if (btn.classList.contains('file-nav-next')) {
+      navigateDiff(1);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      haptic();
+      navigateDiff(-1);
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      haptic();
+      navigateDiff(1);
+    }
+  }, true);
+
+  fileViewer.addEventListener('touchstart', (e) => {
+    if (!isDiffNavigationActive()) return;
+    diffTouchStartX = e.touches[0].clientX;
+    diffTouchStartY = e.touches[0].clientY;
+    diffTouchMoveX = diffTouchStartX;
+  }, { capture: true, passive: true });
+
+  fileViewer.addEventListener('touchmove', (e) => {
+    if (!isDiffNavigationActive()) return;
+    diffTouchMoveX = e.touches[0].clientX;
+  }, { capture: true, passive: true });
+
+  fileViewer.addEventListener('touchend', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    const deltaX = diffTouchMoveX - diffTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - diffTouchStartY;
+    if (Math.abs(deltaX) > DIFF_SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+      haptic();
+      if (deltaX > 0) {
+        navigateDiff(-1);
+      } else {
+        navigateDiff(1);
+      }
+    }
+
+    diffTouchStartX = 0;
+    diffTouchStartY = 0;
+    diffTouchMoveX = 0;
+  }, { capture: true, passive: true });
+}
+
 async function viewDiff(filePath, staged) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
@@ -888,6 +1040,7 @@ async function viewDiff(filePath, staged) {
   fileViewerName.textContent = filename;
   fileViewerContent.innerHTML = '<code>Loading diff...</code>';
   setViewingDiff({ path: filePath, staged });
+  syncDiffNavigation(filePath, staged);
 
   // Show viewer
   fileViewer.classList.remove('hidden');
@@ -943,6 +1096,8 @@ export function hideGranularToggle() {
     granularToggleBtn.classList.add('hidden');
   }
   currentDiffData = null;
+  clearDiffNavigation();
+  setViewingDiff(null);
 }
 
 /**
@@ -1103,6 +1258,7 @@ async function revertHunk(filePath, hunkIndex, hunk, staged) {
     fileViewer.classList.add('hidden');
     setViewingDiff(null);
     currentDiffData = null;
+    clearDiffNavigation();
   }, ANIMATION_DELAY_SHORT);
 
   loadGitStatus();

@@ -40,7 +40,8 @@
 
   /* Fullscreen mode - panel overlays content */
   .file-panel.fullscreen {
-    width: calc(100vw - 60px) !important;
+    width: 100vw !important;
+    border-left: none;
   }
 
   /* Adjust chat view when panel is open */
@@ -51,6 +52,12 @@
 
   #chat-view.file-panel-open #input-form {
     margin-right: var(--file-panel-width);
+  }
+
+  /* In fullscreen, the panel should not reserve layout space on chat content. */
+  #chat-view.file-panel-fullscreen #messages,
+  #chat-view.file-panel-fullscreen #input-form {
+    margin-right: 0;
   }
 }
 

@@ -268,7 +268,6 @@ let listView = null;
 let chatView = null;
 let filesBtn = null;
 let newChatHereBtn = null;
-let fileBrowserModal = null;
 let capabilitiesBtn = null;
 let capabilitiesModal = null;
 let memoryView = null;
@@ -332,7 +331,6 @@ export function initUI(elements) {
   chatView = elements.chatView;
   filesBtn = elements.filesBtn;
   newChatHereBtn = elements.newChatHereBtn;
-  fileBrowserModal = elements.fileBrowserModal;
   capabilitiesBtn = document.getElementById('capabilities-btn');
   capabilitiesModal = document.getElementById('capabilities-modal');
   memoryView = document.getElementById('memory-view');
@@ -411,15 +409,7 @@ export function initUI(elements) {
     messageInput: elements.messageInput,
   });
 
-  initFileBrowser({
-    fileBrowserModal: elements.fileBrowserModal,
-    fileBrowserClose: elements.fileBrowserClose,
-    fileBrowserUp: elements.fileBrowserUp,
-    fileBrowserCurrentPath: elements.fileBrowserCurrentPath,
-    fileBrowserList: elements.fileBrowserList,
-    fileBrowserUploadBtn: elements.fileBrowserUploadBtn,
-    fileBrowserFileInput: elements.fileBrowserFileInput,
-  });
+  initFileBrowser();
 
   initContextBar({
     contextBar: elements.contextBar,
@@ -1665,8 +1655,6 @@ export function setupEventListeners(createConversation) {
         closeFileViewer();
       } else if (isFilePanelOpen()) {
         closeFilePanel();
-      } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
-        closeFileBrowser();
       } else if (capabilitiesModal && !capabilitiesModal.classList.contains('hidden')) {
         closeCapabilitiesModal();
       } else if (!modalOverlay.classList.contains('hidden')) {

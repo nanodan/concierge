@@ -102,13 +102,6 @@ const toastContainer = document.getElementById('toast-container');
 const exportBtn = document.getElementById('export-btn');
 const filesBtn = document.getElementById('files-btn');
 const newChatHereBtn = document.getElementById('new-chat-here-btn');
-const fileBrowserModal = document.getElementById('file-browser-modal');
-const fileBrowserClose = document.getElementById('file-browser-close');
-const fileBrowserUp = document.getElementById('file-browser-up');
-const fileBrowserCurrentPath = document.getElementById('file-browser-current-path');
-const fileBrowserList = document.getElementById('file-browser-list');
-const fileBrowserUploadBtn = document.getElementById('file-browser-upload-btn');
-const fileBrowserFileInput = document.getElementById('file-browser-file-input');
 const generalFilesBtn = document.getElementById('general-files-btn');
 const msgActionPopup = document.getElementById('msg-action-popup');
 const reconnectBanner = document.getElementById('reconnect-banner');
@@ -338,13 +331,6 @@ initUI({
   exportBtn,
   filesBtn,
   newChatHereBtn,
-  fileBrowserModal,
-  fileBrowserClose,
-  fileBrowserUp,
-  fileBrowserCurrentPath,
-  fileBrowserList,
-  fileBrowserUploadBtn,
-  fileBrowserFileInput,
   generalFilesBtn,
   conversationList,
   pullIndicator,

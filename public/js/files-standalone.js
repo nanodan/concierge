@@ -1,10 +1,20 @@
 // --- Standalone Files View ---
 // Browse files and git changes without a conversation context
 
-import { escapeHtml } from './markdown.js';
+import { escapeHtml, renderMarkdown } from './markdown.js';
 import { haptic, showToast, showDialog, apiFetch, formatFileSize } from './utils.js';
 import { getFileIcon, IMAGE_EXTS } from './file-utils.js';
 import { ANIMATION_DELAY_SHORT, SLIDE_TRANSITION_DURATION, BUTTON_PROCESSING_TIMEOUT } from './constants.js';
+import { createCwdContext } from './explorer/context.js';
+import { sortEntries, deleteFilePath } from './explorer/files-core.js';
+import { createExplorerShell } from './explorer/shell.js';
+import { bindExplorerShellUi } from './explorer/shell-ui-bindings.js';
+import {
+  createExplorerIcons,
+  createExplorerFeedbackHandlers,
+  renderStandardEmpty,
+  renderStandardError,
+} from './explorer/shell-presets.js';
 
 // DOM elements
 let filesStandaloneView = null;
@@ -58,27 +68,26 @@ let unpushedCount = 0;
 let granularMode = localStorage.getItem('gitGranularMode') === 'true';
 let currentDiffData = null;
 let _viewingDiff = null;
+let explorerShell = null;
+let diffNavEntries = [];
+let currentDiffIndex = -1;
+let diffTouchStartX = 0;
+let diffTouchStartY = 0;
+let diffTouchMoveX = 0;
 
-// File navigation state
-let viewableFiles = []; // List of files that can be viewed (non-directories)
-let currentFileIndex = -1; // Index of currently viewed file
-let touchStartX = 0;
-let touchStartY = 0;
-let touchMoveX = 0;
-const SWIPE_THRESHOLD = 50; // Minimum swipe distance
+const DIFF_SWIPE_THRESHOLD = 50;
 
 // Icons (minimal set needed here)
-const ICONS = {
-  emptyFolder: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
-  error: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+const ICONS = createExplorerIcons({
   checkmark: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-};
+});
+const standaloneContext = createCwdContext(() => rootPath);
 
 /**
  * Get git API URL for standalone mode
  */
 function getGitApiUrl(endpoint) {
-  return `/api/git/${endpoint}?cwd=${encodeURIComponent(rootPath)}`;
+  return standaloneContext.getGitUrl(endpoint);
 }
 
 /**
@@ -98,6 +107,55 @@ export function initStandaloneFiles(elements) {
   fileViewerName = elements.fileViewerName;
   fileViewerClose = elements.fileViewerClose;
   fileViewerContent = elements.fileViewerContent;
+  const feedbackHandlers = createExplorerFeedbackHandlers({
+    haptic,
+    showDialog,
+    showToast,
+  });
+  explorerShell = createExplorerShell({
+    context: standaloneContext,
+    apiFetch,
+    treeContainer: fileTree,
+    viewer: fileViewer,
+    viewerName: fileViewerName,
+    viewerContent: fileViewerContent,
+    escapeHtml,
+    renderMarkdown,
+    formatFileSize,
+    getFileIcon,
+    imageExts: IMAGE_EXTS,
+    icons: ICONS,
+    animationDelayMs: ANIMATION_DELAY_SHORT,
+    closeDelayMs: SLIDE_TRANSITION_DURATION,
+    transformEntries: (entries) => sortEntries(entries || []),
+    onItemActivate: haptic,
+    onDirectoryPathChanged: (path) => {
+      currentPath = path;
+
+      if (pathEl) {
+        const displayPath = path.replace(/^\/(?:Users|home)\/[^/]+\/?/, '');
+        pathEl.textContent = displayPath || '/';
+      }
+      if (upBtn) {
+        upBtn.disabled = !path || path === rootPath;
+      }
+    },
+    renderEmpty: (container) => renderStandardEmpty(container, ICONS),
+    renderError: (container, message, esc) => renderStandardError(container, message, esc, ICONS, 'Failed to load directory'),
+    ...feedbackHandlers,
+    resolveUploadTargetPath: (path) => path,
+    onViewerWillOpen: () => {
+      if (granularToggleBtn) granularToggleBtn.classList.add('hidden');
+    },
+    onViewerWillClose: () => {
+      _viewingDiff = null;
+      currentDiffData = null;
+      clearDiffNavigation();
+      if (granularToggleBtn) granularToggleBtn.classList.add('hidden');
+    },
+    isNavigationBlocked: () => _viewingDiff,
+    onNavigateHaptic: haptic,
+  });
 
   // Get tab elements
   tabButtons = document.querySelectorAll('#sa-file-panel-tabs .file-panel-tab');
@@ -131,70 +189,34 @@ export function initStandaloneFiles(elements) {
     });
   }
 
-  // Up button
-  if (upBtn) {
-    upBtn.addEventListener('click', () => {
-      if (currentPath && currentPath !== rootPath) {
-        const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
-        loadDirectory(parent);
-      }
-    });
-  }
-
-  // Upload button
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => {
+  bindExplorerShellUi({
+    upButton: upBtn,
+    onUp: () => {
+      if (!currentPath || currentPath === rootPath) return;
+      const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
+      loadDirectory(parent);
+    },
+    uploadButton: uploadBtn,
+    fileInput,
+    onUploadFiles: (files) => {
       haptic();
-      fileInput.click();
-    });
-
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files.length) {
-        uploadFiles(fileInput.files);
-        fileInput.value = '';
-      }
-    });
-  }
-
-  // Drag and drop on files view
-  if (filesView) {
-    filesView.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      filesView.classList.add('drag-over');
-    });
-
-    filesView.addEventListener('dragleave', (e) => {
-      if (!filesView.contains(e.relatedTarget)) {
-        filesView.classList.remove('drag-over');
-      }
-    });
-
-    filesView.addEventListener('drop', (e) => {
-      e.preventDefault();
-      filesView.classList.remove('drag-over');
-      if (e.dataTransfer.files.length) {
-        uploadFiles(e.dataTransfer.files);
-      }
-    });
-  }
-
-  // File viewer close
-  if (fileViewerClose) {
-    fileViewerClose.addEventListener('click', () => {
+      uploadFiles(files);
+    },
+    dropZone: filesView,
+    onDropFiles: (files) => uploadFiles(files),
+    viewerCloseButton: fileViewerClose,
+    onViewerClose: () => {
       haptic();
       closeFileViewer();
-    });
-  }
+    },
+    viewer: fileViewer,
+    onViewerKeydown: (e) => explorerShell?.handleViewerKeydown(e),
+    onViewerTouchStart: (e) => explorerShell?.handleViewerTouchStart(e),
+    onViewerTouchMove: (e) => explorerShell?.handleViewerTouchMove(e),
+    onViewerTouchEnd: (e) => explorerShell?.handleViewerTouchEnd(e),
+  });
 
-  // File viewer navigation - keyboard
-  document.addEventListener('keydown', handleFileViewerKeydown);
-
-  // File viewer navigation - swipe gestures
-  if (fileViewer) {
-    fileViewer.addEventListener('touchstart', handleFileViewerTouchStart, { passive: true });
-    fileViewer.addEventListener('touchmove', handleFileViewerTouchMove, { passive: true });
-    fileViewer.addEventListener('touchend', handleFileViewerTouchEnd, { passive: true });
-  }
+  setupDiffNavigationHandlers();
 
   // Tab switching
   tabButtons.forEach(btn => {
@@ -343,149 +365,7 @@ function switchTab(tab) {
  */
 async function loadDirectory(path) {
   if (!fileTree) return;
-
-  currentPath = path;
-  fileTree.innerHTML = '<div class="file-tree-loading">Loading...</div>';
-
-  // Update path display (show relative path from root, no ~ prefix)
-  if (pathEl) {
-    const displayPath = path.replace(/^\/(?:Users|home)\/[^/]+\/?/, '');
-    pathEl.textContent = displayPath || '/';
-  }
-
-  // Update up button
-  if (upBtn) {
-    upBtn.disabled = !path || path === rootPath;
-  }
-
-  const res = await apiFetch(`/api/files?path=${encodeURIComponent(path)}`, { silent: true });
-  if (!res) {
-    fileTree.innerHTML = '<div class="file-tree-empty"><p>Failed to load directory</p></div>';
-    return;
-  }
-
-  const data = await res.json();
-  if (data.error) {
-    fileTree.innerHTML = `<div class="file-tree-empty"><p>${escapeHtml(data.error)}</p></div>`;
-    return;
-  }
-
-  renderFileTree(data.entries || []);
-}
-
-/**
- * Render the file tree
- */
-function renderFileTree(entries) {
-  // Reset viewable files list
-  viewableFiles = [];
-  currentFileIndex = -1;
-
-  if (!entries || entries.length === 0) {
-    fileTree.innerHTML = `
-      <div class="file-tree-empty">
-        ${ICONS.emptyFolder}
-        <p>Empty folder</p>
-      </div>`;
-    return;
-  }
-
-  // Sort: directories first, then by name
-  entries.sort((a, b) => {
-    if (a.type === 'directory' && b.type !== 'directory') return -1;
-    if (a.type !== 'directory' && b.type === 'directory') return 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-  });
-
-  // Build list of viewable (non-directory) files
-  viewableFiles = entries.filter(e => e.type !== 'directory').map(e => e.path);
-
-  fileTree.innerHTML = entries.map(entry => {
-    const isDir = entry.type === 'directory';
-    const ext = entry.name.split('.').pop()?.toLowerCase();
-    const isImage = !isDir && IMAGE_EXTS.has(ext);
-
-    // For images, show thumbnail
-    if (isImage) {
-      const imgUrl = `/api/files/download?path=${encodeURIComponent(entry.path)}&inline=true`;
-      return `
-        <div class="file-tree-item" data-path="${escapeHtml(entry.path)}" data-type="${entry.type}">
-          <div class="file-tree-icon thumbnail"><img src="${imgUrl}" alt="" loading="lazy"></div>
-          <span class="file-tree-name">${escapeHtml(entry.name)}</span>
-          ${entry.size !== undefined ? `<span class="file-tree-meta">${formatFileSize(entry.size)}</span>` : ''}
-          <button class="file-tree-delete-btn" data-path="${escapeHtml(entry.path)}" title="Delete">\u00d7</button>
-        </div>`;
-    }
-
-    // Get icon using the proper API
-    const iconInfo = getFileIcon({ type: entry.type, ext });
-
-    return `
-      <div class="file-tree-item" data-path="${escapeHtml(entry.path)}" data-type="${entry.type}">
-        <span class="file-tree-icon ${iconInfo.class}">${iconInfo.svg}</span>
-        <span class="file-tree-name">${escapeHtml(entry.name)}</span>
-        ${!isDir && entry.size !== undefined ? `<span class="file-tree-meta">${formatFileSize(entry.size)}</span>` : ''}
-        <button class="file-tree-delete-btn" data-path="${escapeHtml(entry.path)}" title="Delete">\u00d7</button>
-      </div>`;
-  }).join('');
-
-  // Attach click handlers
-  fileTree.querySelectorAll('.file-tree-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      // Don't navigate if clicking delete button
-      if (e.target.closest('.file-tree-delete-btn')) return;
-      haptic();
-      const itemPath = item.dataset.path;
-      const type = item.dataset.type;
-
-      if (type === 'directory') {
-        loadDirectory(itemPath);
-      } else {
-        viewFile(itemPath);
-      }
-    });
-  });
-
-  // Attach delete handlers
-  fileTree.querySelectorAll('.file-tree-delete-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const filePath = btn.dataset.path;
-      const filename = filePath.split('/').pop();
-      haptic();
-
-      const confirmed = await showDialog({
-        title: 'Delete file?',
-        message: `Delete "${filename}"? This cannot be undone.`,
-        danger: true,
-        confirmLabel: 'Delete'
-      });
-
-      if (confirmed) {
-        await deleteFile(filePath);
-      }
-    });
-  });
-}
-
-/**
- * Delete a file or directory
- */
-async function deleteFile(filePath) {
-  const res = await apiFetch(`/api/files?path=${encodeURIComponent(filePath)}`, {
-    method: 'DELETE'
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    return;
-  }
-
-  showToast('Deleted');
-  loadDirectory(currentPath);
+  await explorerShell?.loadDirectory(path);
 }
 
 /**
@@ -493,16 +373,7 @@ async function deleteFile(filePath) {
  */
 async function uploadFiles(files) {
   if (!currentPath) return;
-
-  for (const file of files) {
-    const url = `/api/files/upload?path=${encodeURIComponent(currentPath)}&filename=${encodeURIComponent(file.name)}`;
-    const resp = await apiFetch(url, { method: 'POST', body: file });
-    if (!resp) continue;
-    showToast(`Uploaded ${file.name}`);
-  }
-
-  // Refresh directory to show new files
-  loadDirectory(currentPath);
+  await explorerShell?.uploadFiles(files);
 }
 
 // === Changes Tab ===
@@ -1015,14 +886,9 @@ async function discardChanges(paths) {
 async function deleteUntrackedFile(relativePath) {
   // Build full path from rootPath + relativePath
   const fullPath = `${rootPath}/${relativePath}`;
-  const res = await apiFetch(`/api/files?path=${encodeURIComponent(fullPath)}`, {
-    method: 'DELETE'
-  });
-  if (!res) return;
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
+  const result = await deleteFilePath(fullPath, apiFetch);
+  if (!result.ok) {
+    showToast(result.error || 'Delete failed', { variant: 'error' });
     return;
   }
 
@@ -1117,11 +983,155 @@ async function handlePull() {
 
 // === Diff Viewer ===
 
+function buildDiffNavigationEntries() {
+  if (!gitStatus) return [];
+
+  const entries = [];
+  (gitStatus.staged || []).forEach((file) => {
+    entries.push({ path: file.path, staged: true });
+  });
+  (gitStatus.unstaged || []).forEach((file) => {
+    entries.push({ path: file.path, staged: false });
+  });
+  return entries;
+}
+
+function syncDiffNavigation(path, staged) {
+  diffNavEntries = buildDiffNavigationEntries();
+  currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path && entry.staged === staged);
+  if (currentDiffIndex === -1) {
+    currentDiffIndex = diffNavEntries.findIndex((entry) => entry.path === path);
+  }
+  updateDiffNavigationUi();
+}
+
+function clearDiffNavigation() {
+  diffNavEntries = [];
+  currentDiffIndex = -1;
+
+  if (!fileViewer) return;
+  const nav = fileViewer.querySelector('.file-viewer-nav');
+  if (!nav) return;
+  nav.classList.remove('diff-nav-mode');
+}
+
+function updateDiffNavigationUi() {
+  if (!fileViewer) return;
+
+  const nav = fileViewer.querySelector('.file-viewer-nav');
+  if (!nav) return;
+
+  const prevBtn = nav.querySelector('.file-nav-prev');
+  const nextBtn = nav.querySelector('.file-nav-next');
+  const counter = nav.querySelector('.file-nav-counter');
+
+  if (!prevBtn || !nextBtn || !counter) return;
+
+  const total = diffNavEntries.length;
+  if (total <= 1 || currentDiffIndex < 0) {
+    nav.classList.add('hidden');
+    nav.classList.remove('diff-nav-mode');
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    counter.textContent = '';
+    return;
+  }
+
+  nav.classList.remove('hidden');
+  nav.classList.add('diff-nav-mode');
+  prevBtn.disabled = currentDiffIndex <= 0;
+  nextBtn.disabled = currentDiffIndex >= total - 1;
+  counter.textContent = `${currentDiffIndex + 1} / ${total}`;
+}
+
+function navigateDiff(direction) {
+  if (currentDiffIndex < 0 || diffNavEntries.length <= 1) return;
+
+  const nextIndex = currentDiffIndex + direction;
+  if (nextIndex < 0 || nextIndex >= diffNavEntries.length) return;
+
+  const nextEntry = diffNavEntries[nextIndex];
+  void viewDiff(nextEntry.path, nextEntry.staged);
+}
+
+function isDiffNavigationActive() {
+  return currentDiffIndex >= 0 && diffNavEntries.length > 0 && !!fileViewer && fileViewer.classList.contains('open');
+}
+
+function setupDiffNavigationHandlers() {
+  if (!fileViewer) return;
+
+  fileViewer.addEventListener('click', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    const btn = e.target.closest('.file-nav-btn');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    haptic();
+
+    if (btn.classList.contains('file-nav-prev')) {
+      navigateDiff(-1);
+    } else if (btn.classList.contains('file-nav-next')) {
+      navigateDiff(1);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      haptic();
+      navigateDiff(-1);
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      haptic();
+      navigateDiff(1);
+    }
+  }, true);
+
+  fileViewer.addEventListener('touchstart', (e) => {
+    if (!isDiffNavigationActive()) return;
+    diffTouchStartX = e.touches[0].clientX;
+    diffTouchStartY = e.touches[0].clientY;
+    diffTouchMoveX = diffTouchStartX;
+  }, { capture: true, passive: true });
+
+  fileViewer.addEventListener('touchmove', (e) => {
+    if (!isDiffNavigationActive()) return;
+    diffTouchMoveX = e.touches[0].clientX;
+  }, { capture: true, passive: true });
+
+  fileViewer.addEventListener('touchend', (e) => {
+    if (!isDiffNavigationActive()) return;
+
+    const deltaX = diffTouchMoveX - diffTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - diffTouchStartY;
+    if (Math.abs(deltaX) > DIFF_SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+      haptic();
+      if (deltaX > 0) {
+        navigateDiff(-1);
+      } else {
+        navigateDiff(1);
+      }
+    }
+
+    diffTouchStartX = 0;
+    diffTouchStartY = 0;
+    diffTouchMoveX = 0;
+  }, { capture: true, passive: true });
+}
+
 async function viewDiff(filePath, staged) {
   const filename = filePath.split('/').pop();
   fileViewerName.textContent = filename;
   fileViewerContent.innerHTML = '<code>Loading diff...</code>';
   _viewingDiff = { path: filePath, staged };
+  syncDiffNavigation(filePath, staged);
 
   // Show viewer
   fileViewer.classList.remove('hidden');
@@ -1684,211 +1694,10 @@ async function viewCommitDiff(hash) {
 
 // === File Viewer ===
 
-async function viewFile(filePath) {
-  if (!fileViewer) return;
-
-  // Hide granular toggle for file views
-  if (granularToggleBtn) {
-    granularToggleBtn.classList.add('hidden');
-  }
-
-  // Track current file index for navigation
-  currentFileIndex = viewableFiles.indexOf(filePath);
-
-  const filename = filePath.split('/').pop();
-  fileViewerName.textContent = filename;
-  fileViewerContent.innerHTML = '<code>Loading...</code>';
-
-  // Update navigation UI
-  updateFileNavigation();
-
-  // Show viewer
-  fileViewer.classList.remove('hidden');
-  setTimeout(() => fileViewer.classList.add('open'), ANIMATION_DELAY_SHORT);
-
-  // Check if it's an image
-  const ext = filename.split('.').pop()?.toLowerCase();
-  if (IMAGE_EXTS.has(ext)) {
-    const imgUrl = `/api/files/download?path=${encodeURIComponent(filePath)}&inline=true`;
-    fileViewerContent.innerHTML = `
-      <div class="file-viewer-preview">
-        <img class="file-viewer-image" src="${imgUrl}" alt="${escapeHtml(filename)}">
-      </div>`;
-    return;
-  }
-
-  // Fetch file content
-  const res = await apiFetch(`/api/files/download?path=${encodeURIComponent(filePath)}&inline=true`, { silent: true });
-  if (!res) {
-    fileViewerContent.innerHTML = '<div class="file-viewer-error"><p>Failed to load file</p></div>';
-    return;
-  }
-
-  const contentType = res.headers.get('content-type') || '';
-
-  // Binary file
-  if (!contentType.includes('text') && !contentType.includes('json') && !contentType.includes('javascript')) {
-    const downloadUrl = `/api/files/download?path=${encodeURIComponent(filePath)}`;
-    fileViewerContent.innerHTML = `
-      <div class="file-viewer-error">
-        <p>Binary file</p>
-        <a href="${downloadUrl}" class="file-viewer-open-btn" download="${escapeHtml(filename)}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Download
-        </a>
-      </div>`;
-    return;
-  }
-
-  // Text file
-  const text = await res.text();
-  fileViewerContent.innerHTML = `<code>${escapeHtml(text)}</code>`;
-}
-
-// === File Navigation ===
-
-/**
- * Update navigation UI (prev/next buttons, counter)
- */
-function updateFileNavigation() {
-  // Get or create navigation container
-  let navContainer = fileViewer.querySelector('.file-viewer-nav');
-  if (!navContainer) {
-    navContainer = document.createElement('div');
-    navContainer.className = 'file-viewer-nav';
-    navContainer.innerHTML = `
-      <button class="file-nav-btn file-nav-prev" aria-label="Previous file">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <span class="file-nav-counter"></span>
-      <button class="file-nav-btn file-nav-next" aria-label="Next file">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-    `;
-    // Insert after the header
-    const header = fileViewer.querySelector('.file-viewer-header');
-    if (header) {
-      header.after(navContainer);
-    }
-
-    // Attach click handlers
-    navContainer.querySelector('.file-nav-prev').addEventListener('click', (e) => {
-      e.stopPropagation();
-      haptic();
-      navigateFile(-1);
-    });
-    navContainer.querySelector('.file-nav-next').addEventListener('click', (e) => {
-      e.stopPropagation();
-      haptic();
-      navigateFile(1);
-    });
-  }
-
-  // Update state
-  const hasPrev = currentFileIndex > 0;
-  const hasNext = currentFileIndex < viewableFiles.length - 1;
-  const total = viewableFiles.length;
-
-  navContainer.querySelector('.file-nav-prev').disabled = !hasPrev;
-  navContainer.querySelector('.file-nav-next').disabled = !hasNext;
-  navContainer.querySelector('.file-nav-counter').textContent = total > 1 ? `${currentFileIndex + 1} / ${total}` : '';
-
-  // Show/hide based on whether there are multiple files
-  navContainer.classList.toggle('hidden', total <= 1);
-}
-
-/**
- * Navigate to adjacent file
- * @param {number} direction - -1 for previous, 1 for next
- */
-function navigateFile(direction) {
-  const newIndex = currentFileIndex + direction;
-  if (newIndex < 0 || newIndex >= viewableFiles.length) return;
-
-  const newPath = viewableFiles[newIndex];
-  viewFile(newPath);
-}
-
-/**
- * Handle keyboard navigation in file viewer
- */
-function handleFileViewerKeydown(e) {
-  if (!fileViewer || fileViewer.classList.contains('hidden')) return;
-  if (_viewingDiff) return; // Don't navigate during diff view
-
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    navigateFile(-1);
-  } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-    e.preventDefault();
-    navigateFile(1);
-  }
-}
-
-/**
- * Handle touch start for swipe navigation
- */
-function handleFileViewerTouchStart(e) {
-  if (_viewingDiff) return;
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-  touchMoveX = touchStartX;
-}
-
-/**
- * Handle touch move for swipe navigation
- */
-function handleFileViewerTouchMove(e) {
-  if (_viewingDiff) return;
-  touchMoveX = e.touches[0].clientX;
-}
-
-/**
- * Handle touch end for swipe navigation
- */
-function handleFileViewerTouchEnd(e) {
-  if (_viewingDiff) return;
-  if (!fileViewer || fileViewer.classList.contains('hidden')) return;
-
-  const deltaX = touchMoveX - touchStartX;
-  const deltaY = e.changedTouches[0].clientY - touchStartY;
-
-  // Only trigger if horizontal swipe is greater than vertical (avoid scroll interference)
-  if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
-    haptic();
-    if (deltaX > 0) {
-      // Swipe right = previous
-      navigateFile(-1);
-    } else {
-      // Swipe left = next
-      navigateFile(1);
-    }
-  }
-
-  touchStartX = 0;
-  touchStartY = 0;
-  touchMoveX = 0;
-}
-
 /**
  * Close the file viewer
  */
 function closeFileViewer() {
   if (!fileViewer) return;
-
-  fileViewer.classList.remove('open');
-  _viewingDiff = null;
-  currentDiffData = null;
-  currentFileIndex = -1;
-  if (granularToggleBtn) {
-    granularToggleBtn.classList.add('hidden');
-  }
-  setTimeout(() => {
-    fileViewer.classList.add('hidden');
-    fileViewerContent.innerHTML = '<code></code>';
-  }, SLIDE_TRANSITION_DURATION);
+  explorerShell?.closeViewer();
 }

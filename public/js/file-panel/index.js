@@ -334,6 +334,7 @@ export function closeFilePanel() {
   const distanceFromBottom = messages ? messages.scrollHeight - messages.scrollTop : 0;
 
   chatView.classList.remove('file-panel-open');
+  chatView.classList.remove('file-panel-fullscreen');
 
   // Restore scroll position after layout change
   if (messages && !isMobile()) {
@@ -352,7 +353,8 @@ export function closeFilePanel() {
  * Toggle fullscreen mode for the file panel
  */
 function toggleFullscreen() {
-  filePanel.classList.toggle('fullscreen');
+  const isFullscreen = filePanel.classList.toggle('fullscreen');
+  chatView.classList.toggle('file-panel-fullscreen', isFullscreen);
 }
 
 /**
