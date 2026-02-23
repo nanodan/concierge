@@ -6,8 +6,9 @@ import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
 import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
 import * as state from './state.js';
-import { toggleFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
+import { toggleFilePanel, openFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
 import { isBranchesViewOpen, closeBranchesView } from './branches.js';
+import { openStandaloneFiles, closeStandaloneFiles } from './files-standalone.js';
 
 // Import UI submodules
 import {
@@ -61,13 +62,6 @@ import {
 } from './ui/capabilities.js';
 
 import {
-  initFileBrowser,
-  openFileBrowser,
-  closeFileBrowser,
-  setupFileBrowserEventListeners,
-} from './ui/file-browser.js';
-
-import {
   initContextBar,
   setupContextBarEventListeners,
   updateContextBar,
@@ -82,8 +76,6 @@ export {
   updateMemoryIndicator,
   openCapabilitiesModal,
   closeCapabilitiesModal,
-  openFileBrowser,
-  closeFileBrowser,
   updateContextBar,
   calculateCumulativeTokens,
   showCompressionPrompt,
@@ -91,6 +83,43 @@ export {
 
 // Re-export memory API functions
 export { fetchMemories, createMemory, updateMemoryAPI, deleteMemoryAPI } from './ui/memory.js';
+
+// --- File browser mode routing ---
+let fileBrowserMode = 'conversation';
+
+function isStandaloneVisible() {
+  const view = document.getElementById('files-standalone-view');
+  return !!view && view.classList.contains('slide-in');
+}
+
+export function openFileBrowser(mode = 'conversation') {
+  fileBrowserMode = mode;
+
+  if (mode === 'general') {
+    openStandaloneFiles('');
+    return;
+  }
+
+  openFilePanel();
+}
+
+export function closeFileBrowser() {
+  if (fileBrowserMode === 'general' || isStandaloneVisible()) {
+    closeStandaloneFiles();
+    return;
+  }
+
+  closeFilePanel();
+}
+
+function setupFileBrowserEventListeners(generalFilesBtn, hapticFn = () => {}) {
+  if (!generalFilesBtn) return;
+
+  generalFilesBtn.addEventListener('click', () => {
+    hapticFn();
+    openFileBrowser('general');
+  });
+}
 
 // --- Bell easter egg quotes by theme ---
 const bellQuotes = {
@@ -268,7 +297,6 @@ let listView = null;
 let chatView = null;
 let filesBtn = null;
 let newChatHereBtn = null;
-let fileBrowserModal = null;
 let capabilitiesBtn = null;
 let capabilitiesModal = null;
 let memoryView = null;
@@ -332,7 +360,6 @@ export function initUI(elements) {
   chatView = elements.chatView;
   filesBtn = elements.filesBtn;
   newChatHereBtn = elements.newChatHereBtn;
-  fileBrowserModal = elements.fileBrowserModal;
   capabilitiesBtn = document.getElementById('capabilities-btn');
   capabilitiesModal = document.getElementById('capabilities-modal');
   memoryView = document.getElementById('memory-view');
@@ -409,16 +436,6 @@ export function initUI(elements) {
 
   initCapabilities({
     messageInput: elements.messageInput,
-  });
-
-  initFileBrowser({
-    fileBrowserModal: elements.fileBrowserModal,
-    fileBrowserClose: elements.fileBrowserClose,
-    fileBrowserUp: elements.fileBrowserUp,
-    fileBrowserCurrentPath: elements.fileBrowserCurrentPath,
-    fileBrowserList: elements.fileBrowserList,
-    fileBrowserUploadBtn: elements.fileBrowserUploadBtn,
-    fileBrowserFileInput: elements.fileBrowserFileInput,
   });
 
   initContextBar({
@@ -1665,8 +1682,6 @@ export function setupEventListeners(createConversation) {
         closeFileViewer();
       } else if (isFilePanelOpen()) {
         closeFilePanel();
-      } else if (fileBrowserModal && !fileBrowserModal.classList.contains('hidden')) {
-        closeFileBrowser();
       } else if (capabilitiesModal && !capabilitiesModal.classList.contains('hidden')) {
         closeCapabilitiesModal();
       } else if (!modalOverlay.classList.contains('hidden')) {
