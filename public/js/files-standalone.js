@@ -11,7 +11,7 @@ import { createExplorerShell } from './explorer/shell.js';
 import { bindExplorerShellUi } from './explorer/shell-ui-bindings.js';
 import { createGitDiffViewer } from './explorer/git-diff-viewer.js';
 import { createGitHistoryController } from './explorer/git-history.js';
-import { renderStashSection as renderSharedStashSection, bindStashListeners } from './explorer/git-stash.js';
+import { createGitChangesController } from './explorer/git-changes-controller.js';
 import { createGitStashActions } from './explorer/git-stash-actions.js';
 import {
   createExplorerIcons,
@@ -65,8 +65,7 @@ let granularToggleBtn = null;
 let currentPath = '';
 let rootPath = '';
 let _currentTab = 'files';
-let gitStatus = null;
-let stashes = null;
+let changesController = null;
 let historyController = null;
 let _viewingDiff = null;
 let explorerShell = null;
@@ -113,7 +112,7 @@ export function initStandaloneFiles(elements) {
     showDialog,
     showToast,
     animationDelayMs: ANIMATION_DELAY_SHORT,
-    getNavigationStatus: () => gitStatus,
+    getNavigationStatus: () => changesController?.getGitStatus(),
     setViewingDiff: (diff) => { _viewingDiff = diff; },
     fetchDiff: async (filePath, staged) => {
       const res = await apiFetch(getGitApiUrl('diff'), {
@@ -323,6 +322,41 @@ export function initStandaloneFiles(elements) {
     },
   });
 
+  changesController = createGitChangesController({
+    changesList,
+    commitForm,
+    commitMessage,
+    commitBtn,
+    branchSelector,
+    aheadBehindBadge,
+    pushBtn,
+    pullBtn,
+    stashBtn,
+    escapeHtml,
+    haptic,
+    showDialog,
+    showToast,
+    buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
+    icons: {
+      error: ICONS.error,
+      checkmark: ICONS.checkmark,
+    },
+    onViewDiff: (filePath, staged) => {
+      void viewDiff(filePath, staged);
+    },
+    requestStatus,
+    requestStashes,
+    requestStage,
+    requestUnstage,
+    requestDiscard,
+    requestDeleteUntracked,
+    requestCommit,
+    requestPush,
+    requestPull,
+    stashActions,
+  });
+  changesController.bindActionListeners();
+
   // Granular toggle
   granularToggleBtn = document.getElementById('sa-diff-granular-toggle');
 
@@ -375,22 +409,6 @@ export function initStandaloneFiles(elements) {
       haptic();
       loadGitStatus();
     });
-  }
-
-  if (commitBtn) {
-    commitBtn.addEventListener('click', handleCommit);
-  }
-
-  if (pushBtn) {
-    pushBtn.addEventListener('click', handlePush);
-  }
-
-  if (pullBtn) {
-    pullBtn.addEventListener('click', handlePull);
-  }
-
-  if (stashBtn) {
-    stashBtn.addEventListener('click', () => stashActions?.handleStash());
   }
 
   // Escape key to close
@@ -512,469 +530,87 @@ async function uploadFiles(files) {
 
 // === Changes Tab ===
 
-/**
- * Load git status from server
- */
 async function loadGitStatus() {
-  if (changesList) {
-    changesList.innerHTML = '<div class="changes-loading">Loading...</div>';
-  }
-  if (commitForm) {
-    commitForm.classList.add('hidden');
-  }
+  await changesController?.loadStatus();
+}
 
+async function requestStatus() {
   const res = await apiFetch(getGitApiUrl('status'), { silent: true });
-  if (!res) {
-    if (changesList) {
-      changesList.innerHTML = '<div class="changes-empty">Failed to load git status</div>';
-    }
-    return;
-  }
-  gitStatus = await res.json();
-
-  if (!gitStatus.isRepo) {
-    renderNotARepo();
-    return;
-  }
-
-  // Load stashes in parallel with rendering
-  loadStashes();
-  renderChangesView();
+  if (!res) return { ok: false, error: 'Failed to load git status' };
+  return { ok: true, data: await res.json() };
 }
 
-/**
- * Load stashes from server
- */
-async function loadStashes() {
+async function requestStashes() {
   const res = await apiFetch(getGitApiUrl('stash'), { silent: true });
-  if (!res) {
-    stashes = [];
-    return;
-  }
-  const data = await res.json();
-  stashes = data.stashes || [];
-
-  // Re-render to show stashes
-  if (gitStatus && gitStatus.isRepo) {
-    renderChangesView();
-  }
+  if (!res) return { ok: true, data: { stashes: [] } };
+  return { ok: true, data: await res.json() };
 }
 
-/**
- * Render not a git repo message
- */
-function renderNotARepo() {
-  if (changesList) {
-    changesList.innerHTML = `
-      <div class="changes-empty">
-        ${ICONS.error}
-        <p>Not a git repository</p>
-      </div>`;
-  }
-  if (branchSelector) branchSelector.classList.add('hidden');
-  if (stashBtn) stashBtn.disabled = true;
-  if (pushBtn) pushBtn.disabled = true;
-  if (pullBtn) pullBtn.disabled = true;
-}
-
-/**
- * Render the changes view
- */
-function renderChangesView() {
-  if (!gitStatus || !changesList) return;
-
-  const { staged, unstaged, untracked, branch, ahead, behind, hasOrigin, hasUpstream } = gitStatus;
-  const hasChanges = staged.length > 0 || unstaged.length > 0 || untracked.length > 0;
-
-  // Update branch selector
-  if (branchSelector) {
-    branchSelector.classList.remove('hidden');
-    branchSelector.querySelector('.branch-name').textContent = branch;
-  }
-
-  // Update ahead/behind badge
-  if (aheadBehindBadge) {
-    if (hasUpstream && (ahead > 0 || behind > 0)) {
-      let badgeHtml = '';
-      if (ahead > 0) badgeHtml += `<span class="ahead">\u2191${ahead}</span>`;
-      if (behind > 0) badgeHtml += `<span class="behind">\u2193${behind}</span>`;
-      aheadBehindBadge.innerHTML = badgeHtml;
-      aheadBehindBadge.classList.remove('hidden');
-    } else {
-      aheadBehindBadge.classList.add('hidden');
-    }
-  }
-
-  // Update push/pull buttons
-  if (pushBtn) {
-    const canPush = hasOrigin && (!hasUpstream || ahead > 0);
-    pushBtn.disabled = !canPush;
-    pushBtn.title = !hasUpstream && hasOrigin ? 'Push and set upstream' :
-      ahead > 0 ? `Push ${ahead} commit${ahead > 1 ? 's' : ''} to remote` : 'Push to remote';
-  }
-  if (pullBtn) {
-    pullBtn.disabled = !hasUpstream || behind === 0;
-    pullBtn.title = behind > 0 ? `Pull ${behind} commit${behind > 1 ? 's' : ''} from remote` : 'Pull from remote';
-  }
-
-  // Update stash button
-  if (stashBtn) {
-    stashBtn.disabled = !hasChanges;
-    stashBtn.title = hasChanges ? 'Stash changes' : 'No changes to stash';
-  }
-
-  if (!hasChanges) {
-    let cleanHtml = `
-      <div class="changes-empty">
-        ${ICONS.checkmark}
-        <p>Working tree clean</p>
-      </div>`;
-    if (stashes && stashes.length > 0) {
-      cleanHtml += renderStashSection();
-    }
-    changesList.innerHTML = cleanHtml;
-    attachStashListeners();
-    if (commitForm) commitForm.classList.add('hidden');
-    return;
-  }
-
-  let html = '';
-
-  // Staged section
-  if (staged.length > 0) {
-    html += `
-      <div class="changes-section">
-        <div class="changes-section-header">
-          <span class="changes-section-title">Staged Changes</span>
-          <span class="changes-section-count">${staged.length}</span>
-          <button class="changes-section-btn" data-action="unstage-all" title="Unstage All">\u2212 All</button>
-        </div>
-        ${staged.map(f => renderChangeItem(f, 'staged')).join('')}
-      </div>`;
-  }
-
-  // Unstaged section
-  if (unstaged.length > 0) {
-    html += `
-      <div class="changes-section">
-        <div class="changes-section-header">
-          <span class="changes-section-title">Changes</span>
-          <span class="changes-section-count">${unstaged.length}</span>
-          <button class="changes-section-btn" data-action="stage-all-unstaged" title="Stage All">+ All</button>
-        </div>
-        ${unstaged.map(f => renderChangeItem(f, 'unstaged')).join('')}
-      </div>`;
-  }
-
-  // Untracked section
-  if (untracked.length > 0) {
-    html += `
-      <div class="changes-section">
-        <div class="changes-section-header">
-          <span class="changes-section-title">Untracked Files</span>
-          <span class="changes-section-count">${untracked.length}</span>
-          <button class="changes-section-btn" data-action="stage-all-untracked" title="Stage All">+ All</button>
-        </div>
-        ${untracked.map(f => renderChangeItem({ ...f, status: '?' }, 'untracked')).join('')}
-      </div>`;
-  }
-
-  // Stash section
-  if (stashes && stashes.length > 0) {
-    html += renderStashSection();
-  }
-
-  changesList.innerHTML = html;
-  attachChangeItemListeners();
-  attachStashListeners();
-
-  // Show commit form if there are staged changes
-  if (commitForm) {
-    commitForm.classList.toggle('hidden', staged.length === 0);
-  }
-}
-
-/**
- * Render a change item
- */
-function renderChangeItem(file, type) {
-  const statusLabels = {
-    'M': 'modified', 'A': 'added', 'D': 'deleted',
-    'R': 'renamed', 'C': 'copied', '?': 'untracked'
-  };
-  const statusLabel = statusLabels[file.status] || file.status;
-  const normalizedPath = file.path.replace(/\/$/, '');
-  const filename = normalizedPath.split('/').pop() + (file.path.endsWith('/') ? '/' : '');
-
-  return `
-    <div class="changes-item" data-path="${escapeHtml(file.path)}" data-type="${type}">
-      <span class="status-badge status-${file.status.toLowerCase()}" title="${statusLabel}">${file.status}</span>
-      <span class="changes-item-name" title="${escapeHtml(file.path)}">${escapeHtml(filename)}</span>
-      <span class="changes-item-path">${escapeHtml(file.path)}</span>
-      <div class="changes-item-actions">
-        ${type === 'staged' ? `<button class="changes-action-btn" data-action="unstage" title="Unstage">\u2212</button>` : ''}
-        ${type === 'unstaged' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
-        ${type === 'unstaged' ? `<button class="changes-action-btn danger" data-action="discard" title="Discard">\u00d7</button>` : ''}
-        ${type === 'untracked' ? `<button class="changes-action-btn" data-action="stage" title="Stage">+</button>` : ''}
-        ${type === 'untracked' ? `<button class="changes-action-btn danger" data-action="delete" title="Delete">\u00d7</button>` : ''}
-      </div>
-    </div>`;
-}
-
-/**
- * Attach change item event listeners
- */
-function attachChangeItemListeners() {
-  if (!changesList) return;
-
-  // Click on item to view diff
-  changesList.querySelectorAll('.changes-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.changes-action-btn')) return;
-      const filePath = item.dataset.path;
-      const type = item.dataset.type;
-      if (type !== 'untracked') {
-        viewDiff(filePath, type === 'staged');
-      }
-    });
-  });
-
-  // Action buttons
-  changesList.querySelectorAll('.changes-action-btn').forEach(btn => {
-    const handleAction = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (btn.dataset.processing === 'true') return;
-      btn.dataset.processing = 'true';
-      setTimeout(() => { btn.dataset.processing = 'false'; }, BUTTON_PROCESSING_TIMEOUT);
-
-      const item = btn.closest('.changes-item');
-      const filePath = item.dataset.path;
-      const action = btn.dataset.action;
-      haptic();
-
-      if (action === 'stage') {
-        await stageFiles([filePath]);
-      } else if (action === 'unstage') {
-        await unstageFiles([filePath]);
-      } else if (action === 'discard') {
-        const confirmed = await showDialog({
-          title: 'Discard changes?',
-          message: `Discard all changes to ${filePath}?`,
-          danger: true,
-          confirmLabel: 'Discard'
-        });
-        if (confirmed) {
-          await discardChanges([filePath]);
-        }
-      } else if (action === 'delete') {
-        const filename = filePath.split('/').pop();
-        const confirmed = await showDialog({
-          title: 'Delete file?',
-          message: `Delete "${filename}"? This cannot be undone.`,
-          danger: true,
-          confirmLabel: 'Delete'
-        });
-        if (confirmed) {
-          await deleteUntrackedFile(filePath);
-        }
-      }
-    };
-
-    btn.addEventListener('click', handleAction);
-    btn.addEventListener('touchend', handleAction);
-  });
-
-  // Section buttons
-  changesList.querySelectorAll('.changes-section-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      haptic();
-
-      const action = btn.dataset.action;
-      if (action === 'unstage-all' && gitStatus?.staged) {
-        await unstageFiles(gitStatus.staged.map(f => f.path));
-      } else if (action === 'stage-all-unstaged' && gitStatus?.unstaged) {
-        await stageFiles(gitStatus.unstaged.map(f => f.path));
-      } else if (action === 'stage-all-untracked' && gitStatus?.untracked) {
-        await stageFiles(gitStatus.untracked.map(f => f.path));
-      }
-    });
-  });
-}
-
-// === Stash Functions ===
-
-function renderStashSection() {
-  return renderSharedStashSection(stashes, escapeHtml);
-}
-
-function attachStashListeners() {
-  bindStashListeners({
-    changesList,
-    haptic,
-    showDialog,
-    buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
-    onPop: (index) => stashActions?.handleStashPop(index),
-    onApply: (index) => stashActions?.handleStashApply(index),
-    onDrop: (index) => stashActions?.handleStashDrop(index),
-  });
-}
-
-// === Git Operations ===
-
-async function stageFiles(paths) {
+async function requestStage(paths) {
   const res = await apiFetch(getGitApiUrl('stage'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ paths, cwd: rootPath }),
   });
-  if (!res) return;
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    return;
-  }
-
-  showToast('Staged');
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to stage files' };
+  return { ok: true, data: await res.json() };
 }
 
-async function unstageFiles(paths) {
+async function requestUnstage(paths) {
   const res = await apiFetch(getGitApiUrl('unstage'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ paths, cwd: rootPath }),
   });
-  if (!res) return;
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    return;
-  }
-
-  showToast('Unstaged');
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to unstage files' };
+  return { ok: true, data: await res.json() };
 }
 
-async function discardChanges(paths) {
+async function requestDiscard(paths) {
   const res = await apiFetch(getGitApiUrl('discard'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ paths, cwd: rootPath }),
   });
-  if (!res) return;
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    return;
-  }
-
-  showToast('Changes discarded');
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to discard changes' };
+  return { ok: true, data: await res.json() };
 }
 
-async function deleteUntrackedFile(relativePath) {
-  // Build full path from rootPath + relativePath
+async function requestDeleteUntracked(relativePath) {
   const fullPath = `${rootPath}/${relativePath}`;
   const result = await deleteFilePath(fullPath, apiFetch);
-  if (!result.ok) {
-    showToast(result.error || 'Delete failed', { variant: 'error' });
-    return;
-  }
-
-  showToast('File deleted');
-  loadGitStatus();
+  if (!result.ok) return { ok: false, error: result.error || 'Delete failed' };
+  return { ok: true, data: {} };
 }
 
-async function handleCommit() {
-  if (!commitMessage) return;
-
-  const message = commitMessage.value.trim();
-  if (!message) {
-    showToast('Enter a commit message');
-    return;
-  }
-
-  commitBtn.disabled = true;
-  haptic(15);
-
+async function requestCommit(message) {
   const res = await apiFetch(getGitApiUrl('commit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, cwd: rootPath }),
   });
-  commitBtn.disabled = false;
-  if (!res) return;
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    return;
-  }
-
-  showToast(`Committed ${data.hash}`);
-  commitMessage.value = '';
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to commit changes' };
+  return { ok: true, data: await res.json() };
 }
 
-async function handlePush() {
-  haptic(15);
-  pushBtn.disabled = true;
-
+async function requestPush() {
   const res = await apiFetch(getGitApiUrl('push'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cwd: rootPath }),
   });
-
-  if (!res) {
-    pushBtn.disabled = false;
-    return;
-  }
-
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    pushBtn.disabled = false;
-    return;
-  }
-
-  showToast('Pushed successfully');
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to push' };
+  return { ok: true, data: await res.json() };
 }
 
-async function handlePull() {
-  haptic(15);
-  pullBtn.disabled = true;
-
+async function requestPull() {
   const res = await apiFetch(getGitApiUrl('pull'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cwd: rootPath }),
   });
-
-  if (!res) {
-    pullBtn.disabled = false;
-    return;
-  }
-
-  const data = await res.json();
-
-  if (data.error) {
-    showToast(data.error, { variant: 'error' });
-    pullBtn.disabled = false;
-    return;
-  }
-
-  showToast('Pulled successfully');
-  loadGitStatus();
+  if (!res) return { ok: false, error: 'Failed to pull' };
+  return { ok: true, data: await res.json() };
 }
 
 // === Diff Viewer ===
