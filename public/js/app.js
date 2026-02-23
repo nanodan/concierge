@@ -28,6 +28,18 @@ import { initFilePanel } from './file-panel.js';
 import { initBranches, openBranchesFromChat } from './branches.js';
 import { initStandaloneFiles, closeStandaloneFiles } from './files-standalone.js';
 
+function defaultModelForProvider(provider = 'claude') {
+  switch (provider) {
+    case 'claude':
+      return { id: 'claude-sonnet-4.5', name: 'Sonnet 4.5', context: 200000 };
+    case 'codex':
+      return { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', context: 128000 };
+    case 'ollama':
+    default:
+      return { id: 'llama3.2', name: 'Llama 3.2', context: 128000 };
+  }
+}
+
 // --- DOM refs ---
 const listView = document.getElementById('list-view');
 const chatView = document.getElementById('chat-view');
@@ -448,18 +460,14 @@ setupEventListeners(createConversation);
 async function loadModels(provider = 'claude') {
   const res = await apiFetch(`/api/models?provider=${provider}`, { silent: true });
   if (!res) {
-    if (provider === 'claude') {
-      state.setModels([{ id: 'claude-sonnet-4.5', name: 'Sonnet 4.5', context: 200000 }]);
-    } else {
-      state.setModels([{ id: 'llama3.2', name: 'Llama 3.2', context: 128000 }]);
-    }
+    state.setModels([defaultModelForProvider(provider)]);
     return;
   }
   const models = await res.json();
   state.setModels(models);
 
   // Populate modal select with first option selected
-  const defaultModel = models[0]?.id || (provider === 'claude' ? 'claude-sonnet-4.5' : 'llama3.2');
+  const defaultModel = models[0]?.id || defaultModelForProvider(provider).id;
   convModelSelect.innerHTML = models.map(m =>
     `<option value="${m.id}"${m.id === defaultModel ? ' selected' : ''}>${m.name}</option>`
   ).join('');
@@ -476,8 +484,8 @@ if (convProviderSelect) {
     const provider = convProviderSelect.value;
     loadModels(provider);
 
-    // Disable sandbox/autopilot toggles for non-Claude providers (no tool use)
-    const supportsTools = provider === 'claude';
+    // Disable sandbox/autopilot toggles for providers without tool use.
+    const supportsTools = provider !== 'ollama';
     if (convSandboxed) {
       convSandboxed.disabled = !supportsTools;
       convSandboxed.closest('.toggle-row')?.classList.toggle('disabled', !supportsTools);

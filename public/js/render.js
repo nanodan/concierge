@@ -36,7 +36,8 @@ function buildMessageMeta(msg) {
     meta += ` &middot; ${(msg.duration / 1000).toFixed(1)}s`;
   }
   if (msg.inputTokens != null) {
-    meta += ` &middot; ${formatTokens(msg.inputTokens)} in / ${formatTokens(msg.outputTokens)} out`;
+    const displayIn = msg.displayInputTokens != null ? msg.displayInputTokens : msg.inputTokens;
+    meta += ` &middot; ${formatTokens(displayIn)} in / ${formatTokens(msg.outputTokens)} out`;
   }
   // Show incomplete indicator if explicitly marked OR if assistant message is missing cost/tokens
   // (retroactive detection for messages saved before we added the incomplete flag)
@@ -361,6 +362,11 @@ export function finalizeMessage(data) {
   state.setThinking(false);
   state.setIsStreaming(false);
 
+  // Clear cached streaming text for this conversation
+  if (data.conversationId) {
+    state.clearCachedStreamingText(data.conversationId);
+  }
+
   if (streamingMessageEl) {
     const finalText = data.text || state.getStreamingText();
     const meta = buildMessageMeta({ role: 'assistant', timestamp: Date.now(), ...data });
@@ -391,6 +397,7 @@ export function finalizeMessage(data) {
     cost: data.cost,
     duration: data.duration,
     inputTokens: data.inputTokens,
+    displayInputTokens: data.displayInputTokens,
     outputTokens: data.outputTokens,
     incomplete: data.incomplete,
   });

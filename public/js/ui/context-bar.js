@@ -40,22 +40,23 @@ export function setupContextBarEventListeners() {
 }
 
 /**
- * Calculate cumulative tokens from all messages in the conversation.
- * Since we're resuming sessions, each message's inputTokens/outputTokens
- * represent just that turn, so we need to sum across all messages.
+ * Calculate current context tokens for the conversation.
+ * We use the latest assistant turn's token usage, which reflects the
+ * active context window for the current session.
  */
 export function calculateCumulativeTokens(messages) {
-  let totalInput = 0;
-  let totalOutput = 0;
+  const lastAssistant = [...(messages || [])]
+    .reverse()
+    .find(msg => msg.role === 'assistant' && msg.inputTokens != null);
 
-  for (const msg of messages || []) {
-    if (msg.role === 'assistant') {
-      totalInput += msg.inputTokens || 0;
-      totalOutput += msg.outputTokens || 0;
-    }
+  if (!lastAssistant) {
+    return { inputTokens: 0, outputTokens: 0 };
   }
 
-  return { inputTokens: totalInput, outputTokens: totalOutput };
+  return {
+    inputTokens: lastAssistant.inputTokens || 0,
+    outputTokens: lastAssistant.outputTokens || 0,
+  };
 }
 
 /**

@@ -126,7 +126,6 @@
         <span id="chat-name"></span>
         <span id="chat-status" class="status-dot"></span>
         <span id="mode-badge" class="mode-badge">AP</span>
-        <span id="provider-badge" class="provider-badge hidden">Local</span>
         <div id="model-selector" class="model-selector">
           <button id="model-btn" class="model-badge-btn">Sonnet 4.5</button>
           <div id="model-dropdown" class="model-dropdown hidden"></div>
@@ -541,6 +540,7 @@
         <label for="conv-provider">Provider</label>
         <select id="conv-provider" class="model-select">
           <option value="claude">Claude</option>
+          <option value="codex">OpenAI Codex</option>
           <option value="ollama">Ollama (Local)</option>
         </select>
         <label for="conv-model">Model</label>

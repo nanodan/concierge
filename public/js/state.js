@@ -20,6 +20,7 @@ export let compressionPromptShown = false;
 // Models and Providers
 export let providers = [
   { id: 'claude', name: 'Claude' },
+  { id: 'codex', name: 'OpenAI Codex' },
   { id: 'ollama', name: 'Ollama' },
 ];
 export let models = [];
@@ -35,6 +36,9 @@ export let pendingDelta = '';
 export let renderScheduled = false;
 export let isStreaming = false;
 export let userHasScrolledUp = false;
+
+// Per-conversation streaming text cache (preserves text when switching views)
+const streamingTextCache = new Map();
 
 // Virtual scrolling
 export const MESSAGES_PER_PAGE = MESSAGES_PER_PAGE_CONST;
@@ -179,6 +183,25 @@ export function getStreamingText() {
 
 export function appendStreamingText(text) {
   streamingText += text;
+}
+
+// Save streaming text for a conversation (call when leaving a streaming conversation)
+export function saveStreamingTextForConversation(convId) {
+  if (convId && streamingText) {
+    streamingTextCache.set(convId, streamingText);
+  }
+}
+
+// Get cached streaming text for a conversation
+export function getCachedStreamingText(convId) {
+  return streamingTextCache.get(convId) || '';
+}
+
+// Clear cached streaming text (call when stream completes)
+export function clearCachedStreamingText(convId) {
+  if (convId) {
+    streamingTextCache.delete(convId);
+  }
 }
 
 export function setPendingDelta(delta) {
