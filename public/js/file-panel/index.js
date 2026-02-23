@@ -28,7 +28,7 @@ import {
   initGitBranches,
   setupGitBranchesEventListeners,
   loadBranches,
-  setBranches,
+  resetBranches,
 } from './git-branches.js';
 import {
   initPreview,
@@ -293,7 +293,7 @@ export function openFilePanel() {
 
   // Reset git state
   setGitStatus(null);
-  setBranches(null);
+  resetBranches();
 
   // Reset search state
   resetSearchState();

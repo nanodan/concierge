@@ -193,13 +193,6 @@ export function setGitStatus(status) {
 }
 
 /**
- * Get stashes
- */
-export function getStashes() {
-  return changesController ? changesController.getStashes() : [];
-}
-
-/**
  * Load git status from server
  */
 export async function loadGitStatus() {
@@ -207,18 +200,6 @@ export async function loadGitStatus() {
   if (!convId || !changesController) return;
 
   await changesController.loadStatus();
-}
-
-export async function stageFiles(paths) {
-  await changesController?.stagePaths(paths);
-}
-
-export async function unstageFiles(paths) {
-  await changesController?.unstagePaths(paths);
-}
-
-export async function discardChanges(paths) {
-  await changesController?.discardPaths(paths);
 }
 
 // === Diff Viewer ===

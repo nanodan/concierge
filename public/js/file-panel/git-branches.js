@@ -41,18 +41,8 @@ export function setupGitBranchesEventListeners() {
   branchesController?.bindListeners();
 }
 
-/**
- * Get branches state
- */
-export function getBranches() {
-  return branchesController ? branchesController.getBranches() : null;
-}
-
-/**
- * Set branches state
- */
-export function setBranches(branchesData) {
-  branchesController?.setBranches(branchesData);
+export function resetBranches() {
+  branchesController?.resetBranches();
 }
 
 /**
