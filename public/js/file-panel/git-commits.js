@@ -5,6 +5,10 @@ import * as state from '../state.js';
 import { renderDiff, loadGitStatus } from './git-changes.js';
 import { ANIMATION_DELAY_SHORT, BUTTON_PROCESSING_TIMEOUT } from '../constants.js';
 import { createGitHistoryController } from '../explorer/git-history.js';
+import { createConversationContext } from '../explorer/context.js';
+import { createGitHistoryRequests } from '../explorer/git-requests.js';
+
+const context = createConversationContext(() => state.getCurrentConversationId());
 
 // DOM elements (set by init)
 let historyList = null;
@@ -24,6 +28,11 @@ export function initGitCommits(elements) {
   fileViewerName = elements.fileViewerName;
   fileViewerContent = elements.fileViewerContent;
 
+  const historyRequests = createGitHistoryRequests({
+    context,
+    apiFetch,
+  });
+
   historyController = createGitHistoryController({
     historyList,
     fileViewer,
@@ -36,65 +45,7 @@ export function initGitCommits(elements) {
     showDialog,
     buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
     animationDelayMs: ANIMATION_DELAY_SHORT,
-    requestCommits: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/commits`, { silent: true });
-      if (!res) return { ok: false, error: 'Failed to load commits' };
-      return { ok: true, data: await res.json() };
-    },
-    requestStatus: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/status`, { silent: true });
-      if (!res) return { ok: false, error: 'Failed to load git status' };
-      return { ok: true, data: await res.json() };
-    },
-    requestUndoCommit: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/undo-commit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res) return { ok: false, error: 'Failed to undo commit' };
-      return { ok: true, data: await res.json() };
-    },
-    requestRevertCommit: async (hash) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/revert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hash }),
-      });
-      if (!res) return { ok: false, error: 'Failed to revert commit' };
-      return { ok: true, data: await res.json() };
-    },
-    requestResetCommit: async (hash, mode) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hash, mode }),
-      });
-      if (!res) return { ok: false, error: 'Failed to reset commit' };
-      return { ok: true, data: await res.json() };
-    },
-    requestCommitDiff: async (hash) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/commits/${hash}`, { silent: true });
-      if (!res) return { ok: false, error: 'Failed to load commit' };
-      return { ok: true, data: await res.json() };
-    },
+    ...historyRequests,
     onUndoSuccess: () => {
       loadGitStatus();
     },

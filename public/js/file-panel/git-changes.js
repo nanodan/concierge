@@ -4,9 +4,13 @@ import { haptic, showToast, showDialog, apiFetch } from '../utils.js';
 import * as state from '../state.js';
 import { getIcons, setViewingDiff } from './file-browser.js';
 import { ANIMATION_DELAY_SHORT } from '../constants.js';
+import { createConversationContext } from '../explorer/context.js';
 import { createGitDiffViewer } from '../explorer/git-diff-viewer.js';
 import { createGitStashActions } from '../explorer/git-stash-actions.js';
 import { createGitChangesController } from '../explorer/git-changes-controller.js';
+import { createGitChangesRequests, createGitStashRequests } from '../explorer/git-requests.js';
+
+const context = createConversationContext(() => state.getCurrentConversationId());
 
 // DOM elements (set by init)
 let changesList = null;
@@ -59,10 +63,10 @@ export function initGitChanges(elements) {
     getNavigationStatus: () => changesController?.getGitStatus(),
     setViewingDiff,
     fetchDiff: async (filePath, staged) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
+      const gitUrl = context.getGitUrl('diff');
+      if (!gitUrl) return { ok: false, error: 'No conversation selected' };
 
-      const res = await apiFetch(`/api/conversations/${convId}/git/diff`, {
+      const res = await apiFetch(gitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: filePath, staged }),
@@ -75,10 +79,10 @@ export function initGitChanges(elements) {
       return { ok: true, data };
     },
     revertDiffHunk: async (filePath, _hunkIndex, hunk, staged) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
+      const gitUrl = context.getGitUrl('revert-hunk');
+      if (!gitUrl) return { ok: false, error: 'No conversation selected' };
 
-      const res = await apiFetch(`/api/conversations/${convId}/git/revert-hunk`, {
+      const res = await apiFetch(gitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: filePath, hunk, staged }),
@@ -101,60 +105,32 @@ export function initGitChanges(elements) {
     },
   });
 
+  const stashRequests = createGitStashRequests({
+    context,
+    apiFetch,
+  });
+
   stashActions = createGitStashActions({
     haptic,
     showDialog,
     showToast,
-    requestCreate: async (body) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stash`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {}),
-      });
-      if (!res) return { ok: false, error: 'Failed to stash changes' };
-      return { ok: true, data: await res.json() };
-    },
-    requestPop: async (index) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stash/pop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index }),
-      });
-      if (!res) return { ok: false, error: 'Failed to apply stash' };
-      return { ok: true, data: await res.json() };
-    },
-    requestApply: async (index) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stash/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index }),
-      });
-      if (!res) return { ok: false, error: 'Failed to apply stash' };
-      return { ok: true, data: await res.json() };
-    },
-    requestDrop: async (index) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stash/drop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index }),
-      });
-      if (!res) return { ok: false, error: 'Failed to drop stash' };
-      return { ok: true, data: await res.json() };
-    },
+    requestCreate: stashRequests.requestStashCreate,
+    requestPop: stashRequests.requestStashPop,
+    requestApply: stashRequests.requestStashApply,
+    requestDrop: stashRequests.requestStashDrop,
     onStatusChanged: () => {
       loadGitStatus();
+    },
+  });
+
+  const changesRequests = createGitChangesRequests({
+    context,
+    apiFetch,
+    getDeletePath: (relativePath) => {
+      const convId = context.getConversationId();
+      const conv = state.conversations.find((c) => c.id === convId);
+      const baseCwd = conv?.cwd || '';
+      return baseCwd ? `${baseCwd}/${relativePath}` : relativePath;
     },
   });
 
@@ -181,106 +157,8 @@ export function initGitChanges(elements) {
     onViewDiff: (filePath, staged) => {
       void viewDiff(filePath, staged);
     },
-    requestStatus: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/status`, { silent: true });
-      if (!res) return { ok: false, error: 'Failed to load git status' };
-      return { ok: true, data: await res.json() };
-    },
-    requestStashes: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stash`, { silent: true });
-      if (!res) return { ok: true, data: { stashes: [] } };
-      return { ok: true, data: await res.json() };
-    },
-    requestStage: async (paths) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/stage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
-      });
-      if (!res) return { ok: false, error: 'Failed to stage files' };
-      return { ok: true, data: await res.json() };
-    },
-    requestUnstage: async (paths) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/unstage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
-      });
-      if (!res) return { ok: false, error: 'Failed to unstage files' };
-      return { ok: true, data: await res.json() };
-    },
-    requestDiscard: async (paths) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/discard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
-      });
-      if (!res) return { ok: false, error: 'Failed to discard changes' };
-      return { ok: true, data: await res.json() };
-    },
-    requestDeleteUntracked: async (relativePath) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const conv = state.conversations.find((c) => c.id === convId);
-      const baseCwd = conv?.cwd || '';
-      const fullPath = baseCwd ? `${baseCwd}/${relativePath}` : relativePath;
-
-      const res = await apiFetch(`/api/files?path=${encodeURIComponent(fullPath)}`, {
-        method: 'DELETE',
-      });
-      if (!res) return { ok: false, error: 'Failed to delete file' };
-      return { ok: true, data: await res.json() };
-    },
-    requestCommit: async (message) => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/commit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
-      if (!res) return { ok: false, error: 'Failed to commit changes' };
-      return { ok: true, data: await res.json() };
-    },
-    requestPush: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res) return { ok: false, error: 'Failed to push' };
-      return { ok: true, data: await res.json() };
-    },
-    requestPull: async () => {
-      const convId = state.getCurrentConversationId();
-      if (!convId) return { ok: false, error: 'No conversation selected' };
-
-      const res = await apiFetch(`/api/conversations/${convId}/git/pull`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res) return { ok: false, error: 'Failed to pull' };
-      return { ok: true, data: await res.json() };
-    },
+    requestStashes: stashRequests.requestStashes,
+    ...changesRequests,
     stashActions,
   });
 }

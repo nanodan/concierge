@@ -43,6 +43,7 @@ import {
   setSwitchToFilesTab,
 } from './data.js';
 import { setOnFileLoadedToDataTab } from './file-browser.js';
+import { createExplorerHost } from '../explorer/host.js';
 
 // DOM elements
 let filePanel = null;
@@ -66,7 +67,7 @@ let gitRefreshBtn = null;
 
 // Panel state
 let isOpen = false;
-let currentTab = 'files'; // 'files' | 'changes' | 'history' | 'data' | 'preview'
+let hostController = null;
 
 /**
  * Initialize the file panel with all its submodules
@@ -170,6 +171,42 @@ export function initFilePanel(elements) {
     queryStatus: elements.queryStatus,
   });
 
+  const tabButtons = [filesTab, changesTab, historyTab, dataTab, previewTab].filter(Boolean);
+  hostController = createExplorerHost({
+    tabButtons,
+    views: {
+      files: filesView,
+      changes: changesView,
+      history: historyView,
+      data: dataView,
+      preview: previewView,
+    },
+    initialTab: 'files',
+    haptic,
+    closeViewer: () => {
+      closeFileViewer();
+    },
+    onTabSelected: {
+      files: async () => {
+        resetSearchState();
+        await loadFileTree(getCurrentPath());
+      },
+      changes: async () => {
+        await loadGitStatus();
+        await loadBranches();
+      },
+      history: async () => {
+        await loadCommits();
+      },
+      data: async () => {
+        await loadDataTabState();
+      },
+      preview: async () => {
+        await loadPreviewStatus();
+      },
+    },
+  });
+
   setupEventListeners();
 
   // Wire up callback for when files are loaded to data tab from file browser
@@ -179,7 +216,7 @@ export function initFilePanel(elements) {
 
   // Wire up callback for switching to files tab from data tab
   setSwitchToFilesTab(() => {
-    switchTab('files');
+    void switchTab('files');
   });
 }
 
@@ -211,22 +248,7 @@ function setupEventListeners() {
     });
   }
 
-  // Tab switching
-  if (filesTab) {
-    filesTab.addEventListener('click', () => switchTab('files'));
-  }
-  if (changesTab) {
-    changesTab.addEventListener('click', () => switchTab('changes'));
-  }
-  if (historyTab) {
-    historyTab.addEventListener('click', () => switchTab('history'));
-  }
-  if (dataTab) {
-    dataTab.addEventListener('click', () => switchTab('data'));
-  }
-  if (previewTab) {
-    previewTab.addEventListener('click', () => switchTab('preview'));
-  }
+  hostController?.bindTabListeners();
 
   // Setup submodule event listeners
   setupFileBrowserEventListeners();
@@ -249,7 +271,7 @@ function setupEventListeners() {
 
   // Refresh on visibility change (cross-device sync)
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && isOpen && currentTab === 'changes') {
+    if (!document.hidden && isOpen && hostController?.getCurrentTab() === 'changes') {
       loadGitStatus();
       loadBranches();
     }
@@ -269,19 +291,6 @@ export function openFilePanel() {
   isOpen = true;
   setCurrentPath('');
 
-  // Reset to files tab
-  currentTab = 'files';
-  if (filesTab) filesTab.classList.add('active');
-  if (changesTab) changesTab.classList.remove('active');
-  if (historyTab) historyTab.classList.remove('active');
-  if (dataTab) dataTab.classList.remove('active');
-  if (previewTab) previewTab.classList.remove('active');
-  if (filesView) filesView.classList.remove('hidden');
-  if (changesView) changesView.classList.add('hidden');
-  if (historyView) historyView.classList.add('hidden');
-  if (dataView) dataView.classList.add('hidden');
-  if (previewView) previewView.classList.add('hidden');
-
   // Reset git state
   setGitStatus(null);
   setBranches(null);
@@ -291,6 +300,9 @@ export function openFilePanel() {
 
   // Reset viewer state
   closeFileViewer();
+
+  // Reset tab state
+  void hostController?.resetToInitial({ closeOpenViewer: false });
 
   // Show panel
   filePanel.classList.remove('hidden');
@@ -375,46 +387,8 @@ export function isFilePanelOpen() {
   return isOpen;
 }
 
-/**
- * Switch to a different tab
- */
 function switchTab(tab) {
-  if (tab === currentTab) return;
-  currentTab = tab;
-  haptic(5);
-
-  // Update tab buttons
-  if (filesTab) filesTab.classList.toggle('active', tab === 'files');
-  if (changesTab) changesTab.classList.toggle('active', tab === 'changes');
-  if (historyTab) historyTab.classList.toggle('active', tab === 'history');
-  if (dataTab) dataTab.classList.toggle('active', tab === 'data');
-  if (previewTab) previewTab.classList.toggle('active', tab === 'preview');
-
-  // Update views
-  if (filesView) filesView.classList.toggle('hidden', tab !== 'files');
-  if (changesView) changesView.classList.toggle('hidden', tab !== 'changes');
-  if (historyView) historyView.classList.toggle('hidden', tab !== 'history');
-  if (dataView) dataView.classList.toggle('hidden', tab !== 'data');
-  if (previewView) previewView.classList.toggle('hidden', tab !== 'preview');
-
-  // Reset search state when switching to files tab
-  if (tab === 'files') {
-    resetSearchState();
-  }
-
-  // Load content
-  if (tab === 'files') {
-    loadFileTree(getCurrentPath());
-  } else if (tab === 'changes') {
-    loadGitStatus();
-    loadBranches();
-  } else if (tab === 'history') {
-    loadCommits();
-  } else if (tab === 'data') {
-    loadDataTabState();
-  } else if (tab === 'preview') {
-    loadPreviewStatus();
-  }
+  return hostController?.switchTab(tab);
 }
 
 // Re-export functions from submodules for backward compatibility
