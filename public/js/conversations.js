@@ -2,7 +2,7 @@
 import { escapeHtml } from './markdown.js';
 import { formatTime, setLoading, showToast, showDialog, haptic, apiFetch, truncate } from './utils.js';
 import { openNewChatModal } from './ui.js';
-import { renderMessages } from './render.js';
+import { renderMessages, appendDelta } from './render.js';
 import * as state from './state.js';
 import {
   SWIPE_THRESHOLD,
@@ -853,6 +853,13 @@ export function triggerSearch() {
 export async function openConversation(id) {
   // Close file panel when switching conversations
   closeFilePanel();
+
+  // Save streaming text from previous conversation before switching
+  const prevConvId = state.getCurrentConversationId();
+  if (prevConvId && state.getStreamingText()) {
+    state.saveStreamingTextForConversation(prevConvId);
+  }
+
   state.setCurrentConversationId(id);
   state.deleteUnread(id);
   // Clear any text from previous conversation
@@ -883,6 +890,15 @@ export async function openConversation(id) {
   ui.updateSandboxBanner(state.getCurrentSandboxed(), state.getCurrentProvider());
 
   renderMessages(conv.messages);
+
+  // Restore cached streaming text if conversation is still thinking
+  if (conv.status === 'thinking') {
+    const cachedText = state.getCachedStreamingText(id);
+    if (cachedText) {
+      appendDelta(cachedText);
+    }
+  }
+
   showChatView();
 
   // Update context bar with cumulative tokens from all messages
@@ -914,6 +930,13 @@ export function showListView(skipHistoryUpdate = false) {
   chatView.classList.remove('slide-in');
   listView.classList.remove('slide-out');
   document.querySelector('.views-container').scrollLeft = 0;
+
+  // Save streaming text before clearing state (so it can be restored when re-entering)
+  const currentConvId = state.getCurrentConversationId();
+  if (currentConvId && state.getStreamingText()) {
+    state.saveStreamingTextForConversation(currentConvId);
+  }
+
   state.setCurrentConversationId(null);
   state.resetStreamingState();
   const jumpToBottomBtn = state.getJumpToBottomBtn();

@@ -362,6 +362,11 @@ export function finalizeMessage(data) {
   state.setThinking(false);
   state.setIsStreaming(false);
 
+  // Clear cached streaming text for this conversation
+  if (data.conversationId) {
+    state.clearCachedStreamingText(data.conversationId);
+  }
+
   if (streamingMessageEl) {
     const finalText = data.text || state.getStreamingText();
     const meta = buildMessageMeta({ role: 'assistant', timestamp: Date.now(), ...data });
