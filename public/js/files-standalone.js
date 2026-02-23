@@ -12,6 +12,7 @@ import { bindExplorerShellUi } from './explorer/shell-ui-bindings.js';
 import { createGitDiffViewer } from './explorer/git-diff-viewer.js';
 import { createGitHistoryController } from './explorer/git-history.js';
 import { renderStashSection as renderSharedStashSection, bindStashListeners } from './explorer/git-stash.js';
+import { createGitStashActions } from './explorer/git-stash-actions.js';
 import {
   createExplorerIcons,
   createExplorerFeedbackHandlers,
@@ -70,6 +71,7 @@ let historyController = null;
 let _viewingDiff = null;
 let explorerShell = null;
 let diffViewer = null;
+let stashActions = null;
 
 // Icons (minimal set needed here)
 const ICONS = createExplorerIcons({
@@ -276,6 +278,51 @@ export function initStandaloneFiles(elements) {
     },
   });
 
+  stashActions = createGitStashActions({
+    haptic,
+    showDialog,
+    showToast,
+    requestCreate: async (body) => {
+      const res = await apiFetch(getGitApiUrl('stash'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      });
+      if (!res) return { ok: false, error: 'Failed to stash changes' };
+      return { ok: true, data: await res.json() };
+    },
+    requestPop: async (index) => {
+      const res = await apiFetch(getGitApiUrl('stash/pop'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to apply stash' };
+      return { ok: true, data: await res.json() };
+    },
+    requestApply: async (index) => {
+      const res = await apiFetch(getGitApiUrl('stash/apply'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to apply stash' };
+      return { ok: true, data: await res.json() };
+    },
+    requestDrop: async (index) => {
+      const res = await apiFetch(getGitApiUrl('stash/drop'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to drop stash' };
+      return { ok: true, data: await res.json() };
+    },
+    onStatusChanged: () => {
+      loadGitStatus();
+    },
+  });
+
   // Granular toggle
   granularToggleBtn = document.getElementById('sa-diff-granular-toggle');
 
@@ -343,7 +390,7 @@ export function initStandaloneFiles(elements) {
   }
 
   if (stashBtn) {
-    stashBtn.addEventListener('click', handleStash);
+    stashBtn.addEventListener('click', () => stashActions?.handleStash());
   }
 
   // Escape key to close
@@ -770,99 +817,10 @@ function attachStashListeners() {
     haptic,
     showDialog,
     buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
-    onPop: handleStashPop,
-    onApply: handleStashApply,
-    onDrop: handleStashDrop,
+    onPop: (index) => stashActions?.handleStashPop(index),
+    onApply: (index) => stashActions?.handleStashApply(index),
+    onDrop: (index) => stashActions?.handleStashDrop(index),
   });
-}
-
-async function handleStash() {
-  haptic();
-
-  const message = await showDialog({
-    title: 'Stash changes',
-    message: 'Enter an optional message for this stash:',
-    input: true,
-    inputPlaceholder: 'Stash message (optional)',
-    confirmLabel: 'Stash'
-  });
-
-  if (message === false) return;
-
-  const body = message ? { message } : {};
-  const res = await apiFetch(getGitApiUrl('stash'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Changes stashed', 'success');
-  loadGitStatus();
-}
-
-async function handleStashPop(index) {
-  const res = await apiFetch(getGitApiUrl('stash/pop'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash applied and removed', 'success');
-  loadGitStatus();
-}
-
-async function handleStashApply(index) {
-  const res = await apiFetch(getGitApiUrl('stash/apply'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash applied', 'success');
-  loadGitStatus();
-}
-
-async function handleStashDrop(index) {
-  const res = await apiFetch(getGitApiUrl('stash/drop'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash dropped', 'success');
-  loadGitStatus();
 }
 
 // === Git Operations ===

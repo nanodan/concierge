@@ -6,6 +6,7 @@ import { getIcons, setViewingDiff } from './file-browser.js';
 import { ANIMATION_DELAY_SHORT, BUTTON_PROCESSING_TIMEOUT } from '../constants.js';
 import { createGitDiffViewer } from '../explorer/git-diff-viewer.js';
 import { renderStashSection as renderSharedStashSection, bindStashListeners } from '../explorer/git-stash.js';
+import { createGitStashActions } from '../explorer/git-stash-actions.js';
 
 // DOM elements (set by init)
 let changesList = null;
@@ -28,6 +29,7 @@ let stashes = null;
 let untrackedSelectionMode = false;
 let selectedUntracked = new Set();
 let diffViewer = null;
+let stashActions = null;
 
 /**
  * Initialize git changes elements
@@ -100,6 +102,63 @@ export function initGitChanges(elements) {
       loadGitStatus();
     },
   });
+
+  stashActions = createGitStashActions({
+    haptic,
+    showDialog,
+    showToast,
+    requestCreate: async (body) => {
+      const convId = state.getCurrentConversationId();
+      if (!convId) return { ok: false, error: 'No conversation selected' };
+
+      const res = await apiFetch(`/api/conversations/${convId}/git/stash`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      });
+      if (!res) return { ok: false, error: 'Failed to stash changes' };
+      return { ok: true, data: await res.json() };
+    },
+    requestPop: async (index) => {
+      const convId = state.getCurrentConversationId();
+      if (!convId) return { ok: false, error: 'No conversation selected' };
+
+      const res = await apiFetch(`/api/conversations/${convId}/git/stash/pop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to apply stash' };
+      return { ok: true, data: await res.json() };
+    },
+    requestApply: async (index) => {
+      const convId = state.getCurrentConversationId();
+      if (!convId) return { ok: false, error: 'No conversation selected' };
+
+      const res = await apiFetch(`/api/conversations/${convId}/git/stash/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to apply stash' };
+      return { ok: true, data: await res.json() };
+    },
+    requestDrop: async (index) => {
+      const convId = state.getCurrentConversationId();
+      if (!convId) return { ok: false, error: 'No conversation selected' };
+
+      const res = await apiFetch(`/api/conversations/${convId}/git/stash/drop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      if (!res) return { ok: false, error: 'Failed to drop stash' };
+      return { ok: true, data: await res.json() };
+    },
+    onStatusChanged: () => {
+      loadGitStatus();
+    },
+  });
 }
 
 /**
@@ -132,7 +191,7 @@ export function setupGitChangesEventListeners(loadGitStatusFn, loadBranchesFn, g
 
   // Stash button
   if (stashBtn) {
-    stashBtn.addEventListener('click', handleStash);
+    stashBtn.addEventListener('click', () => stashActions?.handleStash());
   }
 }
 
@@ -583,112 +642,10 @@ function attachStashListeners() {
     haptic,
     showDialog,
     buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
-    onPop: handleStashPop,
-    onApply: handleStashApply,
-    onDrop: handleStashDrop,
+    onPop: (index) => stashActions?.handleStashPop(index),
+    onApply: (index) => stashActions?.handleStashApply(index),
+    onDrop: (index) => stashActions?.handleStashDrop(index),
   });
-}
-
-async function handleStash() {
-  haptic();
-
-  const message = await showDialog({
-    title: 'Stash changes',
-    message: 'Enter an optional message for this stash:',
-    input: true,
-    inputPlaceholder: 'Stash message (optional)',
-    confirmLabel: 'Stash'
-  });
-
-  // User cancelled
-  if (message === false) return;
-
-  const convId = state.getCurrentConversationId();
-  if (!convId) return;
-
-  const body = message ? { message } : {};
-  const res = await apiFetch(`/api/conversations/${convId}/git/stash`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Changes stashed', 'success');
-  loadGitStatus();
-}
-
-async function handleStashPop(index) {
-  const convId = state.getCurrentConversationId();
-  if (!convId) return;
-
-  const res = await apiFetch(`/api/conversations/${convId}/git/stash/pop`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash applied and removed', 'success');
-  loadGitStatus();
-}
-
-async function handleStashApply(index) {
-  const convId = state.getCurrentConversationId();
-  if (!convId) return;
-
-  const res = await apiFetch(`/api/conversations/${convId}/git/stash/apply`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash applied', 'success');
-  loadGitStatus();
-}
-
-async function handleStashDrop(index) {
-  const convId = state.getCurrentConversationId();
-  if (!convId) return;
-
-  const res = await apiFetch(`/api/conversations/${convId}/git/stash/drop`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ index })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Stash dropped', 'success');
-  loadGitStatus();
 }
 
 // === Git Operations ===
