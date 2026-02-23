@@ -17,6 +17,8 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 // Shared SVG icons for message action buttons
 const TTS_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 const REGEN_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const COPY_CHECK_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
 const INCOMPLETE_ICON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
 
 /**
@@ -46,21 +48,27 @@ function buildMessageMeta(msg) {
 }
 
 /**
- * Build action buttons HTML for assistant messages.
+ * Build action buttons HTML for messages.
  * @param {Object} options - Options for which buttons to include
  * @param {boolean} options.includeTTS - Include TTS button (default: true if speechSynthesis available)
  * @param {boolean} options.includeRegen - Include regenerate button
+ * @param {boolean} options.includeCopy - Include copy button (default: true)
+ * @param {boolean} options.isUser - Whether this is a user message (affects styling)
  * @returns {string} - HTML string for action buttons container
  */
-function buildActionButtons({ includeTTS = true, includeRegen = false } = {}) {
+function buildActionButtons({ includeTTS = true, includeRegen = false, includeCopy = true, isUser = false } = {}) {
+  const copyBtn = includeCopy
+    ? `<button class="msg-action-btn copy-msg-btn" aria-label="Copy message" title="Copy">${COPY_ICON_SVG}</button>`
+    : '';
   const ttsBtn = (includeTTS && window.speechSynthesis)
     ? `<button class="msg-action-btn tts-btn" aria-label="Read aloud">${TTS_ICON_SVG}</button>`
     : '';
   const regenBtn = includeRegen
     ? `<button class="msg-action-btn regen-btn" aria-label="Regenerate" title="Regenerate">${REGEN_ICON_SVG}</button>`
     : '';
-  if (!ttsBtn && !regenBtn) return '';
-  return `<div class="msg-action-btns">${ttsBtn}${regenBtn}</div>`;
+  if (!copyBtn && !ttsBtn && !regenBtn) return '';
+  const userClass = isUser ? ' user-actions' : '';
+  return `<div class="msg-action-btns${userClass}">${copyBtn}${ttsBtn}${regenBtn}</div>`;
 }
 
 export function enhanceCodeBlocks(container) {
@@ -143,6 +151,7 @@ export function renderMessages(messages) {
   attachTimestampHandlers();
   attachImageHandlers();
   attachRegenHandlers();
+  attachCopyMsgHandlers();
   attachMessageActions();
   attachCompressedSectionToggle();
   renderAllReactions();
@@ -245,8 +254,8 @@ export function renderMessageSlice(messages, startIndex) {
     }
     const isLastAssistant = cls === 'assistant' && globalIndex === allMessages.length - 1;
     const actionBtns = cls === 'assistant'
-      ? buildActionButtons({ includeTTS: !isSummarized, includeRegen: isLastAssistant })
-      : '';
+      ? buildActionButtons({ includeTTS: !isSummarized, includeRegen: isLastAssistant, includeCopy: true })
+      : buildActionButtons({ includeTTS: false, includeRegen: false, includeCopy: true, isUser: true });
 
     const summarizedClass = isSummarized ? ' summarized' : '';
 
@@ -280,6 +289,7 @@ export function loadMoreMessages() {
   attachTTSHandlers();
   attachTimestampHandlers();
   attachImageHandlers();
+  attachCopyMsgHandlers();
   attachMessageActions();
   state.setMessagesOffset(newOffset);
   // Preserve scroll position
@@ -361,6 +371,7 @@ export function finalizeMessage(data) {
     attachTimestampHandlers();
     attachImageHandlers();
     attachRegenHandlers();
+    attachCopyMsgHandlers();
     attachMessageActions();
     state.setStreamingMessageEl(null);
     state.setStreamingText('');
@@ -653,6 +664,41 @@ export function attachRegenHandlers() {
     btn.dataset.attached = 'true';
     btn.addEventListener('click', () => {
       import('./ui.js').then(ui => ui.regenerateMessage());
+    });
+  });
+}
+
+export function attachCopyMsgHandlers() {
+  const messagesContainer = state.getMessagesContainer();
+  messagesContainer.querySelectorAll('.copy-msg-btn').forEach(btn => {
+    if (btn.dataset.attached) return;
+    btn.dataset.attached = 'true';
+    btn.addEventListener('click', () => {
+      haptic(HAPTIC_LIGHT);
+      const messageEl = btn.closest('.message');
+      if (!messageEl) return;
+
+      // Clone, remove meta and action buttons, then get text content
+      const clone = messageEl.cloneNode(true);
+      clone.querySelector('.meta')?.remove();
+      clone.querySelector('.msg-action-btns')?.remove();
+      // Remove tool call traces
+      clone.querySelectorAll('.tool-trace').forEach(el => el.remove());
+      const plainText = clone.textContent.trim();
+
+      if (!plainText) return;
+
+      navigator.clipboard.writeText(plainText).then(() => {
+        // Show check icon briefly
+        const originalIcon = btn.innerHTML;
+        btn.innerHTML = COPY_CHECK_ICON_SVG;
+        btn.classList.add('copied');
+        showToast('Copied to clipboard');
+        setTimeout(() => {
+          btn.innerHTML = originalIcon;
+          btn.classList.remove('copied');
+        }, COPY_FEEDBACK_DURATION);
+      });
     });
   });
 }

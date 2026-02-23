@@ -594,6 +594,37 @@ html[data-theme="light"] .code-block::before {
   border-color: var(--accent);
 }
 
+/* Copy button copied state */
+.copy-msg-btn.copied {
+  background: var(--accent-alpha-15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* User message action buttons */
+.msg-action-btns.user-actions {
+  border-top-color: var(--white-alpha-20);
+}
+
+.msg-action-btns.user-actions .msg-action-btn {
+  background: var(--white-alpha-10);
+  border-color: var(--white-alpha-20);
+  color: var(--white-alpha-70);
+}
+
+.msg-action-btns.user-actions .msg-action-btn:hover {
+  background: var(--white-alpha-20);
+  color: white;
+  border-color: var(--white-alpha-30);
+}
+
+.msg-action-btns.user-actions .msg-action-btn:active,
+.msg-action-btns.user-actions .msg-action-btn.copied {
+  background: var(--white-alpha-25);
+  color: white;
+  border-color: var(--white-alpha-40);
+}
+
 /* TTS Button active state */
 .tts-btn.speaking {
   background: var(--accent-alpha-15);
