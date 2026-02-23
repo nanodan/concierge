@@ -5,6 +5,7 @@ import * as state from '../state.js';
 import { getIcons, setViewingDiff } from './file-browser.js';
 import { ANIMATION_DELAY_SHORT, BUTTON_PROCESSING_TIMEOUT } from '../constants.js';
 import { createGitDiffViewer } from '../explorer/git-diff-viewer.js';
+import { renderStashSection as renderSharedStashSection, bindStashListeners } from '../explorer/git-stash.js';
 
 // DOM elements (set by init)
 let changesList = null;
@@ -570,71 +571,21 @@ async function deleteSelectedUntracked() {
  * Render stash section
  */
 function renderStashSection() {
-  if (!stashes || stashes.length === 0) return '';
-
-  return `
-    <div class="stash-section">
-      <div class="stash-section-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 15h6"/></svg>
-        <span class="stash-section-title">Stashes</span>
-        <span class="stash-section-count">${stashes.length}</span>
-      </div>
-      <div class="stash-list">
-        ${stashes.map(s => `
-          <div class="stash-item" data-index="${s.index}">
-            <span class="stash-message">${escapeHtml(s.message)}</span>
-            <span class="stash-time">${escapeHtml(s.time)}</span>
-            <div class="stash-actions">
-              <button class="stash-action-btn" data-action="pop" title="Pop (apply and remove)">\u2191</button>
-              <button class="stash-action-btn" data-action="apply" title="Apply (keep stash)">\u2713</button>
-              <button class="stash-action-btn danger" data-action="drop" title="Drop">\u00d7</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+  return renderSharedStashSection(stashes, escapeHtml);
 }
 
 /**
  * Attach stash event listeners
  */
 function attachStashListeners() {
-  if (!changesList) return;
-
-  changesList.querySelectorAll('.stash-action-btn').forEach(btn => {
-    const handleAction = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Prevent double-firing from both touch and click
-      if (btn.dataset.processing === 'true') return;
-      btn.dataset.processing = 'true';
-      setTimeout(() => { btn.dataset.processing = 'false'; }, BUTTON_PROCESSING_TIMEOUT);
-
-      const item = btn.closest('.stash-item');
-      const index = parseInt(item.dataset.index, 10);
-      const action = btn.dataset.action;
-      haptic();
-
-      if (action === 'pop') {
-        await handleStashPop(index);
-      } else if (action === 'apply') {
-        await handleStashApply(index);
-      } else if (action === 'drop') {
-        const confirmed = await showDialog({
-          title: 'Drop stash?',
-          message: 'This will permanently delete the stash. This cannot be undone.',
-          danger: true,
-          confirmLabel: 'Drop'
-        });
-        if (confirmed) {
-          await handleStashDrop(index);
-        }
-      }
-    };
-
-    btn.addEventListener('click', handleAction);
-    btn.addEventListener('touchend', handleAction);
+  bindStashListeners({
+    changesList,
+    haptic,
+    showDialog,
+    buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
+    onPop: handleStashPop,
+    onApply: handleStashApply,
+    onDrop: handleStashDrop,
   });
 }
 

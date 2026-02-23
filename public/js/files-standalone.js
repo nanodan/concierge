@@ -10,6 +10,8 @@ import { sortEntries, deleteFilePath } from './explorer/files-core.js';
 import { createExplorerShell } from './explorer/shell.js';
 import { bindExplorerShellUi } from './explorer/shell-ui-bindings.js';
 import { createGitDiffViewer } from './explorer/git-diff-viewer.js';
+import { createGitHistoryController } from './explorer/git-history.js';
+import { renderStashSection as renderSharedStashSection, bindStashListeners } from './explorer/git-stash.js';
 import {
   createExplorerIcons,
   createExplorerFeedbackHandlers,
@@ -64,8 +66,7 @@ let rootPath = '';
 let _currentTab = 'files';
 let gitStatus = null;
 let stashes = null;
-let commits = null;
-let unpushedCount = 0;
+let historyController = null;
 let _viewingDiff = null;
 let explorerShell = null;
 let diffViewer = null;
@@ -212,6 +213,68 @@ export function initStandaloneFiles(elements) {
 
   // History elements
   historyList = document.getElementById('sa-history-list');
+
+  historyController = createGitHistoryController({
+    historyList,
+    fileViewer,
+    fileViewerName,
+    fileViewerContent,
+    escapeHtml,
+    renderDiff,
+    haptic,
+    showToast,
+    showDialog,
+    buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
+    animationDelayMs: ANIMATION_DELAY_SHORT,
+    requestCommits: async () => {
+      const res = await apiFetch(getGitApiUrl('commits'), { silent: true });
+      if (!res) return { ok: false, error: 'Failed to load commits' };
+      return { ok: true, data: await res.json() };
+    },
+    requestStatus: async () => {
+      const res = await apiFetch(getGitApiUrl('status'), { silent: true });
+      if (!res) return { ok: false, error: 'Failed to load git status' };
+      return { ok: true, data: await res.json() };
+    },
+    requestUndoCommit: async () => {
+      const res = await apiFetch(getGitApiUrl('undo-commit'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cwd: rootPath }),
+      });
+      if (!res) return { ok: false, error: 'Failed to undo commit' };
+      return { ok: true, data: await res.json() };
+    },
+    requestRevertCommit: async (hash) => {
+      const res = await apiFetch(getGitApiUrl('revert'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash, cwd: rootPath }),
+      });
+      if (!res) return { ok: false, error: 'Failed to revert commit' };
+      return { ok: true, data: await res.json() };
+    },
+    requestResetCommit: async (hash, mode) => {
+      const res = await apiFetch(getGitApiUrl('reset'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hash, mode, cwd: rootPath }),
+      });
+      if (!res) return { ok: false, error: 'Failed to reset commit' };
+      return { ok: true, data: await res.json() };
+    },
+    requestCommitDiff: async (hash) => {
+      const res = await apiFetch(getGitApiUrl(`commits/${hash}`), { silent: true });
+      if (!res) return { ok: false, error: 'Failed to load commit' };
+      return { ok: true, data: await res.json() };
+    },
+    onUndoSuccess: () => {
+      loadGitStatus();
+    },
+    onResetSuccess: () => {
+      loadGitStatus();
+    },
+  });
 
   // Granular toggle
   granularToggleBtn = document.getElementById('sa-diff-granular-toggle');
@@ -698,67 +761,18 @@ function attachChangeItemListeners() {
 // === Stash Functions ===
 
 function renderStashSection() {
-  if (!stashes || stashes.length === 0) return '';
-
-  return `
-    <div class="stash-section">
-      <div class="stash-section-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 15h6"/></svg>
-        <span class="stash-section-title">Stashes</span>
-        <span class="stash-section-count">${stashes.length}</span>
-      </div>
-      <div class="stash-list">
-        ${stashes.map(s => `
-          <div class="stash-item" data-index="${s.index}">
-            <span class="stash-message">${escapeHtml(s.message)}</span>
-            <span class="stash-time">${escapeHtml(s.time)}</span>
-            <div class="stash-actions">
-              <button class="stash-action-btn" data-action="pop" title="Pop (apply and remove)">\u2191</button>
-              <button class="stash-action-btn" data-action="apply" title="Apply (keep stash)">\u2713</button>
-              <button class="stash-action-btn danger" data-action="drop" title="Drop">\u00d7</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
+  return renderSharedStashSection(stashes, escapeHtml);
 }
 
 function attachStashListeners() {
-  if (!changesList) return;
-
-  changesList.querySelectorAll('.stash-action-btn').forEach(btn => {
-    const handleAction = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (btn.dataset.processing === 'true') return;
-      btn.dataset.processing = 'true';
-      setTimeout(() => { btn.dataset.processing = 'false'; }, BUTTON_PROCESSING_TIMEOUT);
-
-      const item = btn.closest('.stash-item');
-      const index = parseInt(item.dataset.index, 10);
-      const action = btn.dataset.action;
-      haptic();
-
-      if (action === 'pop') {
-        await handleStashPop(index);
-      } else if (action === 'apply') {
-        await handleStashApply(index);
-      } else if (action === 'drop') {
-        const confirmed = await showDialog({
-          title: 'Drop stash?',
-          message: 'This will permanently delete the stash. This cannot be undone.',
-          danger: true,
-          confirmLabel: 'Drop'
-        });
-        if (confirmed) {
-          await handleStashDrop(index);
-        }
-      }
-    };
-
-    btn.addEventListener('click', handleAction);
-    btn.addEventListener('touchend', handleAction);
+  bindStashListeners({
+    changesList,
+    haptic,
+    showDialog,
+    buttonProcessingTimeout: BUTTON_PROCESSING_TIMEOUT,
+    onPop: handleStashPop,
+    onApply: handleStashApply,
+    onDrop: handleStashDrop,
   });
 }
 
@@ -1018,386 +1032,7 @@ function renderDiff(data) {
 // === History Tab ===
 
 async function loadCommits() {
-  if (historyList) {
-    historyList.innerHTML = '<div class="history-loading">Loading...</div>';
-  }
-
-  const [commitsRes, statusRes] = await Promise.all([
-    apiFetch(getGitApiUrl('commits'), { silent: true }),
-    apiFetch(getGitApiUrl('status'), { silent: true })
-  ]);
-
-  if (!commitsRes) {
-    if (historyList) {
-      historyList.innerHTML = '<div class="history-empty">Failed to load commits</div>';
-    }
-    return;
-  }
-
-  const data = await commitsRes.json();
-
-  if (data.error) {
-    if (historyList) {
-      historyList.innerHTML = `<div class="history-empty">${escapeHtml(data.error)}</div>`;
-    }
-    return;
-  }
-
-  unpushedCount = 0;
-  if (statusRes) {
-    const statusData = await statusRes.json();
-    if (statusData.isRepo && statusData.hasUpstream) {
-      unpushedCount = statusData.ahead || 0;
-    }
-  }
-
-  commits = data.commits;
-  renderHistoryView();
-}
-
-function renderHistoryView() {
-  if (!historyList) return;
-
-  if (!commits || commits.length === 0) {
-    historyList.innerHTML = '<div class="history-empty">No commits yet</div>';
-    return;
-  }
-
-  let html = '';
-
-  html += `
-    <div class="history-header">
-      <span class="history-title">Commits</span>
-      <button class="history-help-btn" aria-label="Show action legend" title="Action legend">?</button>
-    </div>`;
-
-  if (unpushedCount > 0) {
-    html += `
-      <div class="unpushed-header">
-        <span class="unpushed-icon">\u2191</span>
-        <span>${unpushedCount} unpushed commit${unpushedCount > 1 ? 's' : ''}</span>
-      </div>`;
-  }
-
-  html += commits.map((c, i) => {
-    const isUnpushed = i < unpushedCount;
-    return `
-    <div class="commit-item${isUnpushed ? ' unpushed' : ''}" data-hash="${c.hash}">
-      <div class="commit-header">
-        <span class="commit-hash">${c.hash.slice(0, 7)}</span>
-        ${isUnpushed ? '<span class="unpushed-badge">unpushed</span>' : ''}
-        <span class="commit-time">${escapeHtml(c.time)}</span>
-      </div>
-      <div class="commit-message">${escapeHtml(c.message)}</div>
-      <div class="commit-footer">
-        <span class="commit-author">${escapeHtml(c.author)}</span>
-        <div class="commit-actions">
-          ${i === 0 ? '<button class="commit-action-btn" data-action="undo" title="Undo last commit (soft reset)">\u21b6</button>' : ''}
-          <button class="commit-action-btn" data-action="revert" title="Revert this commit">\u21a9</button>
-          <button class="commit-action-btn danger" data-action="reset" title="Reset to this commit">\u27f2</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  historyList.innerHTML = html;
-
-  // Help button listener
-  const helpBtn = historyList.querySelector('.history-help-btn');
-  if (helpBtn) {
-    helpBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      showGitLegendPopover(helpBtn);
-    });
-  }
-
-  // Click handlers for viewing diffs
-  historyList.querySelectorAll('.commit-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.commit-actions')) return;
-      viewCommitDiff(item.dataset.hash);
-    });
-  });
-
-  attachCommitActionListeners();
-}
-
-function attachCommitActionListeners() {
-  if (!historyList) return;
-
-  historyList.querySelectorAll('.commit-action-btn').forEach(btn => {
-    const handleAction = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (btn.dataset.processing === 'true') return;
-      btn.dataset.processing = 'true';
-      setTimeout(() => { btn.dataset.processing = 'false'; }, BUTTON_PROCESSING_TIMEOUT);
-
-      const item = btn.closest('.commit-item');
-      const hash = item.dataset.hash;
-      const action = btn.dataset.action;
-      haptic();
-
-      if (action === 'undo') {
-        await handleUndoCommit();
-      } else if (action === 'revert') {
-        await handleRevert(hash);
-      } else if (action === 'reset') {
-        await handleReset(hash);
-      }
-    };
-
-    btn.addEventListener('click', handleAction);
-    btn.addEventListener('touchend', handleAction);
-  });
-}
-
-async function handleUndoCommit() {
-  const confirmed = await showDialog({
-    title: 'Undo last commit?',
-    message: 'The commit will be removed but changes will remain staged.',
-    confirmLabel: 'Undo',
-    danger: true
-  });
-
-  if (!confirmed) return;
-
-  const res = await apiFetch(getGitApiUrl('undo-commit'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cwd: rootPath })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Commit undone', 'success');
-  loadGitStatus();
-  loadCommits();
-}
-
-async function handleRevert(hash) {
-  const confirmed = await showDialog({
-    title: 'Revert commit?',
-    message: `This will create a new commit that undoes the changes from ${hash.slice(0, 7)}.`,
-    confirmLabel: 'Revert',
-    danger: true
-  });
-
-  if (!confirmed) return;
-
-  const res = await apiFetch(getGitApiUrl('revert'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hash, cwd: rootPath })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast('Commit reverted', 'success');
-  loadCommits();
-}
-
-async function handleReset(hash) {
-  const mode = await showResetModeDialog(hash);
-  if (!mode) return;
-
-  if (mode === 'hard') {
-    const confirmed = await showDialog({
-      title: 'Hard reset?',
-      message: 'This will PERMANENTLY DELETE all uncommitted changes.',
-      danger: true,
-      confirmLabel: 'Delete changes and reset'
-    });
-    if (!confirmed) return;
-  }
-
-  const res = await apiFetch(getGitApiUrl('reset'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hash, mode, cwd: rootPath })
-  });
-
-  if (!res) return;
-
-  const data = await res.json();
-  if (data.error) {
-    showToast(data.error, 'error');
-    return;
-  }
-
-  showToast(`Reset to ${hash.slice(0, 7)} (${mode})`, 'success');
-  loadGitStatus();
-  loadCommits();
-}
-
-function showResetModeDialog(hash) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement('div');
-    overlay.className = 'dialog-overlay';
-    overlay.innerHTML = `
-      <div class="dialog">
-        <div class="dialog-title">Reset to ${hash.slice(0, 7)}?</div>
-        <div class="dialog-body">
-          <div class="reset-mode-options">
-            <label class="reset-mode-option">
-              <input type="radio" name="reset-mode" value="soft" checked>
-              <div class="reset-mode-info">
-                <span class="reset-mode-name">Soft</span>
-                <span class="reset-mode-desc">Changes stay staged.</span>
-              </div>
-            </label>
-            <label class="reset-mode-option">
-              <input type="radio" name="reset-mode" value="mixed">
-              <div class="reset-mode-info">
-                <span class="reset-mode-name">Mixed</span>
-                <span class="reset-mode-desc">Changes become unstaged.</span>
-              </div>
-            </label>
-            <label class="reset-mode-option">
-              <input type="radio" name="reset-mode" value="hard">
-              <div class="reset-mode-info">
-                <span class="reset-mode-name">Hard</span>
-                <span class="reset-mode-desc danger-text">All changes deleted.</span>
-              </div>
-            </label>
-          </div>
-        </div>
-        <div class="dialog-actions">
-          <button class="btn-secondary dialog-cancel">Cancel</button>
-          <button class="btn-primary dialog-ok">Reset</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-
-    const cleanup = () => overlay.remove();
-
-    overlay.querySelector('.dialog-cancel').addEventListener('click', () => {
-      cleanup();
-      resolve(null);
-    });
-
-    overlay.querySelector('.dialog-ok').addEventListener('click', () => {
-      const selected = overlay.querySelector('input[name="reset-mode"]:checked');
-      const mode = selected ? selected.value : 'soft';
-      cleanup();
-      resolve(mode);
-    });
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        cleanup();
-        resolve(null);
-      }
-    });
-  });
-}
-
-function showGitLegendPopover(anchorBtn) {
-  const existing = document.querySelector('.git-legend-popover');
-  if (existing) {
-    existing.remove();
-    return;
-  }
-
-  const popover = document.createElement('div');
-  popover.className = 'git-legend-popover';
-  popover.innerHTML = `
-    <div class="git-legend-title">Commit Actions</div>
-    <div class="git-legend-item">
-      <span class="git-legend-icon">\u21b6</span>
-      <div class="git-legend-content">
-        <span class="git-legend-name">Undo</span>
-        <span class="git-legend-desc">Remove last commit, keep changes staged</span>
-      </div>
-    </div>
-    <div class="git-legend-item">
-      <span class="git-legend-icon">\u21a9</span>
-      <div class="git-legend-content">
-        <span class="git-legend-name">Revert</span>
-        <span class="git-legend-desc">Create new commit that undoes changes</span>
-      </div>
-    </div>
-    <div class="git-legend-item">
-      <span class="git-legend-icon danger">\u27f2</span>
-      <div class="git-legend-content">
-        <span class="git-legend-name">Reset</span>
-        <span class="git-legend-desc">Move branch to this commit</span>
-      </div>
-    </div>
-  `;
-
-  const rect = anchorBtn.getBoundingClientRect();
-  popover.style.top = `${rect.bottom + 4}px`;
-  popover.style.right = `${window.innerWidth - rect.right}px`;
-
-  document.body.appendChild(popover);
-  anchorBtn.classList.add('active');
-
-  const closePopover = () => {
-    popover.remove();
-    anchorBtn.classList.remove('active');
-    document.removeEventListener('click', handleOutsideClick);
-    document.removeEventListener('keydown', handleKeydown, true);
-  };
-
-  const handleOutsideClick = (e) => {
-    if (!popover.contains(e.target) && e.target !== anchorBtn) {
-      closePopover();
-    }
-  };
-
-  const handleKeydown = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      closePopover();
-    }
-  };
-
-  setTimeout(() => {
-    document.addEventListener('click', handleOutsideClick);
-    document.addEventListener('keydown', handleKeydown, true);
-  }, 0);
-}
-
-async function viewCommitDiff(hash) {
-  haptic();
-
-  fileViewerName.textContent = `${hash.slice(0, 7)}`;
-  fileViewerContent.innerHTML = '<code>Loading...</code>';
-  fileViewer.classList.remove('hidden');
-  setTimeout(() => fileViewer.classList.add('open'), ANIMATION_DELAY_SHORT);
-
-  const res = await apiFetch(getGitApiUrl(`commits/${hash}`), { silent: true });
-  if (!res) {
-    fileViewerContent.innerHTML = '<div class="file-viewer-error"><p>Failed to load commit</p></div>';
-    return;
-  }
-
-  const data = await res.json();
-
-  if (data.error) {
-    fileViewerContent.innerHTML = `<div class="file-viewer-error"><p>${escapeHtml(data.error)}</p></div>`;
-    return;
-  }
-
-  fileViewerName.textContent = `${hash.slice(0, 7)} - ${data.message}`;
-  renderDiff(data);
+  await historyController?.loadCommits();
 }
 
 // === File Viewer ===
