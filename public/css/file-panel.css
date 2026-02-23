@@ -507,6 +507,65 @@
   background: var(--hover-bg);
 }
 
+/* File navigation controls */
+.file-viewer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.file-viewer-nav.hidden {
+  display: none;
+}
+
+.file-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.file-nav-btn:hover:not(:disabled) {
+  background: var(--accent-alpha-15);
+  border-color: var(--accent-alpha-30);
+  color: var(--accent);
+}
+
+.file-nav-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.file-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.file-nav-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.file-nav-counter {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 50px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .file-viewer-content {
   flex: 1;
   overflow: auto;

@@ -353,6 +353,14 @@ let searchResults = null;
 let searchTimeout = null;
 let viewingDiff = null;
 
+// File navigation state
+let viewableFiles = []; // List of files that can be viewed (non-directories)
+let currentFileIndex = -1; // Index of currently viewed file
+let touchStartX = 0;
+let touchStartY = 0;
+let touchMoveX = 0;
+const SWIPE_THRESHOLD = 50; // Minimum swipe distance
+
 /**
  * Initialize file browser elements
  */
@@ -391,6 +399,16 @@ export function setupFileBrowserEventListeners() {
       haptic();
       closeFileViewer();
     });
+  }
+
+  // File viewer navigation - keyboard
+  document.addEventListener('keydown', handleFileViewerKeydown);
+
+  // File viewer navigation - swipe gestures
+  if (fileViewer) {
+    fileViewer.addEventListener('touchstart', handleFileViewerTouchStart, { passive: true });
+    fileViewer.addEventListener('touchmove', handleFileViewerTouchMove, { passive: true });
+    fileViewer.addEventListener('touchend', handleFileViewerTouchEnd, { passive: true });
   }
 
   // File search input
@@ -517,6 +535,10 @@ function renderFileTree(entries) {
   const convId = state.getCurrentConversationId();
   const conv = state.conversations.find(c => c.id === convId);
   const baseCwd = conv?.cwd || '';
+
+  // Build list of viewable (non-directory) files for navigation
+  viewableFiles = entries.filter(e => e.type !== 'directory').map(e => e.path);
+  currentFileIndex = -1;
 
   fileTree.innerHTML = entries.map(entry => {
     const icon = getFileIcon(entry);
@@ -652,6 +674,9 @@ export async function viewFile(filePath) {
   // Hide granular toggle since this is not a diff view
   hideGranularToggle();
 
+  // Track current file index for navigation
+  currentFileIndex = viewableFiles.indexOf(filePath);
+
   const filename = filePath.split('/').pop();
   fileViewerName.textContent = filename;
   fileViewerContent.innerHTML = '<code>Loading...</code>';
@@ -659,6 +684,9 @@ export async function viewFile(filePath) {
   // Show viewer
   fileViewer.classList.remove('hidden');
   setTimeout(() => fileViewer.classList.add('open'), ANIMATION_DELAY_SHORT);
+
+  // Update navigation UI
+  updateFileNavigation();
 
   const res = await apiFetch(`/api/conversations/${convId}/files/content?path=${encodeURIComponent(filePath)}`, { silent: true });
   if (!res) {
@@ -818,12 +846,140 @@ export async function viewFile(filePath) {
   }
 }
 
+// === File Navigation ===
+
+/**
+ * Update navigation UI (prev/next buttons, counter)
+ */
+function updateFileNavigation() {
+  if (!fileViewer) return;
+
+  // Get or create navigation container
+  let navContainer = fileViewer.querySelector('.file-viewer-nav');
+  if (!navContainer) {
+    navContainer = document.createElement('div');
+    navContainer.className = 'file-viewer-nav';
+    navContainer.innerHTML = `
+      <button class="file-nav-btn file-nav-prev" aria-label="Previous file">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="file-nav-counter"></span>
+      <button class="file-nav-btn file-nav-next" aria-label="Next file">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    `;
+    // Insert after the header
+    const header = fileViewer.querySelector('.file-viewer-header');
+    if (header) {
+      header.after(navContainer);
+    }
+
+    // Attach click handlers
+    navContainer.querySelector('.file-nav-prev').addEventListener('click', (e) => {
+      e.stopPropagation();
+      haptic();
+      navigateFile(-1);
+    });
+    navContainer.querySelector('.file-nav-next').addEventListener('click', (e) => {
+      e.stopPropagation();
+      haptic();
+      navigateFile(1);
+    });
+  }
+
+  // Update state
+  const hasPrev = currentFileIndex > 0;
+  const hasNext = currentFileIndex < viewableFiles.length - 1;
+  const total = viewableFiles.length;
+
+  navContainer.querySelector('.file-nav-prev').disabled = !hasPrev;
+  navContainer.querySelector('.file-nav-next').disabled = !hasNext;
+  navContainer.querySelector('.file-nav-counter').textContent = total > 1 ? `${currentFileIndex + 1} / ${total}` : '';
+
+  // Show/hide based on whether there are multiple files
+  navContainer.classList.toggle('hidden', total <= 1);
+}
+
+/**
+ * Navigate to adjacent file
+ * @param {number} direction - -1 for previous, 1 for next
+ */
+function navigateFile(direction) {
+  const newIndex = currentFileIndex + direction;
+  if (newIndex < 0 || newIndex >= viewableFiles.length) return;
+
+  const newPath = viewableFiles[newIndex];
+  viewFile(newPath);
+}
+
+/**
+ * Handle keyboard navigation in file viewer
+ */
+function handleFileViewerKeydown(e) {
+  if (!fileViewer || fileViewer.classList.contains('hidden')) return;
+  if (viewingDiff) return; // Don't navigate during diff view
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    navigateFile(-1);
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    navigateFile(1);
+  }
+}
+
+/**
+ * Handle touch start for swipe navigation
+ */
+function handleFileViewerTouchStart(e) {
+  if (viewingDiff) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchMoveX = touchStartX;
+}
+
+/**
+ * Handle touch move for swipe navigation
+ */
+function handleFileViewerTouchMove(e) {
+  if (viewingDiff) return;
+  touchMoveX = e.touches[0].clientX;
+}
+
+/**
+ * Handle touch end for swipe navigation
+ */
+function handleFileViewerTouchEnd(e) {
+  if (viewingDiff) return;
+  if (!fileViewer || fileViewer.classList.contains('hidden')) return;
+
+  const deltaX = touchMoveX - touchStartX;
+  const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+  // Only trigger if horizontal swipe is greater than vertical (avoid scroll interference)
+  if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY)) {
+    haptic();
+    if (deltaX > 0) {
+      // Swipe right = previous
+      navigateFile(-1);
+    } else {
+      // Swipe left = next
+      navigateFile(1);
+    }
+  }
+
+  touchStartX = 0;
+  touchStartY = 0;
+  touchMoveX = 0;
+}
+
 /**
  * Close the file viewer
  */
 export function closeFileViewer() {
   fileViewer.classList.remove('open');
   viewingDiff = null;
+  currentFileIndex = -1;
   hideGranularToggle();
   setTimeout(() => {
     fileViewer.classList.add('hidden');
