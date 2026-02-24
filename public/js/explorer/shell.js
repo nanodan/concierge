@@ -168,6 +168,12 @@ export function createExplorerShell({
     if (!context.isAvailable()) return false;
     if (!viewer || !viewerContent || !viewerName) return false;
 
+    const geoCleanup = viewerContent?._geoPreviewCleanup;
+    if (typeof geoCleanup === 'function') {
+      geoCleanup();
+      delete viewerContent._geoPreviewCleanup;
+    }
+
     onViewerWillOpen(filePath);
 
     currentFileIndex = viewableFiles.indexOf(filePath);
@@ -215,6 +221,12 @@ export function createExplorerShell({
 
   function closeViewer() {
     if (!viewer || !viewerContent) return;
+
+    const geoCleanup = viewerContent?._geoPreviewCleanup;
+    if (typeof geoCleanup === 'function') {
+      geoCleanup();
+      delete viewerContent._geoPreviewCleanup;
+    }
 
     onViewerWillClose();
     viewer.classList.remove('open');

@@ -1,4 +1,20 @@
+import {
+  parseGeoSpatialContent,
+  mountGeoPreview,
+  unmountGeoPreview,
+  resizeGeoPreview,
+  prepareGeoJsonForMap,
+  getGeoStyleOptions,
+  GEO_BASEMAP_OPTIONS,
+  setGeoBasemap,
+  applyGeoThematicStyle,
+  selectGeoFeature,
+  fitGeoPreviewToBounds,
+} from './geo-preview.js';
+
 const DEFAULT_PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
+const GEO_PREVIEW_EXTS = new Set(['geojson', 'json', 'topojson', 'jsonl', 'ndjson']);
+const JSON_PREVIEW_EXTS = new Set(['json', 'geojson', 'topojson']);
 
 const DEFAULT_OPEN_EXTERNAL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
 
@@ -153,6 +169,199 @@ function attachJsonHandlers(container) {
   }
 }
 
+function renderGeoFeatureSummary(feature, previewKeys, escapeHtml) {
+  const properties = feature?.properties && typeof feature.properties === 'object'
+    ? feature.properties
+    : {};
+  const snippets = [];
+
+  previewKeys.forEach((key) => {
+    if (!(key in properties)) return;
+    const value = toSafeString(properties[key]);
+    if (!value) return;
+    const trimmed = value.length > 48 ? `${value.slice(0, 45)}...` : value;
+    snippets.push(`${escapeHtml(key)}: ${escapeHtml(trimmed)}`);
+  });
+
+  if (!snippets.length) return '<span class="geo-preview-table-empty">No properties</span>';
+  return snippets.join('<span class="geo-preview-table-sep">•</span>');
+}
+
+function renderGeoPreview(container, {
+  geoResult,
+  fileUrl,
+  openExternalIcon,
+  escapeHtml,
+  rawContent,
+}) {
+  const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
+  const rawText = escapeHtml(toSafeString(rawContent));
+  const { geojson: mapGeoJson, fieldProfiles } = prepareGeoJsonForMap(geoResult.geojson);
+  const styleOptions = getGeoStyleOptions(fieldProfiles);
+  const numericOptions = styleOptions.filter((option) => option.numeric);
+  const previewKeys = styleOptions.slice(0, 2).map((option) => option.key);
+  const allFeatures = mapGeoJson.features || [];
+  const visibleFeatures = allFeatures.slice(0, 200);
+  const tableRowsHtml = visibleFeatures.map((feature, idx) => {
+    const fid = feature?.properties?.__fid || String(idx);
+    const geom = escapeHtml(toSafeString(feature?.geometry?.type || 'Unknown'));
+    const summaryHtml = renderGeoFeatureSummary(feature, previewKeys, escapeHtml);
+    return `
+      <button class="geo-preview-table-row" data-fid="${escapeHtml(fid)}" title="Focus feature">
+        <span class="geo-preview-table-index">${idx + 1}</span>
+        <span class="geo-preview-table-geom">${geom}</span>
+        <span class="geo-preview-table-summary">${summaryHtml}</span>
+      </button>
+    `;
+  }).join('');
+  const truncationNotice = allFeatures.length > visibleFeatures.length
+    ? `<div class="geo-preview-table-truncated">Showing ${visibleFeatures.length} of ${allFeatures.length} features</div>`
+    : '';
+
+  const basemapOptionsHtml = GEO_BASEMAP_OPTIONS.map((option) =>
+    `<option value="${escapeHtml(option.id)}">${escapeHtml(option.label)}</option>`
+  ).join('');
+  const colorOptionsHtml = ['<option value="__none__">Color: Geometry</option>']
+    .concat(styleOptions.map((option) =>
+      `<option value="${escapeHtml(option.key)}">Color: ${escapeHtml(option.label)}</option>`
+    ))
+    .join('');
+  const sizeOptionsHtml = ['<option value="__none__">Size: Default</option>']
+    .concat(numericOptions.map((option) =>
+      `<option value="${escapeHtml(option.key)}">Size: ${escapeHtml(option.label)}</option>`
+    ))
+    .join('');
+
+  container.innerHTML = `
+    <div class="geo-preview">
+      <div class="geo-preview-toolbar">
+        <span class="geo-preview-badge">Map</span>
+        <span class="geo-preview-meta">${summary}</span>
+        <div class="geo-preview-controls">
+          <select class="geo-preview-select" data-role="geo-basemap" aria-label="Basemap">
+            ${basemapOptionsHtml}
+          </select>
+          <select class="geo-preview-select" data-role="geo-color-by" aria-label="Color by">
+            ${colorOptionsHtml}
+          </select>
+          <select class="geo-preview-select" data-role="geo-size-by" aria-label="Size by">
+            ${sizeOptionsHtml}
+          </select>
+          <button class="geo-preview-fit-btn" data-role="geo-fit" title="Return to bounds">Fit</button>
+        </div>
+        <div class="geo-preview-view-toggle" role="tablist" aria-label="Geo preview mode">
+          <button class="geo-preview-view-btn active" data-view="map" role="tab" aria-selected="true">Map</button>
+          <button class="geo-preview-view-btn" data-view="raw" role="tab" aria-selected="false">Raw</button>
+        </div>
+      </div>
+      <div class="geo-preview-panel geo-preview-panel-map" data-role="geo-panel-map">
+        <div class="geo-preview-map-wrap">
+          <div class="geo-preview-map" data-role="geo-map"></div>
+          <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+        </div>
+        <div class="geo-preview-table-wrap">
+          <div class="geo-preview-table-header">Features</div>
+          <div class="geo-preview-table" data-role="geo-table">${tableRowsHtml}</div>
+          ${truncationNotice}
+        </div>
+      </div>
+      <div class="geo-preview-panel geo-preview-panel-raw hidden" data-role="geo-panel-raw">
+        <pre><code class="language-json">${rawText}</code></pre>
+      </div>
+    </div>
+    <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
+  `;
+
+  attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
+  highlightCodeBlocks(container);
+
+  const mapElement = container.querySelector('[data-role="geo-map"]');
+  const statusElement = container.querySelector('[data-role="geo-status"]');
+  const mapPanel = container.querySelector('[data-role="geo-panel-map"]');
+  const rawPanel = container.querySelector('[data-role="geo-panel-raw"]');
+  const viewButtons = container.querySelectorAll('.geo-preview-view-btn');
+  const table = container.querySelector('[data-role="geo-table"]');
+  const tableRows = table ? Array.from(table.querySelectorAll('.geo-preview-table-row')) : [];
+  const basemapSelect = container.querySelector('[data-role="geo-basemap"]');
+  const colorSelect = container.querySelector('[data-role="geo-color-by"]');
+  const sizeSelect = container.querySelector('[data-role="geo-size-by"]');
+  const fitBtn = container.querySelector('[data-role="geo-fit"]');
+
+  const setSelectedRow = (fid) => {
+    if (!tableRows.length) return;
+    tableRows.forEach((row) => {
+      const selected = row.dataset.fid === fid;
+      row.classList.toggle('active', selected);
+      if (selected) {
+        row.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  };
+
+  const applyStyleSelections = () => {
+    applyGeoThematicStyle(container, {
+      colorBy: colorSelect?.value || '__none__',
+      sizeBy: sizeSelect?.value || '__none__',
+    });
+  };
+
+  const setView = (view) => {
+    const mapActive = view === 'map';
+    if (mapPanel) mapPanel.classList.toggle('hidden', !mapActive);
+    if (rawPanel) rawPanel.classList.toggle('hidden', mapActive);
+    viewButtons.forEach((btn) => {
+      const isActive = btn.dataset.view === view;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    if (mapActive) {
+      setTimeout(() => resizeGeoPreview(container), 0);
+    }
+  };
+
+  viewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setView(btn.dataset.view || 'map'));
+  });
+
+  if (basemapSelect) {
+    basemapSelect.addEventListener('change', () => {
+      setGeoBasemap(container, basemapSelect.value);
+    });
+  }
+
+  if (colorSelect) colorSelect.addEventListener('change', applyStyleSelections);
+  if (sizeSelect) sizeSelect.addEventListener('change', applyStyleSelections);
+  if (fitBtn) {
+    fitBtn.addEventListener('click', () => {
+      fitGeoPreviewToBounds(container);
+    });
+  }
+
+  tableRows.forEach((row) => {
+    row.addEventListener('click', () => {
+      const fid = row.dataset.fid;
+      selectGeoFeature(container, fid, { fit: true });
+      setSelectedRow(fid);
+    });
+  });
+
+  void mountGeoPreview({
+    container,
+    mapElement,
+    statusElement,
+    geojson: mapGeoJson,
+    bounds: geoResult.bounds,
+    basemap: basemapSelect?.value || 'standard',
+    fieldProfiles,
+    onFeatureSelect: (fid) => {
+      setSelectedRow(fid);
+    },
+  }).then((result) => {
+    if (!result?.ok) return;
+    applyStyleSelections();
+  });
+}
+
 function renderNotebookOutput(output, escapeHtml) {
   if (output.output_type === 'stream') {
     const streamClass = output.name === 'stderr' ? 'nb-output-stderr' : 'nb-output-stdout';
@@ -259,6 +468,8 @@ export function renderFileViewerContent({
 }) {
   if (!container || !data || !context) return false;
 
+  unmountGeoPreview(container);
+
   const ext = toSafeString(data.ext).toLowerCase();
   const fileUrl = context.getFileDownloadUrl(filePath, { inline: true });
   const downloadUrl = context.getFileDownloadUrl(filePath);
@@ -331,8 +542,24 @@ export function renderFileViewerContent({
     return true;
   }
 
+  const content = toSafeString(data.content);
+
+  if (GEO_PREVIEW_EXTS.has(ext)) {
+    const geoResult = parseGeoSpatialContent(content, ext);
+    if (geoResult.ok && geoResult.geojson) {
+      renderGeoPreview(container, {
+        geoResult,
+        fileUrl,
+        openExternalIcon,
+        escapeHtml,
+        rawContent: content,
+      });
+      return true;
+    }
+  }
+
   if (ext === 'md' || ext === 'markdown') {
-    const rendered = renderMarkdown ? renderMarkdown(toSafeString(data.content)) : `<pre>${escapeHtml(toSafeString(data.content))}</pre>`;
+    const rendered = renderMarkdown ? renderMarkdown(content) : `<pre>${escapeHtml(content)}</pre>`;
     container.innerHTML = `
       <div class="markdown-preview">
         <div class="markdown-body">${rendered}</div>
@@ -343,8 +570,8 @@ export function renderFileViewerContent({
     return true;
   }
 
-  if (ext === 'json') {
-    const jsonHtml = renderJsonPreview(toSafeString(data.content), escapeHtml);
+  if (JSON_PREVIEW_EXTS.has(ext)) {
+    const jsonHtml = renderJsonPreview(content, escapeHtml);
     if (jsonHtml) {
       container.innerHTML = `
         ${jsonHtml}
@@ -356,7 +583,6 @@ export function renderFileViewerContent({
     }
   }
 
-  const content = toSafeString(data.content);
   const langClass = data.language ? `language-${data.language}` : '';
   container.innerHTML = `
     <code class="${langClass}">${escapeHtml(content)}</code>
