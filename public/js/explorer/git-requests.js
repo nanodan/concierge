@@ -212,3 +212,56 @@ export function createGitBranchRequests({
     },
   };
 }
+
+function withWorkflowCwd(url, cwd) {
+  if (!cwd) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}cwd=${encodeURIComponent(cwd)}`;
+}
+
+export function createWorkflowPatchRequests({
+  context,
+  apiFetch,
+  resolveCwd = () => context?.getCwd?.() || '',
+}) {
+  const resolveConversationId = () => context?.kind === 'conversation'
+    ? context.getConversationId?.()
+    : null;
+
+  return {
+    requestWorkflowPatches: async () => {
+      const cwd = resolveCwd() || '';
+      const url = withWorkflowCwd('/api/workflow/patches', cwd);
+      const res = await apiFetch(url, { silent: true });
+      if (!res) return { ok: true, data: { patches: [] } };
+      return { ok: true, data: await res.json() };
+    },
+
+    requestApplyWorkflowPatch: async (patchId) => {
+      const conversationId = resolveConversationId();
+      if (!conversationId) {
+        return { ok: false, error: 'Patch apply requires a conversation context' };
+      }
+
+      const res = await apiFetch(`/api/workflow/patches/${encodeURIComponent(patchId)}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId }),
+      });
+      return jsonResult(res, 'Failed to apply patch');
+    },
+
+    requestRejectWorkflowPatch: async (patchId, reason = '') => {
+      const conversationId = resolveConversationId();
+      const body = { reason };
+      if (conversationId) body.conversationId = conversationId;
+
+      const res = await apiFetch(`/api/workflow/patches/${encodeURIComponent(patchId)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return jsonResult(res, 'Failed to reject patch');
+    },
+  };
+}

@@ -149,6 +149,68 @@
   flex-shrink: 0;
 }
 
+.conv-card-branch-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--accent) 70%, white 30%);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));
+}
+
+.conv-card-branches-btn,
+.stack-branches-btn {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--glass-border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: color-mix(in srgb, var(--accent) 70%, white 30%);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 2px 8px;
+  min-height: 28px;
+  min-width: 64px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.conv-card-branches-btn {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.stack-branches-btn {
+  margin: 0;
+}
+
+.conv-card-branches-btn:hover,
+.stack-branches-btn:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+  color: var(--text);
+}
+
+.conv-card-branches-btn:active,
+.stack-branches-btn:active {
+  transform: translateY(1px);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .conv-card-branches-btn,
+  .stack-branches-btn {
+    min-height: 36px;
+    min-width: 78px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
+
 .conv-card-preview {
   font-size: 13px;
   color: var(--text-secondary);
@@ -897,7 +959,7 @@
   height: 14px;
   border-radius: 0 0 12px 12px;
   background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
-  border: 1px solid var(--glass-border);
+  border: 1px solid color-mix(in srgb, var(--glass-border) 45%, var(--surface) 55%);
   border-top: none;
 }
 
@@ -962,6 +1024,12 @@
   transition: background 0.15s;
 }
 
+.stack-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .stack-header:hover {
   background: var(--white-alpha-6);
 }
@@ -977,6 +1045,37 @@
   padding: 4px 8px;
   border-radius: 6px;
   transition: color 0.15s;
+}
+
+.fork-stack:not(.expanded) .stack-branches-btn {
+  position: absolute;
+  right: 58px;
+  bottom: 2px;
+  z-index: 4;
+  background: color-mix(in srgb, var(--surface) 98%, var(--bg) 2%);
+  border-color: color-mix(in srgb, var(--card-border) 78%, var(--surface) 22%);
+  box-shadow: 0 1px 4px var(--black-alpha-25), 0 0 0 3px var(--surface), 0 0 0 1px color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.fork-stack:not(.expanded) .stack-count {
+  box-shadow: 0 1px 4px var(--black-alpha-25), 0 0 0 3px var(--surface);
+}
+
+.stack-worktree-pill {
+  position: absolute;
+  left: 6px;
+  bottom: 2px;
+  z-index: 4;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--accent) 78%, white 22%);
+  background: color-mix(in srgb, var(--surface) 84%, var(--accent) 16%);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--card-border));
+  border-radius: 10px;
+  padding: 3px 7px;
+  box-shadow: 0 1px 4px var(--black-alpha-20), 0 0 0 2px var(--surface);
 }
 
 .stack-header:hover .stack-collapse-icon {

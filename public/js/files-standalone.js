@@ -19,6 +19,7 @@ import {
   createGitChangesRequests,
   createGitHistoryRequests,
   createGitBranchRequests,
+  createWorkflowPatchRequests,
 } from './explorer/git-requests.js';
 import { createExplorerHost } from './explorer/host.js';
 import {
@@ -279,6 +280,12 @@ export function initStandaloneFiles(elements) {
     },
   });
 
+  const workflowPatchRequests = createWorkflowPatchRequests({
+    context: standaloneContext,
+    apiFetch,
+    resolveCwd: () => currentPath || rootPath,
+  });
+
   changesController = createGitChangesController({
     changesList,
     commitForm,
@@ -302,6 +309,9 @@ export function initStandaloneFiles(elements) {
       void viewDiff(filePath, staged);
     },
     requestStashes: stashRequests.requestStashes,
+    requestWorkflowPatches: workflowPatchRequests.requestWorkflowPatches,
+    requestRejectWorkflowPatch: workflowPatchRequests.requestRejectWorkflowPatch,
+    canApplyWorkflowPatches: false,
     ...changesRequests,
     stashActions,
   });

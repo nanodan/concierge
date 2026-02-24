@@ -349,6 +349,37 @@ describe('processStreamEvent - result with tokens', () => {
     assert.ok(msg.text.includes('Using Bash'));
     assert.ok(msg.text.includes('I found file.txt'));
   });
+
+  it('marks empty 0/0 resumed result for fresh-session retry when enabled', () => {
+    const conv = { claudeSessionId: 'sess-old', messages: [], status: 'thinking' };
+    const event = {
+      type: 'result',
+      result: '',
+      session_id: 'sess-empty',
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+    };
+    processStreamEvent(
+      fakeWs,
+      'conv-1',
+      conv,
+      event,
+      '',
+      onSave,
+      broadcastStatus,
+      {
+        canRetryWithCompactHistory: true,
+        canRetryWithFreshSession: true,
+      }
+    );
+
+    assert.equal(conv.status, 'thinking');
+    assert.equal(conv.messages.length, 0);
+    assert.equal(conv.claudeSessionId, null);
+    assert.equal(conv._retryAfterEmptyResultMode, 'fresh-session');
+    assert.equal(savedIds.length, 0);
+    assert.equal(sent.some(m => m.type === 'error'), false);
+  });
 });
 
 describe('handleNoOutputClose', () => {

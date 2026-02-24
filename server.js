@@ -27,8 +27,12 @@ const {
   cancelProcess,
 } = require('./lib/claude');
 const { initProviders, getProvider } = require('./lib/providers');
+const { resolveConversationExecutionMode, modeToLegacyAutopilot } = require('./lib/workflow/execution-mode');
+const { acquireLock, releaseLock } = require('./lib/workflow/locks');
 
 const app = express();
+const RUN_LOCK_HEARTBEAT_MS = 20_000;
+const activeRunLocks = new Map();
 
 // Use HTTPS if certs exist (required for mic access on non-localhost)
 const CERT_DIR = path.join(__dirname, 'certs');
@@ -98,6 +102,108 @@ async function loadConversationMemories(conv) {
   return loadMemories(conv.cwd);
 }
 
+function ensureWriteAccess(
+  ws,
+  conv,
+  actorConversationId,
+  errorConversationId = actorConversationId,
+  metadata = {}
+) {
+  if (!conv) return false;
+  const executionMode = resolveConversationExecutionMode(conv);
+  if (executionMode !== 'autonomous') return true;
+
+  const lockResult = acquireLock(conv.cwd, actorConversationId);
+  if (lockResult.ok) {
+    startRunLockHeartbeat(ws, conv.cwd, actorConversationId, errorConversationId);
+    return true;
+  }
+
+  const conflict = buildLockConflictPayload(lockResult.lock, lockResult.error);
+
+  ws.send(JSON.stringify({
+    type: 'error',
+    conversationId: errorConversationId,
+    code: lockResult.code || conflict.code,
+    lock: conflict.lock,
+    blockerConversationId: conflict.blockerConversationId,
+    blockerConversationName: conflict.blockerConversationName,
+    error: conflict.error,
+    ...metadata,
+  }));
+  return false;
+}
+
+function buildLockConflictPayload(lock, fallbackError = 'Repository is locked by another conversation') {
+  const blockerConversationId = lock?.writerConversationId || null;
+  const blockerConversationName = blockerConversationId
+    ? (conversations.get(blockerConversationId)?.name || null)
+    : null;
+  const error = blockerConversationName
+    ? `Repository is locked by "${blockerConversationName}"`
+    : fallbackError;
+  return {
+    code: 'WRITE_LOCKED',
+    lock: lock || null,
+    blockerConversationId,
+    blockerConversationName,
+    error,
+  };
+}
+
+function stopRunLockHeartbeat(conversationId, { release = true, cwd = null } = {}) {
+  const active = activeRunLocks.get(conversationId);
+  if (active?.timer) {
+    clearInterval(active.timer);
+  }
+  if (active) {
+    activeRunLocks.delete(conversationId);
+  }
+
+  const releaseCwd = cwd || active?.cwd;
+  if (release && releaseCwd) {
+    releaseLock(releaseCwd, conversationId);
+  }
+}
+
+function startRunLockHeartbeat(ws, cwd, conversationId, errorConversationId = conversationId) {
+  stopRunLockHeartbeat(conversationId, { release: false });
+  const lockCwd = cwd || process.env.HOME;
+
+  const timer = setInterval(async () => {
+    const renewResult = acquireLock(lockCwd, conversationId);
+    if (renewResult.ok) return;
+
+    stopRunLockHeartbeat(conversationId, { release: false, cwd: lockCwd });
+
+    const conv = conversations.get(conversationId);
+    const providerId = conv?.provider || 'claude';
+    try {
+      const provider = getProvider(providerId);
+      provider.cancel(conversationId);
+    } catch {
+      cancelProcess(conversationId);
+    }
+
+    const conflict = buildLockConflictPayload(renewResult.lock, renewResult.error);
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        conversationId: errorConversationId,
+        code: conflict.code,
+        lock: conflict.lock,
+        blockerConversationId: conflict.blockerConversationId,
+        blockerConversationName: conflict.blockerConversationName,
+        error: conflict.error,
+      }));
+    }
+
+    await resetConversationOnError(conversationId);
+  }, RUN_LOCK_HEARTBEAT_MS);
+
+  activeRunLocks.set(conversationId, { timer, cwd: lockCwd });
+}
+
 function getProviderSessionField(providerId) {
   return providerId === 'codex' ? 'codexSessionId' : 'claudeSessionId';
 }
@@ -112,15 +218,61 @@ function getLatestSessionId(messages = []) {
 function setConversationSession(conv, providerId, sessionId) {
   conv.claudeSessionId = null;
   conv.codexSessionId = null;
+  if (providerId === 'claude') {
+    conv.claudeForkSessionId = null;
+  }
   if (!sessionId) return;
   conv[getProviderSessionField(providerId)] = sessionId;
 }
 
 function hydrateSessionFromMessages(conv, providerId) {
+  if (providerId === 'claude' && conv.claudeForkSessionId) return;
   const key = getProviderSessionField(providerId);
   if (conv[key]) return;
   const sessionId = getLatestSessionId(conv.messages);
   if (sessionId) conv[key] = sessionId;
+}
+
+function stripSessionIdsFromMessages(messages = []) {
+  let changed = false;
+  const next = messages.map((msg) => {
+    if (!msg || typeof msg !== 'object' || !msg.sessionId) return msg;
+    changed = true;
+    const { sessionId, ...rest } = msg;
+    return rest;
+  });
+  return { messages: changed ? next : messages, changed };
+}
+
+async function clearInheritedForkSessionIfNeeded(conv, conversationId, providerId) {
+  if (!conv?.parentId) return;
+
+  const createdAt = Number(conv.createdAt) || 0;
+  let latestSessionTimestamp = 0;
+  for (let i = conv.messages.length - 1; i >= 0; i--) {
+    const msg = conv.messages[i];
+    if (msg?.sessionId) {
+      latestSessionTimestamp = Number(msg.timestamp) || 0;
+      break;
+    }
+  }
+
+  // If latest session marker is newer than fork creation, this fork already has its own session.
+  if (latestSessionTimestamp && latestSessionTimestamp >= createdAt) return;
+
+  let changed = false;
+  if (conv.claudeSessionId || conv.codexSessionId) {
+    setConversationSession(conv, providerId, null);
+    changed = true;
+  }
+  const stripped = stripSessionIdsFromMessages(conv.messages);
+  if (stripped.changed) {
+    conv.messages = stripped.messages;
+    changed = true;
+  }
+  if (changed) {
+    await saveConversation(conversationId);
+  }
 }
 
 async function handleCancel(ws, msg) {
@@ -187,14 +339,23 @@ async function handleMessage(ws, msg) {
       return;
     }
 
-    hydrateSessionFromMessages(conv, providerId);
+    await clearInheritedForkSessionIfNeeded(conv, conversationId, providerId);
 
+    // Persist user input first so it is never lost, even when AUTO is lock-blocked.
     conv.messages.push({
       role: 'user',
       text,
       attachments: attachments || undefined,
       timestamp: Date.now(),
     });
+    await saveConversation(conversationId);
+
+    if (!ensureWriteAccess(ws, conv, conversationId, conversationId, { messageSaved: true })) {
+      return;
+    }
+
+    hydrateSessionFromMessages(conv, providerId);
+
     conv.status = 'thinking';
     conv.thinkingStartTime = Date.now();
     await saveConversation(conversationId);
@@ -233,6 +394,12 @@ async function handleRegenerate(ws, msg) {
 
     if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+      return;
+    }
+
+    await clearInheritedForkSessionIfNeeded(conv, conversationId, providerId);
+
+    if (!ensureWriteAccess(ws, conv, conversationId)) {
       return;
     }
 
@@ -303,34 +470,29 @@ async function handleEdit(ws, msg) {
 
     // Auto-fork: create a new conversation instead of truncating
     newId = uuidv4();
-    const messages = conv.messages.slice(0, messageIndex + 1).map(m => ({ ...m }));
+    const messages = conv.messages.slice(0, messageIndex + 1).map((m) => {
+      const { sessionId, ...rest } = m || {};
+      return { ...rest };
+    });
 
     // Update the edited message in the fork
     messages[messageIndex].text = text;
     messages[messageIndex].timestamp = Date.now();
-
-    // Find session ID from messages (like fork does) to preserve context
-    let editSessionId = null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].sessionId) { editSessionId = messages[i].sessionId; break; }
-    }
-    if (!editSessionId) {
-      editSessionId = conv[getProviderSessionField(providerId)] || null;
-    }
 
     const thinkingStartTime = Date.now();
     const forkedConv = {
       id: newId,
       name: `${conv.name} (edit)`,
       cwd: conv.cwd,
-      claudeSessionId: providerId === 'claude' ? editSessionId : null,
-      codexSessionId: providerId === 'codex' ? editSessionId : null,
+      claudeSessionId: null,
+      codexSessionId: null,
       messages,
       status: 'thinking',
       thinkingStartTime,
       archived: false,
       pinned: false,
-      autopilot: conv.autopilot,
+      executionMode: resolveConversationExecutionMode(conv),
+      autopilot: modeToLegacyAutopilot(resolveConversationExecutionMode(conv)),
       provider: conv.provider || 'claude',
       model: conv.model,
       createdAt: Date.now(),
@@ -348,6 +510,14 @@ async function handleEdit(ws, msg) {
       conversationId: newId,
       conversation: convMeta(forkedConv),
     }));
+
+    if (!ensureWriteAccess(ws, forkedConv, newId)) {
+      forkedConv.status = 'idle';
+      forkedConv.thinkingStartTime = null;
+      await saveConversation(newId);
+      broadcastStatus(newId, 'idle');
+      return;
+    }
 
     broadcastStatus(newId, 'thinking', thinkingStartTime);
 
@@ -391,6 +561,8 @@ async function handleResend(ws, msg) {
       return;
     }
 
+    await clearInheritedForkSessionIfNeeded(conv, conversationId, providerId);
+
     if (typeof messageIndex !== 'number' || messageIndex < 0 || messageIndex >= conv.messages.length) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Invalid message index' }));
       return;
@@ -405,6 +577,10 @@ async function handleResend(ws, msg) {
     const isLastMessage = messageIndex === conv.messages.length - 1;
 
     if (isLastMessage) {
+      if (!ensureWriteAccess(ws, conv, conversationId)) {
+        return;
+      }
+
       // Resend in place - just spawn provider on this message
       hydrateSessionFromMessages(conv, providerId);
       conv.status = 'thinking';
@@ -420,30 +596,25 @@ async function handleResend(ws, msg) {
     } else {
       // Fork from this message and spawn provider on the fork
       newId = uuidv4();
-      const messages = conv.messages.slice(0, messageIndex + 1);
-
-      // Find session ID from messages to preserve context
-      let forkSessionId = null;
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].sessionId) { forkSessionId = messages[i].sessionId; break; }
-      }
-      if (!forkSessionId) {
-        forkSessionId = conv[getProviderSessionField(providerId)] || null;
-      }
+      const messages = conv.messages.slice(0, messageIndex + 1).map((m) => {
+        const { sessionId, ...rest } = m || {};
+        return { ...rest };
+      });
 
       const thinkingStartTime = Date.now();
       const forkedConv = {
         id: newId,
         name: `${conv.name} (resend)`,
         cwd: conv.cwd,
-        claudeSessionId: providerId === 'claude' ? forkSessionId : null,
-        codexSessionId: providerId === 'codex' ? forkSessionId : null,
+        claudeSessionId: null,
+        codexSessionId: null,
         messages,
         status: 'thinking',
         thinkingStartTime,
         archived: false,
         pinned: false,
-        autopilot: conv.autopilot,
+        executionMode: resolveConversationExecutionMode(conv),
+        autopilot: modeToLegacyAutopilot(resolveConversationExecutionMode(conv)),
         provider: conv.provider || 'claude',
         model: conv.model,
         createdAt: Date.now(),
@@ -460,6 +631,14 @@ async function handleResend(ws, msg) {
         conversationId: newId,
         conversation: convMeta(forkedConv),
       }));
+
+      if (!ensureWriteAccess(ws, forkedConv, newId)) {
+        forkedConv.status = 'idle';
+        forkedConv.thinkingStartTime = null;
+        await saveConversation(newId);
+        broadcastStatus(newId, 'idle');
+        return;
+      }
 
       broadcastStatus(newId, 'thinking', thinkingStartTime);
 
@@ -478,6 +657,10 @@ async function handleResend(ws, msg) {
 }
 
 function broadcastStatus(conversationId, status, thinkingStartTime) {
+  if (status !== 'thinking') {
+    stopRunLockHeartbeat(conversationId, { release: true });
+  }
+
   const payload = { type: 'status', conversationId, status };
   if (thinkingStartTime) payload.thinkingStartTime = thinkingStartTime;
   const msg = JSON.stringify(payload);

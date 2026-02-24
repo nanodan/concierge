@@ -72,12 +72,21 @@ function renderTree(data) {
   // Icons
   const rootIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v7m0 6v7M2 12h7m6 0h7"/></svg>`;
   const branchIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3c0 3 3 3 6 3h3"/></svg>`;
+  const rootCwd = data.rootCwd || data.tree.cwd || '';
+
+  function compactCwd(cwd) {
+    if (!cwd) return '';
+    const compact = String(cwd).replace(/^\/(?:Users|home)\/[^/]+/, '~');
+    if (compact.length <= 46) return compact;
+    return `...${compact.slice(-43)}`;
+  }
 
   function renderNode(node, depth, parentName = null, _isLastChild = true) {
     const isCurrent = node.id === data.currentId;
     const hasKids = node.children && node.children.length > 0;
     const isCollapsed = collapsedNodes.has(node.id);
     const isRoot = depth === 0;
+    const workspaceKind = node.workspaceKind || (node.cwd && rootCwd && node.cwd !== rootCwd ? 'worktree' : 'shared');
 
     // Format relative time
     const timeAgo = formatRelativeTime(node.updatedAt || node.createdAt);
@@ -100,6 +109,13 @@ function renderTree(data) {
     const childrenBadge = hasKids && isCollapsed
       ? `<span class="branch-children-badge">${countDescendants(node)} hidden</span>`
       : '';
+    const roleBadge = isRoot
+      ? '<span class="branch-role-badge root">root</span>'
+      : (hasKids ? '<span class="branch-role-badge parent">parent</span>' : '');
+    const workspaceBadge = workspaceKind === 'worktree'
+      ? '<span class="branch-workspace-badge worktree">worktree</span>'
+      : '<span class="branch-workspace-badge shared">shared cwd</span>';
+    const cwdLabel = node.cwd ? `<div class="branch-cwd" title="${escapeHtml(node.cwd)}">${escapeHtml(compactCwd(node.cwd))}</div>` : '';
 
     html += `
       <div class="branch-node-wrapper${isRoot ? ' root-wrapper' : ''}" data-depth="${depth}">
@@ -110,11 +126,14 @@ function renderTree(data) {
               <div class="branch-item-header">
                 <span class="branch-item-name">${escapeHtml(node.name)}</span>
                 ${isCurrent ? '<span class="branch-current-badge">current</span>' : ''}
+                ${roleBadge}
+                ${workspaceBadge}
               </div>
               <div class="branch-item-meta">
                 <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>${node.messageCount}</span>
                 <span class="branch-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>${timeAgo}</span>
               </div>
+              ${cwdLabel}
               ${forkInfo}
             </div>
             ${childrenBadge}

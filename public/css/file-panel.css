@@ -1383,6 +1383,139 @@
   opacity: 1;
 }
 
+/* === Workflow Patch Queue === */
+.patch-queue-section {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.patch-queue-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.patch-queue-title {
+  flex-shrink: 0;
+}
+
+.patch-queue-count {
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.patch-queue-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.patch-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.patch-queue-item:hover {
+  background: var(--accent-alpha-10, rgba(var(--accent-rgb), 0.1));
+  border-left-color: var(--accent);
+}
+
+.patch-queue-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--bg);
+}
+
+.patch-queue-status.status-queued {
+  background: var(--accent);
+}
+
+.patch-queue-status.status-conflict {
+  background: var(--error);
+}
+
+.patch-queue-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.patch-queue-reason {
+  max-width: 180px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono, 'SF Mono', Monaco, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patch-queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.patch-queue-action-btn {
+  min-width: 54px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.patch-queue-action-btn:hover {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+
+.patch-queue-action-btn.danger {
+  color: var(--error, #e53935);
+  border-color: var(--error, #e53935);
+}
+
+.patch-queue-action-btn.danger:hover {
+  background: var(--error, #e53935);
+  color: #fff;
+}
+
+.patch-queue-readonly {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 .stash-item:hover .stash-time {
   opacity: 0;
 }

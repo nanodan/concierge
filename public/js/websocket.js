@@ -91,6 +91,18 @@ export function forceReconnect() {
 }
 
 // Handler map for WebSocket message types
+function resolveBlockerConversationName(data) {
+  if (data?.blockerConversationName) return data.blockerConversationName;
+  const blockerId = data?.blockerConversationId || data?.lock?.writerConversationId || null;
+  if (!blockerId) return null;
+  const conv = state.conversations.find((item) => item.id === blockerId);
+  return conv?.name || null;
+}
+
+function resolveBlockerConversationId(data) {
+  return data?.blockerConversationId || data?.lock?.writerConversationId || null;
+}
+
 const messageHandlers = {
   delta(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
@@ -130,8 +142,32 @@ const messageHandlers = {
   },
 
   error(data, currentConversationId) {
+    if (data.code === 'WRITE_LOCKED') {
+      const blockerName = resolveBlockerConversationName(data);
+      const blockerId = resolveBlockerConversationId(data);
+      const message = blockerName
+        ? `AUTO blocked by "${blockerName}". ${data.messageSaved ? 'Your message was saved. ' : ''}Wait for it to finish or cancel that run.`
+        : `AUTO blocked by another conversation. ${data.messageSaved ? 'Your message was saved. ' : ''}Wait for it to finish or cancel that run.`;
+      showToast(message, {
+        variant: 'error',
+        duration: 5200,
+        action: blockerId ? 'Open' : undefined,
+        onAction: blockerId ? () => {
+          import('./conversations.js').then(({ openConversation }) => {
+            openConversation(blockerId);
+          });
+        } : undefined,
+      });
+      if (data.messageSaved) {
+        loadConversations();
+      }
+    }
+
     if (data.conversationId === currentConversationId || !data.conversationId) {
-      state.showError(data.error);
+      const errorMessage = data.messageSaved
+        ? `${data.error} Your message was saved above.`
+        : data.error;
+      state.showError(errorMessage);
       state.setThinking(false);
     }
   },

@@ -173,6 +173,39 @@
   flex-shrink: 0;
 }
 
+.branch-role-badge,
+.branch-workspace-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+
+.branch-role-badge.root {
+  border-color: var(--accent-alpha-50);
+  color: var(--accent);
+}
+
+.branch-role-badge.parent {
+  border-color: var(--border);
+}
+
+.branch-workspace-badge.worktree {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.branch-workspace-badge.shared {
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .branch-item-meta {
   display: flex;
   align-items: center;
@@ -185,6 +218,15 @@
   width: 12px;
   height: 12px;
   opacity: 0.6;
+}
+
+.branch-cwd {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .branch-meta-item {
