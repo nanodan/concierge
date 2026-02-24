@@ -4,7 +4,7 @@ import { formatTime, haptic, showToast, showDialog, getDialogOverlay, getDialogC
 import { HEADER_COMPACT_ENTER, HEADER_COMPACT_EXIT, MESSAGE_INPUT_MAX_HEIGHT } from './constants.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
-import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages } from './render.js';
+import { showReactionPicker, setAttachMessageActionsCallback, loadMoreMessages, attachCopyMsgHandlers } from './render.js';
 import * as state from './state.js';
 import { toggleFilePanel, openFilePanel, closeFilePanel, isFilePanelOpen, isFileViewerOpen, closeFileViewer } from './file-panel.js';
 import { isBranchesViewOpen, closeBranchesView } from './branches.js';
@@ -86,6 +86,11 @@ export { fetchMemories, createMemory, updateMemoryAPI, deleteMemoryAPI } from '.
 
 // --- File browser mode routing ---
 let fileBrowserMode = 'conversation';
+const WRITE_LOCK_HEARTBEAT_MS = 20_000;
+let workflowHeartbeatTimer = null;
+let workflowHeartbeatConversationId = null;
+let workflowHeartbeatCwd = null;
+let lastWorkflowLockErrorAt = 0;
 
 function isStandaloneVisible() {
   const view = document.getElementById('files-standalone-view');
@@ -119,6 +124,89 @@ function setupFileBrowserEventListeners(generalFilesBtn, hapticFn = () => {}) {
     hapticFn();
     openFileBrowser('general');
   });
+}
+
+function getCurrentConversationCwd() {
+  const convId = state.getCurrentConversationId();
+  if (!convId) return '';
+  const conv = state.conversations.find((item) => item.id === convId);
+  return conv?.cwd || '';
+}
+
+async function postWorkflowLock(endpoint, payload) {
+  try {
+    const res = await fetch(`/api/workflow/lock/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, data: { error: err.message || 'Network error' } };
+  }
+}
+
+function stopWorkflowHeartbeat({ release = false } = {}) {
+  if (workflowHeartbeatTimer) {
+    clearInterval(workflowHeartbeatTimer);
+    workflowHeartbeatTimer = null;
+  }
+
+  const prevConversationId = workflowHeartbeatConversationId;
+  const prevCwd = workflowHeartbeatCwd;
+  workflowHeartbeatConversationId = null;
+  workflowHeartbeatCwd = null;
+
+  if (release && prevConversationId && prevCwd) {
+    void postWorkflowLock('release', {
+      conversationId: prevConversationId,
+      cwd: prevCwd,
+    });
+  }
+}
+
+async function downgradeFromAutonomousLockLoss(conversationId) {
+  if (!conversationId || state.getCurrentConversationId() !== conversationId) return;
+  if (state.getCurrentExecutionMode() !== 'autonomous') return;
+
+  await apiFetch(`/api/conversations/${conversationId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ executionMode: 'patch' }),
+    silent: true,
+  });
+
+  state.setCurrentExecutionMode('patch');
+  state.setCurrentAutopilot(true);
+  updateModeBadge('patch', state.getCurrentProvider());
+  showToast('Autonomous lock lost - switched to patch mode', { variant: 'error' });
+}
+
+async function sendWorkflowHeartbeat() {
+  const conversationId = workflowHeartbeatConversationId;
+  const cwd = workflowHeartbeatCwd;
+  if (!conversationId || !cwd) return;
+
+  const isSameConversation = state.getCurrentConversationId() === conversationId;
+  const isAutonomous = state.getCurrentExecutionMode() === 'autonomous';
+
+  if (!isSameConversation || !isAutonomous) {
+    // Conversation focus changed; keep lock ownership intact and just stop this timer.
+    stopWorkflowHeartbeat();
+    return;
+  }
+
+  const result = await postWorkflowLock('heartbeat', { conversationId, cwd });
+  if (result.ok) return;
+
+  stopWorkflowHeartbeat();
+  await downgradeFromAutonomousLockLoss(conversationId);
+}
+
+export async function syncWorkflowLockHeartbeat() {
+  // Lock lifecycle is execution-scoped and managed by the server runtime.
+  stopWorkflowHeartbeat();
 }
 
 // --- Bell easter egg quotes by theme ---
@@ -514,6 +602,11 @@ export function openNewChatModal(cwd = '') {
 
 // Thank you easter egg - check for gratitude and show hearts
 const THANK_YOU_PATTERNS = /\b(thanks?|thank\s*you|thx|ty|tysm|thank\s*u|cheers|gracias|merci|danke|arigatou?|grazie)\b/i;
+const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
+function buildUserMessageActionButtons() {
+  return `<div class="msg-action-btns user-actions"><button class="msg-action-btn copy-msg-btn" aria-label="Copy message" title="Copy">${COPY_ICON_SVG}</button></div>`;
+}
 
 function triggerHeartsAnimation() {
   const hearts = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🩷', '🩵', '🤍'];
@@ -574,8 +667,9 @@ export async function sendMessage(text) {
     const el = document.createElement('div');
     el.className = 'message user animate-in queued';
     el.dataset.index = queuedIndex;
-    el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>`;
+    el.innerHTML = escapeHtml(text) + `<div class="meta">${formatTime(Date.now())} &middot; queued</div>${buildUserMessageActionButtons()}`;
     messagesContainer.appendChild(el);
+    attachCopyMsgHandlers();
     attachMessageActions();
     state.scrollToBottom(true);
     messageInput.value = '';
@@ -617,12 +711,13 @@ export async function sendMessage(text) {
   const el = document.createElement('div');
   el.className = 'message user animate-in';
   el.dataset.index = msgIndex;
-  el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>`;
+  el.innerHTML = attachHtml + escapeHtml(text) + `<div class="meta">${formatTime(Date.now())}</div>${buildUserMessageActionButtons()}`;
   messagesContainer.appendChild(el);
   state.setUserHasScrolledUp(false);
   state.scrollToBottom(true);
 
   // Attach handlers for the newly added message
+  attachCopyMsgHandlers();
   attachMessageActions();
   if (attachments.length > 0) {
     const { attachImageHandlers } = await import('./render.js');
@@ -871,17 +966,32 @@ function resendMessage(messageIndex) {
 }
 
 // --- Model & Mode Badges ---
-export function updateModeBadge(isAutopilot, provider = 'claude') {
+export function updateModeBadge(executionMode, provider = 'claude') {
   // Show mode badge for providers with tool use (Claude and Codex).
   const supportsTools = provider !== 'ollama';
   modeBadge.classList.toggle('hidden', !supportsTools);
-  if (!supportsTools) return;
+  if (!supportsTools) {
+    void syncWorkflowLockHeartbeat();
+    return;
+  }
 
-  // Autopilot vs Read-only toggle (independent of sandbox)
-  modeBadge.textContent = isAutopilot ? 'AUTO' : 'RO';
-  modeBadge.title = isAutopilot ? 'Autopilot: Full access to tools' : 'Read-only: No writes or commands';
-  modeBadge.classList.toggle('autopilot', isAutopilot);
-  modeBadge.classList.toggle('readonly', !isAutopilot);
+  const mode = executionMode || 'patch';
+  const labels = {
+    autonomous: 'AUTO',
+    patch: 'PATCH',
+    discuss: 'DISCUSS',
+  };
+  const titles = {
+    autonomous: 'Autonomous: write-capable agent execution',
+    patch: 'Patch: read/analyze and submit/apply patches',
+    discuss: 'Discuss: analysis only (no repository writes)',
+  };
+
+  modeBadge.textContent = labels[mode] || 'PATCH';
+  modeBadge.title = titles[mode] || titles.patch;
+  modeBadge.classList.toggle('autopilot', mode === 'autonomous');
+  modeBadge.classList.toggle('readonly', mode !== 'autonomous');
+  void syncWorkflowLockHeartbeat();
 }
 
 export function updateProviderBadge(provider) {
@@ -1113,6 +1223,7 @@ export function setupEventListeners(createConversation) {
   backBtn.addEventListener('click', () => {
     haptic();
     showListView();
+    void syncWorkflowLockHeartbeat();
   });
 
   deleteBtn.addEventListener('click', async () => {
@@ -1167,8 +1278,9 @@ export function setupEventListeners(createConversation) {
     const sandboxed = convSandboxed ? convSandboxed.checked : true;
     const provider = convProviderSelect ? convProviderSelect.value : 'claude';
     const model = convModelSelect.value;
+    const executionMode = autopilot ? 'autonomous' : 'discuss';
     if (name) {
-      createConversation(name, cwd, autopilot, model, sandboxed, provider);
+      createConversation(name, cwd, autopilot, model, sandboxed, provider, executionMode);
       modalOverlay.classList.add('hidden');
     }
   });
@@ -1307,21 +1419,29 @@ export function setupEventListeners(createConversation) {
     if (convStatsDropdown) convStatsDropdown.classList.add('hidden');
   });
 
-  // Mode badge click handler - toggles autopilot (independent of sandbox)
+  // Mode badge click handler - cycles execution mode.
   modeBadge.addEventListener('click', async () => {
     const currentConversationId = state.getCurrentConversationId();
     if (!currentConversationId) return;
     // Mode toggle only applies to providers with tool use
     if (state.getCurrentProvider() === 'ollama') return;
-    const newAutopilot = !state.getCurrentAutopilot();
-    state.setCurrentAutopilot(newAutopilot);
-    updateModeBadge(newAutopilot, state.getCurrentProvider());
-    await apiFetch(`/api/conversations/${currentConversationId}`, {
+
+    const modeOrder = ['discuss', 'patch', 'autonomous'];
+    const currentMode = state.getCurrentExecutionMode() || 'patch';
+    const idx = modeOrder.indexOf(currentMode);
+    const nextMode = modeOrder[(idx + 1 + modeOrder.length) % modeOrder.length];
+
+    const patchRes = await apiFetch(`/api/conversations/${currentConversationId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ autopilot: newAutopilot }),
+      body: JSON.stringify({ executionMode: nextMode }),
       silent: true,
     });
+    if (!patchRes) return;
+
+    state.setCurrentExecutionMode(nextMode);
+    state.setCurrentAutopilot(nextMode !== 'discuss');
+    updateModeBadge(nextMode, state.getCurrentProvider());
   });
 
   // Archive toggle

@@ -172,6 +172,25 @@
   text-overflow: ellipsis;
 }
 
+.chat-cwd-indicator {
+  max-width: min(36vw, 260px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-cwd-indicator.worktree {
+  border-color: var(--accent-alpha-50);
+  color: var(--accent);
+}
+
 .status-dot {
   width: 10px;
   height: 10px;
@@ -315,6 +334,10 @@
   .header-icon-btn svg {
     width: 22px;
     height: 22px;
+  }
+
+  .chat-cwd-indicator {
+    display: none !important;
   }
 }
 

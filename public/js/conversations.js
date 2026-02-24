@@ -19,6 +19,7 @@ let listView = null;
 let chatView = null;
 let conversationList = null;
 let chatName = null;
+let chatCwdIndicator = null;
 let loadMoreBtn = null;
 let contextBar = null;
 let messageInput = null;
@@ -35,6 +36,7 @@ export function initConversations(elements) {
   chatView = elements.chatView;
   conversationList = elements.conversationList;
   chatName = elements.chatName;
+  chatCwdIndicator = elements.chatCwdIndicator;
   loadMoreBtn = elements.loadMoreBtn;
   contextBar = elements.contextBar;
   messageInput = elements.messageInput;
@@ -82,6 +84,43 @@ export function initConversations(elements) {
   });
 }
 
+function compactCwdLabel(cwd) {
+  if (!cwd) return '';
+  const compact = cwd.replace(/^\/(?:Users|home)\/[^/]+/, '~');
+  if (compact.length <= 34) return compact;
+  return `...${compact.slice(-31)}`;
+}
+
+function findRootConversationInList(conversationId) {
+  const byId = new Map(state.conversations.map((item) => [item.id, item]));
+  let current = byId.get(conversationId) || null;
+  for (let i = 0; i < 64 && current?.parentId; i++) {
+    const parent = byId.get(current.parentId);
+    if (!parent) break;
+    current = parent;
+  }
+  return current;
+}
+
+function updateChatCwdIndicator(conv) {
+  if (!chatCwdIndicator) return;
+  if (!conv?.cwd) {
+    chatCwdIndicator.textContent = '';
+    chatCwdIndicator.title = '';
+    chatCwdIndicator.classList.add('hidden');
+    chatCwdIndicator.classList.remove('worktree');
+    return;
+  }
+
+  const rootConv = findRootConversationInList(conv.id);
+  const rootCwd = rootConv?.cwd || '';
+  const isWorktree = !!(rootCwd && conv.cwd !== rootCwd);
+  chatCwdIndicator.textContent = `${isWorktree ? 'worktree' : 'cwd'}: ${compactCwdLabel(conv.cwd)}`;
+  chatCwdIndicator.title = conv.cwd;
+  chatCwdIndicator.classList.remove('hidden');
+  chatCwdIndicator.classList.toggle('worktree', isWorktree);
+}
+
 export async function loadConversations() {
   const conversations = state.conversations;
   // Show skeletons on first load when list is empty
@@ -125,11 +164,11 @@ export async function getConversation(id) {
   return res.json();
 }
 
-export async function createConversation(name, cwd, autopilot, model, sandboxed = true, provider = 'claude') {
+export async function createConversation(name, cwd, autopilot, model, sandboxed = true, provider = 'claude', executionMode = null) {
   const res = await apiFetch('/api/conversations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, cwd, autopilot, model, sandboxed, provider }),
+    body: JSON.stringify({ name, cwd, autopilot, model, sandboxed, provider, executionMode }),
   });
   if (!res) return;
   const conv = await res.json();
@@ -230,10 +269,31 @@ export async function pinConversation(id, pinned) {
 export async function forkConversation(fromMessageIndex) {
   const currentConversationId = state.getCurrentConversationId();
   if (!currentConversationId) return;
+
+  let forkWorkspaceMode = 'same';
+  const useWorktree = await showDialog({
+    title: 'Fork Workspace',
+    message: 'Create this fork in a dedicated git worktree? This avoids file conflicts between chats.',
+    confirmLabel: 'Use Worktree',
+    cancelLabel: 'Same Workspace',
+  });
+
+  if (useWorktree === true) {
+    forkWorkspaceMode = 'worktree';
+  } else {
+    const proceedSame = await showDialog({
+      title: 'Fork In Same Workspace?',
+      message: 'Both chats will share the same files and branch in this folder.',
+      confirmLabel: 'Fork Here',
+      cancelLabel: 'Cancel',
+    });
+    if (!proceedSame) return;
+  }
+
   const res = await apiFetch(`/api/conversations/${currentConversationId}/fork`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fromMessageIndex }),
+    body: JSON.stringify({ fromMessageIndex, forkWorkspaceMode }),
   });
   if (!res) return;
   const conv = await res.json();
@@ -241,7 +301,11 @@ export async function forkConversation(fromMessageIndex) {
   // Copy DuckDB query history to the forked conversation
   await copyQueryHistory(currentConversationId, conv.id);
 
-  showToast('Forked conversation', { duration: 1500 });
+  if (conv.workspaceMode === 'worktree') {
+    showToast(`Forked in new worktree: ${conv.cwd}`, { duration: 2200 });
+  } else {
+    showToast('Forked conversation', { duration: 1500 });
+  }
   await loadConversations();
   openConversation(conv.id);
 }
@@ -874,17 +938,20 @@ export async function openConversation(id) {
   }
 
   chatName.textContent = conv.name;
+  updateChatCwdIndicator(conv);
   state.updateStatusDot(conv.status);
 
   state.setCurrentProvider(conv.provider || 'claude');
   state.setCurrentModel(conv.model || 'sonnet');
-  state.setCurrentAutopilot(conv.autopilot !== false);
+  const executionMode = conv.executionMode || (conv.autopilot === false ? 'discuss' : 'autonomous');
+  state.setCurrentExecutionMode(executionMode);
+  state.setCurrentAutopilot(executionMode !== 'discuss');
   state.setCurrentSandboxed(conv.sandboxed !== false);
 
   // Import UI functions dynamically to avoid circular dependency
   const ui = await import('./ui.js');
   ui.updateModelBadge(state.getCurrentModel());
-  ui.updateModeBadge(state.getCurrentAutopilot(), state.getCurrentProvider());
+  ui.updateModeBadge(state.getCurrentExecutionMode(), state.getCurrentProvider());
   ui.updateProviderBadge(conv.provider);
   ui.updateMemoryIndicator(conv.useMemory);
   ui.updateSandboxBanner(state.getCurrentSandboxed(), state.getCurrentProvider());
@@ -938,6 +1005,7 @@ export function showListView(skipHistoryUpdate = false) {
   }
 
   state.setCurrentConversationId(null);
+  updateChatCwdIndicator(null);
   state.resetStreamingState();
   const jumpToBottomBtn = state.getJumpToBottomBtn();
   if (jumpToBottomBtn) jumpToBottomBtn.classList.remove('visible');

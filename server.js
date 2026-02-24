@@ -27,8 +27,12 @@ const {
   cancelProcess,
 } = require('./lib/claude');
 const { initProviders, getProvider } = require('./lib/providers');
+const { resolveConversationExecutionMode, modeToLegacyAutopilot } = require('./lib/workflow/execution-mode');
+const { acquireLock, releaseLock } = require('./lib/workflow/locks');
 
 const app = express();
+const RUN_LOCK_HEARTBEAT_MS = 20_000;
+const activeRunLocks = new Map();
 
 // Use HTTPS if certs exist (required for mic access on non-localhost)
 const CERT_DIR = path.join(__dirname, 'certs');
@@ -96,6 +100,101 @@ wss.on('close', () => clearInterval(heartbeat));
 async function loadConversationMemories(conv) {
   if (conv.useMemory === false) return [];
   return loadMemories(conv.cwd);
+}
+
+function ensureWriteAccess(ws, conv, actorConversationId, errorConversationId = actorConversationId) {
+  if (!conv) return false;
+  const executionMode = resolveConversationExecutionMode(conv);
+  if (executionMode !== 'autonomous') return true;
+
+  const lockResult = acquireLock(conv.cwd, actorConversationId);
+  if (lockResult.ok) {
+    startRunLockHeartbeat(ws, conv.cwd, actorConversationId, errorConversationId);
+    return true;
+  }
+
+  const conflict = buildLockConflictPayload(lockResult.lock, lockResult.error);
+
+  ws.send(JSON.stringify({
+    type: 'error',
+    conversationId: errorConversationId,
+    code: lockResult.code || conflict.code,
+    lock: conflict.lock,
+    blockerConversationId: conflict.blockerConversationId,
+    blockerConversationName: conflict.blockerConversationName,
+    error: conflict.error,
+  }));
+  return false;
+}
+
+function buildLockConflictPayload(lock, fallbackError = 'Repository is locked by another conversation') {
+  const blockerConversationId = lock?.writerConversationId || null;
+  const blockerConversationName = blockerConversationId
+    ? (conversations.get(blockerConversationId)?.name || null)
+    : null;
+  const error = blockerConversationName
+    ? `Repository is locked by "${blockerConversationName}"`
+    : fallbackError;
+  return {
+    code: 'WRITE_LOCKED',
+    lock: lock || null,
+    blockerConversationId,
+    blockerConversationName,
+    error,
+  };
+}
+
+function stopRunLockHeartbeat(conversationId, { release = true, cwd = null } = {}) {
+  const active = activeRunLocks.get(conversationId);
+  if (active?.timer) {
+    clearInterval(active.timer);
+  }
+  if (active) {
+    activeRunLocks.delete(conversationId);
+  }
+
+  const releaseCwd = cwd || active?.cwd;
+  if (release && releaseCwd) {
+    releaseLock(releaseCwd, conversationId);
+  }
+}
+
+function startRunLockHeartbeat(ws, cwd, conversationId, errorConversationId = conversationId) {
+  stopRunLockHeartbeat(conversationId, { release: false });
+  const lockCwd = cwd || process.env.HOME;
+
+  const timer = setInterval(async () => {
+    const renewResult = acquireLock(lockCwd, conversationId);
+    if (renewResult.ok) return;
+
+    stopRunLockHeartbeat(conversationId, { release: false, cwd: lockCwd });
+
+    const conv = conversations.get(conversationId);
+    const providerId = conv?.provider || 'claude';
+    try {
+      const provider = getProvider(providerId);
+      provider.cancel(conversationId);
+    } catch {
+      cancelProcess(conversationId);
+    }
+
+    const conflict = buildLockConflictPayload(renewResult.lock, renewResult.error);
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        conversationId: errorConversationId,
+        code: conflict.code,
+        lock: conflict.lock,
+        blockerConversationId: conflict.blockerConversationId,
+        blockerConversationName: conflict.blockerConversationName,
+        error: conflict.error,
+      }));
+    }
+
+    await resetConversationOnError(conversationId);
+  }, RUN_LOCK_HEARTBEAT_MS);
+
+  activeRunLocks.set(conversationId, { timer, cwd: lockCwd });
 }
 
 function getProviderSessionField(providerId) {
@@ -187,6 +286,10 @@ async function handleMessage(ws, msg) {
       return;
     }
 
+    if (!ensureWriteAccess(ws, conv, conversationId)) {
+      return;
+    }
+
     hydrateSessionFromMessages(conv, providerId);
 
     conv.messages.push({
@@ -233,6 +336,10 @@ async function handleRegenerate(ws, msg) {
 
     if (provider.isActive(conversationId)) {
       ws.send(JSON.stringify({ type: 'error', conversationId, error: 'Conversation is busy' }));
+      return;
+    }
+
+    if (!ensureWriteAccess(ws, conv, conversationId)) {
       return;
     }
 
@@ -330,7 +437,8 @@ async function handleEdit(ws, msg) {
       thinkingStartTime,
       archived: false,
       pinned: false,
-      autopilot: conv.autopilot,
+      executionMode: resolveConversationExecutionMode(conv),
+      autopilot: modeToLegacyAutopilot(resolveConversationExecutionMode(conv)),
       provider: conv.provider || 'claude',
       model: conv.model,
       createdAt: Date.now(),
@@ -348,6 +456,14 @@ async function handleEdit(ws, msg) {
       conversationId: newId,
       conversation: convMeta(forkedConv),
     }));
+
+    if (!ensureWriteAccess(ws, forkedConv, newId)) {
+      forkedConv.status = 'idle';
+      forkedConv.thinkingStartTime = null;
+      await saveConversation(newId);
+      broadcastStatus(newId, 'idle');
+      return;
+    }
 
     broadcastStatus(newId, 'thinking', thinkingStartTime);
 
@@ -405,6 +521,10 @@ async function handleResend(ws, msg) {
     const isLastMessage = messageIndex === conv.messages.length - 1;
 
     if (isLastMessage) {
+      if (!ensureWriteAccess(ws, conv, conversationId)) {
+        return;
+      }
+
       // Resend in place - just spawn provider on this message
       hydrateSessionFromMessages(conv, providerId);
       conv.status = 'thinking';
@@ -443,7 +563,8 @@ async function handleResend(ws, msg) {
         thinkingStartTime,
         archived: false,
         pinned: false,
-        autopilot: conv.autopilot,
+        executionMode: resolveConversationExecutionMode(conv),
+        autopilot: modeToLegacyAutopilot(resolveConversationExecutionMode(conv)),
         provider: conv.provider || 'claude',
         model: conv.model,
         createdAt: Date.now(),
@@ -460,6 +581,14 @@ async function handleResend(ws, msg) {
         conversationId: newId,
         conversation: convMeta(forkedConv),
       }));
+
+      if (!ensureWriteAccess(ws, forkedConv, newId)) {
+        forkedConv.status = 'idle';
+        forkedConv.thinkingStartTime = null;
+        await saveConversation(newId);
+        broadcastStatus(newId, 'idle');
+        return;
+      }
 
       broadcastStatus(newId, 'thinking', thinkingStartTime);
 
@@ -478,6 +607,10 @@ async function handleResend(ws, msg) {
 }
 
 function broadcastStatus(conversationId, status, thinkingStartTime) {
+  if (status !== 'thinking') {
+    stopRunLockHeartbeat(conversationId, { release: true });
+  }
+
   const payload = { type: 'status', conversationId, status };
   if (thinkingStartTime) payload.thinkingStartTime = thinkingStartTime;
   const msg = JSON.stringify(payload);

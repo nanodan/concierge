@@ -8,7 +8,11 @@ import { createConversationContext } from '../explorer/context.js';
 import { createGitDiffViewer } from '../explorer/git-diff-viewer.js';
 import { createGitStashActions } from '../explorer/git-stash-actions.js';
 import { createGitChangesController } from '../explorer/git-changes-controller.js';
-import { createGitChangesRequests, createGitStashRequests } from '../explorer/git-requests.js';
+import {
+  createGitChangesRequests,
+  createGitStashRequests,
+  createWorkflowPatchRequests,
+} from '../explorer/git-requests.js';
 
 const context = createConversationContext(() => state.getCurrentConversationId());
 
@@ -134,6 +138,16 @@ export function initGitChanges(elements) {
     },
   });
 
+  const workflowPatchRequests = createWorkflowPatchRequests({
+    context,
+    apiFetch,
+    resolveCwd: () => {
+      const convId = context.getConversationId();
+      const conv = state.conversations.find((c) => c.id === convId);
+      return conv?.cwd || '';
+    },
+  });
+
   const icons = getIcons();
   changesController = createGitChangesController({
     changesList,
@@ -158,6 +172,9 @@ export function initGitChanges(elements) {
       void viewDiff(filePath, staged);
     },
     requestStashes: stashRequests.requestStashes,
+    requestWorkflowPatches: workflowPatchRequests.requestWorkflowPatches,
+    requestApplyWorkflowPatch: workflowPatchRequests.requestApplyWorkflowPatch,
+    requestRejectWorkflowPatch: workflowPatchRequests.requestRejectWorkflowPatch,
     ...changesRequests,
     stashActions,
   });

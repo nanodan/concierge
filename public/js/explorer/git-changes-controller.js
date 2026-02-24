@@ -10,6 +10,12 @@ function ensureResult(result, fallbackError) {
   return { ok: true, data: result };
 }
 
+function normalizeWorkflowPatchStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'queued' || value === 'conflict') return value;
+  return '';
+}
+
 export function createGitChangesController({
   changesList,
   commitForm,
@@ -37,10 +43,15 @@ export function createGitChangesController({
   requestCommit = async () => ({ ok: false, error: 'Not implemented' }),
   requestPush = async () => ({ ok: false, error: 'Not implemented' }),
   requestPull = async () => ({ ok: false, error: 'Not implemented' }),
+  requestWorkflowPatches = async () => ({ ok: true, data: { patches: [] } }),
+  requestApplyWorkflowPatch = async () => ({ ok: false, error: 'Not implemented' }),
+  requestRejectWorkflowPatch = async () => ({ ok: false, error: 'Not implemented' }),
+  canApplyWorkflowPatches = true,
   stashActions = null,
 }) {
   let gitStatus = null;
   let stashes = [];
+  let workflowPatches = [];
   let untrackedSelectionMode = false;
   const selectedUntracked = new Set();
   let actionListenersBound = false;
@@ -59,6 +70,16 @@ export function createGitChangesController({
 
   function setStashes(nextStashes) {
     stashes = Array.isArray(nextStashes) ? nextStashes : [];
+  }
+
+  function getWorkflowPatches() {
+    return workflowPatches;
+  }
+
+  function setWorkflowPatches(nextPatches) {
+    workflowPatches = Array.isArray(nextPatches)
+      ? nextPatches.filter((item) => normalizeWorkflowPatchStatus(item?.status))
+      : [];
   }
 
   function resetUntrackedSelection() {
@@ -91,11 +112,16 @@ export function createGitChangesController({
     }
 
     const stashesPromise = requestStashes();
+    const workflowPatchesPromise = requestWorkflowPatches();
     renderChangesView();
 
     const stashesResult = ensureResult(await stashesPromise, '');
     const stashData = stashesResult.data || {};
     setStashes(stashesResult.ok ? (stashData.stashes || []) : []);
+
+    const workflowPatchesResult = ensureResult(await workflowPatchesPromise, '');
+    const workflowData = workflowPatchesResult.data || {};
+    setWorkflowPatches(workflowPatchesResult.ok ? (workflowData.patches || []) : []);
 
     if (getGitStatus()?.isRepo) {
       renderChangesView();
@@ -184,9 +210,13 @@ export function createGitChangesController({
       if (stashes.length > 0) {
         cleanHtml += renderSharedStashSection(stashes, escapeHtml);
       }
+      if (workflowPatches.length > 0) {
+        cleanHtml += renderWorkflowPatchSection();
+      }
 
       changesList.innerHTML = cleanHtml;
       attachStashListeners();
+      attachWorkflowPatchListeners();
       if (commitForm) commitForm.classList.add('hidden');
       return;
     }
@@ -232,10 +262,14 @@ export function createGitChangesController({
     if (stashes.length > 0) {
       html += renderSharedStashSection(stashes, escapeHtml);
     }
+    if (workflowPatches.length > 0) {
+      html += renderWorkflowPatchSection();
+    }
 
     changesList.innerHTML = html;
     attachChangeItemListeners();
     attachStashListeners();
+    attachWorkflowPatchListeners();
 
     if (commitForm) {
       commitForm.classList.toggle('hidden', staged.length === 0);
@@ -406,6 +440,118 @@ export function createGitChangesController({
       onApply: async (index) => stashActions?.handleStashApply?.(index),
       onDrop: async (index) => stashActions?.handleStashDrop?.(index),
     });
+  }
+
+  function renderWorkflowPatchSection() {
+    const patches = getWorkflowPatches();
+    if (!patches.length) return '';
+
+    return `
+      <div class="patch-queue-section">
+        <div class="patch-queue-header">
+          <span class="patch-queue-title">Patch Queue</span>
+          <span class="patch-queue-count">${patches.length}</span>
+        </div>
+        <div class="patch-queue-list">
+          ${patches.map((patch) => renderWorkflowPatchItem(patch)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderWorkflowPatchItem(patch) {
+    const title = (patch.title || 'Untitled patch').trim() || 'Untitled patch';
+    const status = normalizeWorkflowPatchStatus(patch.status);
+    const statusLabel = status === 'conflict' ? 'CONFLICT' : 'QUEUED';
+    const statusClass = status === 'conflict' ? 'status-conflict' : 'status-queued';
+    const hasReason = patch.applyMeta?.reason ? String(patch.applyMeta.reason) : '';
+    const applyLabel = status === 'conflict' ? 'Retry' : 'Apply';
+    const applyBtn = canApplyWorkflowPatches
+      ? `<button class="patch-queue-action-btn" data-action="apply" data-id="${escapeHtml(patch.id)}">${applyLabel}</button>`
+      : '<span class="patch-queue-readonly">Open a conversation to apply</span>';
+
+    return `
+      <div class="patch-queue-item" data-id="${escapeHtml(patch.id)}" data-status="${escapeHtml(status)}">
+        <span class="patch-queue-status ${statusClass}">${statusLabel}</span>
+        <span class="patch-queue-name" title="${escapeHtml(title)}">${escapeHtml(title)}</span>
+        ${hasReason ? `<span class="patch-queue-reason" title="${escapeHtml(hasReason)}">${escapeHtml(hasReason)}</span>` : ''}
+        <div class="patch-queue-actions">
+          ${applyBtn}
+          <button class="patch-queue-action-btn danger" data-action="reject" data-id="${escapeHtml(patch.id)}">Reject</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function attachWorkflowPatchListeners() {
+    if (!changesList) return;
+
+    changesList.querySelectorAll('.patch-queue-action-btn').forEach((btn) => {
+      const handleAction = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (btn.dataset.processing === 'true') return;
+        btn.dataset.processing = 'true';
+        setTimeout(() => {
+          btn.dataset.processing = 'false';
+        }, buttonProcessingTimeout);
+
+        const action = btn.dataset.action;
+        const patchId = btn.dataset.id;
+        if (!patchId) return;
+        haptic();
+
+        if (action === 'apply') {
+          await applyWorkflowPatch(patchId);
+        } else if (action === 'reject') {
+          await rejectWorkflowPatch(patchId);
+        }
+      };
+
+      btn.addEventListener('click', handleAction);
+      btn.addEventListener('touchend', handleAction);
+    });
+  }
+
+  async function applyWorkflowPatch(patchId) {
+    if (!canApplyWorkflowPatches) {
+      showToast('Patch apply requires an open conversation', { variant: 'error' });
+      return false;
+    }
+
+    const result = ensureResult(await requestApplyWorkflowPatch(patchId), 'Failed to apply patch');
+    if (!result.ok || result.data?.error) {
+      showToast(result.error || result.data?.error || 'Failed to apply patch', { variant: 'error' });
+      await loadStatus();
+      return false;
+    }
+
+    showToast('Patch applied');
+    await loadStatus();
+    return true;
+  }
+
+  async function rejectWorkflowPatch(patchId) {
+    const reason = await showDialog({
+      title: 'Reject patch',
+      message: 'Optional: add a reason so others understand why this patch was rejected.',
+      input: true,
+      placeholder: 'Reason (optional)',
+      confirmLabel: 'Reject',
+      danger: true,
+    });
+    if (reason === null) return false;
+
+    const result = ensureResult(await requestRejectWorkflowPatch(patchId, String(reason || '').trim()), 'Failed to reject patch');
+    if (!result.ok || result.data?.error) {
+      showToast(result.error || result.data?.error || 'Failed to reject patch', { variant: 'error' });
+      return false;
+    }
+
+    showToast('Patch rejected');
+    await loadStatus();
+    return true;
   }
 
   function enterUntrackedSelectionMode() {
@@ -603,6 +749,8 @@ export function createGitChangesController({
     setGitStatus,
     getStashes,
     setStashes,
+    getWorkflowPatches,
+    setWorkflowPatches,
     resetUntrackedSelection,
     loadStatus,
     renderNotARepo,

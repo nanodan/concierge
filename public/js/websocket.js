@@ -91,6 +91,14 @@ export function forceReconnect() {
 }
 
 // Handler map for WebSocket message types
+function resolveBlockerConversationName(data) {
+  if (data?.blockerConversationName) return data.blockerConversationName;
+  const blockerId = data?.blockerConversationId || data?.lock?.writerConversationId || null;
+  if (!blockerId) return null;
+  const conv = state.conversations.find((item) => item.id === blockerId);
+  return conv?.name || null;
+}
+
 const messageHandlers = {
   delta(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
@@ -130,6 +138,14 @@ const messageHandlers = {
   },
 
   error(data, currentConversationId) {
+    if (data.code === 'WRITE_LOCKED') {
+      const blockerName = resolveBlockerConversationName(data);
+      const message = blockerName
+        ? `AUTO blocked by "${blockerName}" (currently running)`
+        : 'AUTO blocked by another conversation (currently running)';
+      showToast(message, { variant: 'error' });
+    }
+
     if (data.conversationId === currentConversationId || !data.conversationId) {
       state.showError(data.error);
       state.setThinking(false);

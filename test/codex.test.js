@@ -486,6 +486,34 @@ describe('processCodexEvent - turn.completed', () => {
     assert.ok(toolResult);
     assert.ok(result.assistantText.includes(':::trace'));
   });
+
+  it('marks empty 0/0 resumed turn for fresh-session retry when enabled', () => {
+    const conv = { codexSessionId: 'sess-123', messages: [], status: 'thinking', model: 'gpt-5.3-codex' };
+    const event = {
+      type: 'turn.completed',
+      usage: { input_tokens: 0, output_tokens: 0 },
+    };
+    processCodexEvent(
+      fakeWs,
+      'conv-1',
+      conv,
+      event,
+      '',
+      onSave,
+      broadcastStatus,
+      {
+        canRetryWithCompactHistory: true,
+        canRetryWithFreshSession: true,
+      }
+    );
+
+    assert.equal(conv.status, 'thinking');
+    assert.equal(conv.messages.length, 0);
+    assert.equal(conv.codexSessionId, null);
+    assert.equal(conv._retryAfterEmptyResultMode, 'fresh-session');
+    assert.deepEqual(savedIds, []);
+    assert.equal(sent.some(m => m.type === 'error'), false);
+  });
 });
 
 describe('processCodexEvent - unknown events', () => {

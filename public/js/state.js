@@ -26,6 +26,7 @@ export let providers = [
 export let models = [];
 export let currentProvider = 'claude';
 export let currentModel = 'claude-sonnet-4.5';
+export let currentExecutionMode = 'patch';
 export let currentAutopilot = true;
 export let currentSandboxed = true;
 
@@ -147,6 +148,14 @@ export function setCurrentModel(m) {
 
 export function getCurrentModel() {
   return currentModel;
+}
+
+export function setCurrentExecutionMode(mode) {
+  currentExecutionMode = mode || 'patch';
+}
+
+export function getCurrentExecutionMode() {
+  return currentExecutionMode;
 }
 
 export function setCurrentAutopilot(a) {
