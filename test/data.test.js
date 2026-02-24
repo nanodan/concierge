@@ -89,6 +89,12 @@ describe('convMeta', () => {
     const meta = convMeta(conv);
     assert.equal(meta.codexSessionId, 'thread-123');
   });
+
+  it('includes claudeForkSessionId', () => {
+    const conv = { id: 'x', name: 'X', claudeForkSessionId: 'sess-parent', messages: [] };
+    const meta = convMeta(conv);
+    assert.equal(meta.claudeForkSessionId, 'sess-parent');
+  });
 });
 
 describe('stats cache', () => {

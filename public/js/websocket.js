@@ -99,6 +99,10 @@ function resolveBlockerConversationName(data) {
   return conv?.name || null;
 }
 
+function resolveBlockerConversationId(data) {
+  return data?.blockerConversationId || data?.lock?.writerConversationId || null;
+}
+
 const messageHandlers = {
   delta(data, currentConversationId) {
     if (data.conversationId === currentConversationId) {
@@ -140,14 +144,30 @@ const messageHandlers = {
   error(data, currentConversationId) {
     if (data.code === 'WRITE_LOCKED') {
       const blockerName = resolveBlockerConversationName(data);
+      const blockerId = resolveBlockerConversationId(data);
       const message = blockerName
-        ? `AUTO blocked by "${blockerName}" (currently running)`
-        : 'AUTO blocked by another conversation (currently running)';
-      showToast(message, { variant: 'error' });
+        ? `AUTO blocked by "${blockerName}". ${data.messageSaved ? 'Your message was saved. ' : ''}Wait for it to finish or cancel that run.`
+        : `AUTO blocked by another conversation. ${data.messageSaved ? 'Your message was saved. ' : ''}Wait for it to finish or cancel that run.`;
+      showToast(message, {
+        variant: 'error',
+        duration: 5200,
+        action: blockerId ? 'Open' : undefined,
+        onAction: blockerId ? () => {
+          import('./conversations.js').then(({ openConversation }) => {
+            openConversation(blockerId);
+          });
+        } : undefined,
+      });
+      if (data.messageSaved) {
+        loadConversations();
+      }
     }
 
     if (data.conversationId === currentConversationId || !data.conversationId) {
-      state.showError(data.error);
+      const errorMessage = data.messageSaved
+        ? `${data.error} Your message was saved above.`
+        : data.error;
+      state.showError(errorMessage);
       state.setThinking(false);
     }
   },
