@@ -1,12 +1,22 @@
-// --- Data Tab (DuckDB SQL Analysis) ---
+// --- Data Tab (DuckDB + BigQuery SQL Analysis) ---
 import { escapeHtml } from '../markdown.js';
 import { haptic, showToast, apiFetch } from '../utils.js';
 import * as state from '../state.js';
 
+const DATA_SOURCE_DUCKDB = 'duckdb';
+const DATA_SOURCE_BIGQUERY = 'bigquery';
+
 // DOM elements (set by init)
 let _dataView = null;
+let dataSourceSelect = null;
+let dataTablesRow = null;
+let bigQueryControls = null;
+let bigQueryAuthStatus = null;
+let bigQueryConnectBtn = null;
+let bigQueryProjectSelect = null;
 let sqlEditor = null;
 let runQueryBtn = null;
+let cancelQueryBtn = null;
 let queryHistoryBtn = null;
 let queryHistoryDropdown = null;
 let tablesContainer = null;
@@ -15,12 +25,24 @@ let resultsContainer = null;
 let queryStatus = null;
 
 // State
+let querySource = DATA_SOURCE_DUCKDB;
 let queryHistory = [];
 let maxHistory = 20;
 let loadedTables = [];
 let currentHistoryConvId = null;
-let lastQueryResults = null; // Store last results for export
-let lastQuerySQL = null; // Store last SQL for Parquet export
+let lastQueryResults = null;
+let lastQuerySQL = null;
+let lastQuerySource = DATA_SOURCE_DUCKDB;
+let lastBigQueryJob = null;
+
+let bigQueryConfigured = false;
+let bigQueryConnected = false;
+let bigQueryPrincipal = null;
+let bigQueryDefaultProject = null;
+let bigQueryProjects = [];
+const bigQueryProjectByConversation = new Map();
+let activeBigQueryJob = null;
+let bigQueryPollTimer = null;
 
 // Callback for switching to files tab (set by index.js)
 let switchToFilesTabFn = null;
@@ -43,9 +65,7 @@ async function loadHistory() {
     return;
   }
 
-  // Only reload if conversation changed
   if (convId === currentHistoryConvId) return;
-
   currentHistoryConvId = convId;
 
   try {
@@ -71,7 +91,7 @@ export async function copyQueryHistory(fromConvId, toConvId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fromConversationId: fromConvId }),
-      silent: true
+      silent: true,
     });
   } catch {
     // Ignore errors
@@ -85,23 +105,21 @@ async function addToHistory(sql) {
   const convId = state.getCurrentConversationId();
   if (!convId) return;
 
-  // Optimistic update
-  queryHistory = queryHistory.filter(q => q !== sql);
+  queryHistory = queryHistory.filter((q) => q !== sql);
   queryHistory.unshift(sql);
   if (queryHistory.length > maxHistory) {
     queryHistory = queryHistory.slice(0, maxHistory);
   }
 
-  // Persist to server
   try {
     await apiFetch(`/api/duckdb/history/${convId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql }),
-      silent: true
+      silent: true,
     });
   } catch {
-    // Ignore errors - local state already updated
+    // Ignore persistence errors - local history already updated
   }
 }
 
@@ -110,22 +128,27 @@ async function addToHistory(sql) {
  */
 export function initDataTab(elements) {
   _dataView = elements.dataView;
+  dataSourceSelect = elements.dataSourceSelect;
+  dataTablesRow = elements.dataTablesRow;
+  bigQueryControls = elements.bigQueryControls;
+  bigQueryAuthStatus = elements.bigQueryAuthStatus;
+  bigQueryConnectBtn = elements.bigQueryConnectBtn;
+  bigQueryProjectSelect = elements.bigQueryProjectSelect;
   sqlEditor = elements.sqlEditor;
   runQueryBtn = elements.runQueryBtn;
+  cancelQueryBtn = elements.cancelQueryBtn;
   queryHistoryBtn = elements.queryHistoryBtn;
   queryHistoryDropdown = elements.queryHistoryDropdown;
   tablesContainer = elements.tablesContainer;
   loadTableBtn = elements.loadTableBtn;
   resultsContainer = elements.resultsContainer;
   queryStatus = elements.queryStatus;
-  // History is loaded when switching to data tab via loadDataTabState()
 }
 
 /**
  * Setup data tab event listeners
  */
 export function setupDataTabEventListeners() {
-  // Run query button
   if (runQueryBtn) {
     runQueryBtn.addEventListener('click', () => {
       haptic();
@@ -133,7 +156,13 @@ export function setupDataTabEventListeners() {
     });
   }
 
-  // Keyboard shortcut: Cmd/Ctrl+Enter to run query
+  if (cancelQueryBtn) {
+    cancelQueryBtn.addEventListener('click', () => {
+      haptic();
+      cancelBigQueryQuery();
+    });
+  }
+
   if (sqlEditor) {
     sqlEditor.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -144,7 +173,6 @@ export function setupDataTabEventListeners() {
     });
   }
 
-  // Query history toggle
   if (queryHistoryBtn) {
     queryHistoryBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -153,35 +181,315 @@ export function setupDataTabEventListeners() {
     });
   }
 
-  // Close history dropdown on outside click
   document.addEventListener('click', (e) => {
     if (queryHistoryDropdown && !queryHistoryDropdown.contains(e.target) && e.target !== queryHistoryBtn) {
       queryHistoryDropdown.classList.add('hidden');
     }
   });
 
-  // Load table button
   if (loadTableBtn) {
     loadTableBtn.addEventListener('click', () => {
       haptic();
       showLoadTableDialog();
     });
   }
+
+  if (dataSourceSelect) {
+    dataSourceSelect.addEventListener('change', () => {
+      querySource = dataSourceSelect.value === DATA_SOURCE_BIGQUERY ? DATA_SOURCE_BIGQUERY : DATA_SOURCE_DUCKDB;
+      stopBigQueryPolling();
+      activeBigQueryJob = null;
+      setQueryRunningState(false);
+      applyDataSourceMode();
+      if (querySource === DATA_SOURCE_DUCKDB) {
+        refreshTables();
+      } else {
+        void loadBigQueryState({ forceProjects: false });
+      }
+    });
+  }
+
+  if (bigQueryConnectBtn) {
+    bigQueryConnectBtn.addEventListener('click', () => {
+      haptic();
+      refreshBigQueryAuth();
+    });
+  }
+
+  if (bigQueryProjectSelect) {
+    bigQueryProjectSelect.addEventListener('change', () => {
+      const convId = state.getCurrentConversationId();
+      if (!convId) return;
+      if (bigQueryProjectSelect.value) {
+        bigQueryProjectByConversation.set(convId, bigQueryProjectSelect.value);
+      }
+    });
+  }
+
 }
 
 /**
- * Load and display the current state of loaded tables
+ * Load and display current data tab state
  */
 export async function loadDataTabState() {
-  // Reload history for current conversation
   await loadHistory();
-  await refreshTables();
+  await loadBigQueryState({ forceProjects: false });
+
+  applyDataSourceMode();
+
+  if (querySource === DATA_SOURCE_DUCKDB) {
+    await refreshTables();
+  }
+}
+
+function setStatus(text, running = false) {
+  if (!queryStatus) return;
+  queryStatus.textContent = text || '';
+  queryStatus.classList.toggle('running', running);
+}
+
+function setQueryRunningState(running) {
+  if (runQueryBtn) {
+    runQueryBtn.disabled = running;
+  }
+
+  if (cancelQueryBtn) {
+    const showCancel = running && querySource === DATA_SOURCE_BIGQUERY;
+    cancelQueryBtn.classList.toggle('hidden', !showCancel);
+    cancelQueryBtn.disabled = !showCancel;
+  }
+}
+
+function applyDataSourceMode() {
+  if (dataSourceSelect) {
+    dataSourceSelect.value = querySource;
+  }
+
+  const isDuck = querySource === DATA_SOURCE_DUCKDB;
+
+  if (dataTablesRow) {
+    dataTablesRow.classList.toggle('hidden', !isDuck);
+  }
+
+  if (loadTableBtn) {
+    loadTableBtn.classList.toggle('hidden', !isDuck);
+  }
+
+  if (bigQueryControls) {
+    bigQueryControls.classList.toggle('hidden', isDuck);
+  }
+
+  if (sqlEditor) {
+    sqlEditor.placeholder = isDuck
+      ? 'SELECT * FROM table LIMIT 100'
+      : 'SELECT * FROM `project.dataset.table` LIMIT 100';
+  }
+
+  if (querySource === DATA_SOURCE_BIGQUERY) {
+    updateBigQueryControls();
+  }
+}
+
+function getCurrentBigQueryProjectId() {
+  if (bigQueryProjectSelect?.value) {
+    return bigQueryProjectSelect.value;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) return '';
+  return bigQueryProjectByConversation.get(convId) || '';
+}
+
+function updateBigQueryProjectSelect() {
+  if (!bigQueryProjectSelect) return;
+
+  const convId = state.getCurrentConversationId();
+  const savedProject = convId ? bigQueryProjectByConversation.get(convId) : null;
+  const options = bigQueryProjects || [];
+
+  let selected = savedProject || '';
+  if (selected && !options.some((p) => p.id === selected)) {
+    selected = '';
+  }
+  if (!selected && options.length > 0) {
+    selected = options[0].id;
+  }
+
+  if (convId && selected) {
+    bigQueryProjectByConversation.set(convId, selected);
+  }
+
+  if (!bigQueryConnected) {
+    bigQueryProjectSelect.innerHTML = '<option value="">ADC unavailable</option>';
+    bigQueryProjectSelect.disabled = true;
+    return;
+  }
+
+  if (options.length === 0) {
+    bigQueryProjectSelect.innerHTML = '<option value="">No projects found</option>';
+    bigQueryProjectSelect.disabled = true;
+    return;
+  }
+
+  bigQueryProjectSelect.innerHTML = options.map((project) => `
+    <option value="${escapeHtml(project.id)}">${escapeHtml(project.friendlyName || project.id)}</option>
+  `).join('');
+  bigQueryProjectSelect.disabled = false;
+  bigQueryProjectSelect.value = selected;
+}
+
+function updateBigQueryControls(message = '') {
+  if (!bigQueryControls) return;
+
+  if (!bigQueryConfigured) {
+    if (bigQueryAuthStatus) {
+      bigQueryAuthStatus.textContent = message || 'BigQuery ADC unavailable';
+    }
+    if (bigQueryConnectBtn) {
+      bigQueryConnectBtn.classList.remove('hidden');
+      bigQueryConnectBtn.textContent = 'Recheck';
+    }
+    if (bigQueryProjectSelect) {
+      bigQueryProjectSelect.innerHTML = '<option value="">Unavailable</option>';
+      bigQueryProjectSelect.disabled = true;
+    }
+    return;
+  }
+
+  if (bigQueryConnected) {
+    if (bigQueryAuthStatus) {
+      const projectLabel = bigQueryDefaultProject ? ` • ${bigQueryDefaultProject}` : '';
+      const userLabel = bigQueryPrincipal ? `${bigQueryPrincipal}${projectLabel}` : `ADC active${projectLabel}`;
+      bigQueryAuthStatus.textContent = userLabel;
+    }
+    if (bigQueryConnectBtn) {
+      bigQueryConnectBtn.classList.remove('hidden');
+      bigQueryConnectBtn.textContent = 'Refresh';
+    }
+  } else {
+    if (bigQueryAuthStatus) {
+      bigQueryAuthStatus.textContent = message || 'ADC not ready';
+    }
+    if (bigQueryConnectBtn) {
+      bigQueryConnectBtn.classList.remove('hidden');
+      bigQueryConnectBtn.textContent = 'Recheck';
+    }
+  }
+
+  updateBigQueryProjectSelect();
+}
+
+async function loadBigQueryProjects() {
+  if (!bigQueryConnected) {
+    bigQueryProjects = [];
+    updateBigQueryProjectSelect();
+    return;
+  }
+
+  const res = await apiFetch('/api/bigquery/projects', { silent: true });
+  if (!res) {
+    bigQueryProjects = [];
+    updateBigQueryProjectSelect();
+    return;
+  }
+
+  const data = await res.json();
+  bigQueryProjects = (data.projects || []).slice().sort((a, b) => {
+    const aName = a.friendlyName || a.id;
+    const bName = b.friendlyName || b.id;
+    return aName.localeCompare(bName);
+  });
+  updateBigQueryProjectSelect();
+}
+
+async function loadBigQueryState({ forceProjects = false, forceRefresh = false } = {}) {
+  const statusUrl = forceRefresh ? '/api/bigquery/auth/status?refresh=1' : '/api/bigquery/auth/status';
+  const res = await apiFetch(statusUrl, { silent: true });
+  if (!res) {
+    bigQueryConfigured = false;
+    bigQueryConnected = false;
+    bigQueryPrincipal = null;
+    bigQueryDefaultProject = null;
+    bigQueryProjects = [];
+    updateBigQueryControls('BigQuery status unavailable');
+    return;
+  }
+
+  const status = await res.json();
+  bigQueryConfigured = status.configured !== false;
+  bigQueryConnected = Boolean(status.connected);
+  bigQueryPrincipal = status.principal || null;
+  bigQueryDefaultProject = status.defaultProjectId || null;
+
+  if (bigQueryConnected && bigQueryDefaultProject) {
+    const convId = state.getCurrentConversationId();
+    if (convId && !bigQueryProjectByConversation.get(convId)) {
+      bigQueryProjectByConversation.set(convId, bigQueryDefaultProject);
+    }
+  }
+
+  if (bigQueryConnected && (forceProjects || bigQueryProjects.length === 0)) {
+    await loadBigQueryProjects();
+  } else if (!bigQueryConnected) {
+    bigQueryProjects = [];
+  }
+
+  updateBigQueryControls(status.message || '');
+}
+
+async function refreshBigQueryAuth() {
+  const res = await apiFetch('/api/bigquery/auth/refresh', {
+    method: 'POST',
+    silent: true,
+  });
+  if (res) {
+    const status = await res.json();
+    if (status.connected) {
+      showToast('BigQuery ADC ready');
+    } else {
+      showToast(status.message || 'ADC not ready', { variant: 'error' });
+    }
+  } else {
+    showToast('ADC check failed', { variant: 'error' });
+  }
+  await loadBigQueryState({ forceProjects: true, forceRefresh: true });
+}
+
+function stopBigQueryPolling() {
+  if (bigQueryPollTimer) {
+    clearTimeout(bigQueryPollTimer);
+    bigQueryPollTimer = null;
+  }
+}
+
+function formatBigQueryBytes(bytesValue) {
+  const n = Number(bytesValue || 0);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)}MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)}GB`;
+}
+
+function formatBigQueryStatus(data) {
+  const rowInfo = data.truncated
+    ? `${data.rowCount} rows (preview)`
+    : `${data.rowCount} rows`;
+  const bytes = formatBigQueryBytes(data.totalBytesProcessed);
+  const cache = data.cacheHit ? 'cache hit' : '';
+  return [rowInfo, bytes, cache].filter(Boolean).join(' • ');
 }
 
 /**
  * Refresh the list of loaded tables
  */
 export async function refreshTables() {
+  if (querySource !== DATA_SOURCE_DUCKDB) {
+    loadedTables = [];
+    renderTables();
+    return;
+  }
+
   const res = await apiFetch('/api/duckdb/tables', { silent: true });
   if (!res) {
     loadedTables = [];
@@ -192,14 +500,12 @@ export async function refreshTables() {
   const data = await res.json();
   const allTables = data.tables || [];
 
-  // Filter tables by current conversation's cwd
   const convId = state.getCurrentConversationId();
-  const conv = state.conversations.find(c => c.id === convId);
+  const conv = state.conversations.find((c) => c.id === convId);
   const cwd = conv?.cwd || '';
 
   if (cwd) {
-    // Only show tables whose files are within this conversation's cwd
-    loadedTables = allTables.filter(t => t.filePath && t.filePath.startsWith(cwd));
+    loadedTables = allTables.filter((t) => t.filePath && t.filePath.startsWith(cwd));
   } else {
     loadedTables = allTables;
   }
@@ -216,15 +522,19 @@ let activeSchemaDropdown = null;
 function renderTables() {
   if (!tablesContainer) return;
 
-  // Close any open schema dropdown
   closeSchemaDropdown();
+
+  if (querySource !== DATA_SOURCE_DUCKDB) {
+    tablesContainer.innerHTML = '<span class="data-tab-no-tables">DuckDB tables are hidden in BigQuery mode</span>';
+    return;
+  }
 
   if (loadedTables.length === 0) {
     tablesContainer.innerHTML = '<span class="data-tab-no-tables">No tables loaded</span>';
     return;
   }
 
-  tablesContainer.innerHTML = loadedTables.map(table => `
+  tablesContainer.innerHTML = loadedTables.map((table) => `
     <div class="data-tab-table-wrapper">
       <button class="data-tab-table-chip" data-table="${escapeHtml(table.name)}">
         <span class="table-name">${escapeHtml(table.name)}</span>
@@ -234,13 +544,12 @@ function renderTables() {
     </div>
   `).join('');
 
-  // Attach click handlers
-  tablesContainer.querySelectorAll('.data-tab-table-chip').forEach(chip => {
+  tablesContainer.querySelectorAll('.data-tab-table-chip').forEach((chip) => {
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
       haptic();
       const tableName = chip.dataset.table;
-      const table = loadedTables.find(t => t.name === tableName);
+      const table = loadedTables.find((t) => t.name === tableName);
       if (table) {
         toggleSchemaDropdown(chip.parentElement, table);
       }
@@ -252,21 +561,19 @@ function renderTables() {
  * Toggle schema dropdown for a table
  */
 function toggleSchemaDropdown(wrapper, table) {
-  // Close existing dropdown
   if (activeSchemaDropdown) {
     const isCurrentTable = activeSchemaDropdown.dataset.table === table.name;
     closeSchemaDropdown();
-    if (isCurrentTable) return; // Toggle off
+    if (isCurrentTable) return;
   }
 
-  // Create dropdown
   const dropdown = document.createElement('div');
   dropdown.className = 'data-tab-schema-dropdown';
   dropdown.dataset.table = table.name;
 
   const columns = table.columns || [];
   const columnsHtml = columns.length > 0
-    ? columns.map(col => `
+    ? columns.map((col) => `
         <div class="schema-column">
           <span class="schema-col-name">${escapeHtml(col.name)}</span>
           <span class="schema-col-type">${escapeHtml(col.type)}</span>
@@ -289,7 +596,6 @@ function toggleSchemaDropdown(wrapper, table) {
   wrapper.appendChild(dropdown);
   activeSchemaDropdown = dropdown;
 
-  // Attach action handlers
   dropdown.querySelector('.schema-insert-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     insertTableReference(table.name);
@@ -302,7 +608,6 @@ function toggleSchemaDropdown(wrapper, table) {
     dropTable(table.name);
   });
 
-  // Close on outside click
   setTimeout(() => {
     document.addEventListener('click', closeSchemaDropdownOnOutsideClick);
   }, 0);
@@ -338,7 +643,6 @@ function insertTableReference(tableName) {
   if (!currentSql) {
     sqlEditor.value = `SELECT * FROM "${tableName}" LIMIT 100`;
   } else {
-    // Insert at cursor position
     const start = sqlEditor.selectionStart;
     const end = sqlEditor.selectionEnd;
     const text = `"${tableName}"`;
@@ -353,7 +657,7 @@ function insertTableReference(tableName) {
  */
 async function dropTable(tableName) {
   const res = await apiFetch(`/api/duckdb/tables/${encodeURIComponent(tableName)}`, {
-    method: 'DELETE'
+    method: 'DELETE',
   });
 
   if (res) {
@@ -381,7 +685,7 @@ async function _loadTableFromFile(filePath, conversationId) {
   const res = await apiFetch('/api/duckdb/load', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: filePath, conversationId })
+    body: JSON.stringify({ path: filePath, conversationId }),
   });
 
   if (!res) return;
@@ -390,7 +694,6 @@ async function _loadTableFromFile(filePath, conversationId) {
   showToast(`Loaded ${data.tableName} (${data.rowCount?.toLocaleString() || 0} rows)`);
   await refreshTables();
 
-  // Auto-generate a query
   if (sqlEditor && !sqlEditor.value.trim()) {
     sqlEditor.value = `SELECT * FROM "${data.tableName}" LIMIT 100`;
   }
@@ -408,33 +711,29 @@ async function runQuery() {
     return;
   }
 
-  // Update status
-  if (queryStatus) {
-    queryStatus.textContent = 'Running...';
-    queryStatus.classList.add('running');
+  if (querySource === DATA_SOURCE_BIGQUERY) {
+    await runBigQueryQuery(sql);
+    return;
   }
 
-  if (runQueryBtn) {
-    runQueryBtn.disabled = true;
-  }
+  await runDuckDbQuery(sql);
+}
+
+async function runDuckDbQuery(sql) {
+  setStatus('Running...', true);
+  setQueryRunningState(true);
 
   const startTime = Date.now();
-
   const res = await apiFetch('/api/duckdb/query', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sql, limit: 1000 })
+    body: JSON.stringify({ sql, limit: 1000 }),
   });
 
-  if (runQueryBtn) {
-    runQueryBtn.disabled = false;
-  }
+  setQueryRunningState(false);
 
   if (!res) {
-    if (queryStatus) {
-      queryStatus.textContent = 'Error';
-      queryStatus.classList.remove('running');
-    }
+    setStatus('Error', false);
     renderError('Query failed');
     return;
   }
@@ -442,35 +741,226 @@ async function runQuery() {
   const data = await res.json();
 
   if (data.error) {
-    if (queryStatus) {
-      queryStatus.textContent = 'Error';
-      queryStatus.classList.remove('running');
-    }
+    setStatus('Error', false);
     renderError(data.error);
     return;
   }
 
-  // Add to history and store for export
   addToHistory(sql);
   lastQuerySQL = sql;
+  lastQuerySource = DATA_SOURCE_DUCKDB;
+  lastBigQueryJob = null;
 
-  // Update status
-  if (queryStatus) {
-    const elapsed = data.executionTimeMs || (Date.now() - startTime);
-    const rowInfo = data.truncated
-      ? `${data.rowCount} rows (truncated)`
-      : `${data.rowCount} rows`;
-    queryStatus.textContent = `${elapsed}ms \u2022 ${rowInfo}`;
-    queryStatus.classList.remove('running');
+  const elapsed = data.executionTimeMs || (Date.now() - startTime);
+  const rowInfo = data.truncated
+    ? `${data.rowCount} rows (truncated)`
+    : `${data.rowCount} rows`;
+  setStatus(`${elapsed}ms • ${rowInfo}`, false);
+
+  renderResults(data, { source: DATA_SOURCE_DUCKDB });
+}
+
+async function runBigQueryQuery(sql) {
+  if (!bigQueryConfigured) {
+    showToast('BigQuery ADC is not configured', { variant: 'error' });
+    return;
   }
 
-  renderResults(data);
+  if (!bigQueryConnected) {
+    showToast('Connect BigQuery first');
+    return;
+  }
+
+  const projectId = getCurrentBigQueryProjectId();
+  if (!projectId) {
+    showToast('Select a BigQuery project');
+    return;
+  }
+
+  const conversationId = state.getCurrentConversationId();
+  if (!conversationId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  stopBigQueryPolling();
+  activeBigQueryJob = null;
+
+  setStatus('Running...', true);
+  setQueryRunningState(true);
+
+  const res = await apiFetch('/api/bigquery/query/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      conversationId,
+      projectId,
+      sql,
+      maxResults: 1000,
+    }),
+  });
+
+  if (!res) {
+    setStatus('Error', false);
+    setQueryRunningState(false);
+    renderError('Query failed');
+    return;
+  }
+
+  const data = await res.json();
+
+  addToHistory(sql);
+  lastQuerySQL = sql;
+  lastQuerySource = DATA_SOURCE_BIGQUERY;
+  lastBigQueryJob = data.job || null;
+
+  if (data.jobComplete) {
+    activeBigQueryJob = null;
+    setQueryRunningState(false);
+    setStatus(formatBigQueryStatus(data), false);
+    renderResults(data, { source: DATA_SOURCE_BIGQUERY });
+    return;
+  }
+
+  activeBigQueryJob = data.job || null;
+  setStatus('BigQuery job running...', true);
+  startBigQueryPolling();
+}
+
+function startBigQueryPolling() {
+  stopBigQueryPolling();
+
+  if (!activeBigQueryJob?.jobId) {
+    setStatus('Missing BigQuery job id', false);
+    setQueryRunningState(false);
+    return;
+  }
+
+  const runPoll = async () => {
+    const convId = state.getCurrentConversationId();
+    const projectId = activeBigQueryJob.projectId || getCurrentBigQueryProjectId();
+
+    if (!convId || !projectId) {
+      stopBigQueryPolling();
+      setQueryRunningState(false);
+      setStatus('BigQuery polling stopped', false);
+      return;
+    }
+
+    const qs = new URLSearchParams({
+      conversationId: convId,
+      projectId,
+      jobId: activeBigQueryJob.jobId,
+    });
+    if (activeBigQueryJob.location) {
+      qs.set('location', activeBigQueryJob.location);
+    }
+
+    const res = await apiFetch(`/api/bigquery/query/status?${qs.toString()}`, { silent: true });
+
+    if (!res) {
+      stopBigQueryPolling();
+      setQueryRunningState(false);
+      setStatus('BigQuery polling failed', false);
+      renderError('Query status unavailable');
+      return;
+    }
+
+    const data = await res.json();
+    lastBigQueryJob = data.job || lastBigQueryJob;
+
+    if (data.jobComplete) {
+      activeBigQueryJob = null;
+      stopBigQueryPolling();
+      setQueryRunningState(false);
+      setStatus(formatBigQueryStatus(data), false);
+      renderResults(data, { source: DATA_SOURCE_BIGQUERY });
+      return;
+    }
+
+    setStatus('BigQuery job running...', true);
+    bigQueryPollTimer = setTimeout(runPoll, 1200);
+  };
+
+  bigQueryPollTimer = setTimeout(runPoll, 1200);
+}
+
+async function cancelBigQueryQuery() {
+  const convId = state.getCurrentConversationId();
+  const job = activeBigQueryJob || lastBigQueryJob;
+  const projectId = job?.projectId || getCurrentBigQueryProjectId();
+
+  if (!job?.jobId || !projectId) {
+    showToast('No active BigQuery query');
+    return;
+  }
+
+  setStatus('Cancelling...', true);
+
+  const res = await apiFetch('/api/bigquery/query/cancel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      conversationId: convId,
+      projectId,
+      jobId: job.jobId,
+      location: job.location || null,
+    }),
+  });
+
+  stopBigQueryPolling();
+  activeBigQueryJob = null;
+  setQueryRunningState(false);
+
+  if (!res) {
+    setStatus('Cancel failed', false);
+    return;
+  }
+
+  setStatus('Cancelled', false);
+  showToast('BigQuery job cancelled');
+}
+
+function buildResultsActions(source) {
+  if (source === DATA_SOURCE_BIGQUERY) {
+    return `
+      <button class="results-export-btn" data-format="csv" title="Download preview as CSV">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+      <button class="results-export-btn" data-format="json" title="Download preview as JSON">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        JSON
+      </button>
+      <button class="results-export-btn" data-format="bq-save-csv" title="Save full query result to CSV file in repo">
+        Save CSV File
+      </button>
+      <button class="results-export-btn" data-format="bq-save-json" title="Save full query result to JSON file in repo">
+        Save JSON File
+      </button>
+    `;
+  }
+
+  return `
+    <button class="results-export-btn" data-format="csv" title="Export as CSV">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      CSV
+    </button>
+    <button class="results-export-btn" data-format="json" title="Export as JSON">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      JSON
+    </button>
+    <button class="results-export-btn" data-format="parquet" title="Export as Parquet">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Parquet
+    </button>
+  `;
 }
 
 /**
  * Render query results as a table
  */
-function renderResults(data) {
+function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   if (!resultsContainer) return;
 
   const { columns, rows } = data;
@@ -481,16 +971,14 @@ function renderResults(data) {
     return;
   }
 
-  // Store for export
   lastQueryResults = { columns, rows };
 
-  // Build table
-  const headerCells = columns.map(col => `
+  const headerCells = columns.map((col) => `
     <th title="${escapeHtml(col.type)}">${escapeHtml(col.name)}<span class="col-type">${escapeHtml(col.type)}</span></th>
   `).join('');
 
   const dataRows = rows.map((row, idx) => {
-    const cells = row.map(cell => {
+    const cells = row.map((cell) => {
       const cellStr = cell === null ? '<null>' : cell === undefined ? '' : String(cell);
       const truncated = cellStr.length > 100 ? cellStr.slice(0, 100) + '...' : cellStr;
       const isNull = cell === null;
@@ -499,22 +987,13 @@ function renderResults(data) {
     return `<tr><td class="row-num">${idx + 1}</td>${cells}</tr>`;
   }).join('');
 
+  const resultLabel = source === DATA_SOURCE_BIGQUERY ? 'preview row' : 'row';
+
   resultsContainer.innerHTML = `
     <div class="data-tab-results-header">
-      <span class="results-count">${rows.length} row${rows.length !== 1 ? 's' : ''}</span>
+      <span class="results-count">${rows.length} ${resultLabel}${rows.length !== 1 ? 's' : ''}</span>
       <div class="results-export-btns">
-        <button class="results-export-btn" data-format="csv" title="Export as CSV">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          CSV
-        </button>
-        <button class="results-export-btn" data-format="json" title="Export as JSON">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          JSON
-        </button>
-        <button class="results-export-btn" data-format="parquet" title="Export as Parquet">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Parquet
-        </button>
+        ${buildResultsActions(source)}
       </div>
     </div>
     <div class="data-tab-results-wrapper">
@@ -525,8 +1004,7 @@ function renderResults(data) {
     </div>
   `;
 
-  // Attach copy handlers
-  resultsContainer.querySelectorAll('.copyable-cell').forEach(cell => {
+  resultsContainer.querySelectorAll('.copyable-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
       const value = cell.dataset.value;
       navigator.clipboard.writeText(value).then(() => {
@@ -536,8 +1014,7 @@ function renderResults(data) {
     });
   });
 
-  // Attach export handlers
-  resultsContainer.querySelectorAll('.results-export-btn').forEach(btn => {
+  resultsContainer.querySelectorAll('.results-export-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       haptic();
       exportResults(btn.dataset.format);
@@ -547,7 +1024,7 @@ function renderResults(data) {
 
 /**
  * Export query results
- * @param {string} format - 'csv', 'json', or 'parquet'
+ * @param {string} format - export target format
  */
 async function exportResults(format) {
   if (!lastQueryResults) {
@@ -555,17 +1032,21 @@ async function exportResults(format) {
     return;
   }
 
-  // Prompt for filename
+  if (format === 'bq-save-csv' || format === 'bq-save-json') {
+    const target = format === 'bq-save-csv' ? 'csv' : 'json';
+    await saveBigQueryResultsToFile(target);
+    return;
+  }
+
   const defaultName = 'query-results';
   const filename = window.prompt('Enter filename (without extension):', defaultName);
-  if (!filename) return; // Cancelled
+  if (!filename) return;
 
   const { columns, rows } = lastQueryResults;
 
-  // Parquet requires server-side export
   if (format === 'parquet') {
-    if (!lastQuerySQL) {
-      showToast('No query to export');
+    if (lastQuerySource !== DATA_SOURCE_DUCKDB || !lastQuerySQL) {
+      showToast('Parquet export is only available for DuckDB queries');
       return;
     }
 
@@ -578,8 +1059,8 @@ async function exportResults(format) {
         body: JSON.stringify({
           sql: lastQuerySQL,
           format: 'parquet',
-          filename: filename
-        })
+          filename,
+        }),
       });
 
       if (!res.ok) {
@@ -588,7 +1069,6 @@ async function exportResults(format) {
         return;
       }
 
-      // Download the blob
       const blob = await res.blob();
       const rowCount = res.headers.get('X-Row-Count') || rows.length;
       const url = URL.createObjectURL(blob);
@@ -607,12 +1087,12 @@ async function exportResults(format) {
     return;
   }
 
-  // CSV and JSON can be done client-side
-  let content, mimeType, extension;
+  let content;
+  let mimeType;
+  let extension;
 
   if (format === 'json') {
-    // Convert to array of objects
-    const data = rows.map(row => {
+    const data = rows.map((row) => {
       const obj = {};
       columns.forEach((col, i) => {
         obj[col.name] = row[i];
@@ -623,25 +1103,22 @@ async function exportResults(format) {
     mimeType = 'application/json';
     extension = 'json';
   } else {
-    // CSV format
     const escapeCSV = (val) => {
       if (val === null || val === undefined) return '';
       const str = String(val);
-      // Escape quotes and wrap in quotes if contains comma, quote, or newline
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return '"' + str.replace(/"/g, '""') + '"';
       }
       return str;
     };
 
-    const header = columns.map(col => escapeCSV(col.name)).join(',');
-    const dataRows = rows.map(row => row.map(escapeCSV).join(','));
+    const header = columns.map((col) => escapeCSV(col.name)).join(',');
+    const dataRows = rows.map((row) => row.map(escapeCSV).join(','));
     content = [header, ...dataRows].join('\n');
     mimeType = 'text/csv';
     extension = 'csv';
   }
 
-  // Trigger download
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -653,6 +1130,58 @@ async function exportResults(format) {
   URL.revokeObjectURL(url);
 
   showToast(`Exported ${rows.length} rows as ${extension.toUpperCase()}`);
+}
+
+async function saveBigQueryResultsToFile(format) {
+  if (lastQuerySource !== DATA_SOURCE_BIGQUERY) {
+    showToast('No BigQuery result to save');
+    return;
+  }
+
+  if (!lastBigQueryJob?.jobId) {
+    showToast('No BigQuery job reference available');
+    return;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  const projectId = lastBigQueryJob.projectId || getCurrentBigQueryProjectId();
+  if (!projectId) {
+    showToast('Select a BigQuery project');
+    return;
+  }
+
+  const defaultName = `bigquery-results-${Date.now()}`;
+  const filename = window.prompt('Enter filename (without extension):', defaultName);
+  if (!filename) return;
+
+  const res = await apiFetch('/api/bigquery/query/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      conversationId: convId,
+      projectId,
+      jobId: lastBigQueryJob.jobId,
+      location: lastBigQueryJob.location || null,
+      format,
+      filename,
+    }),
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  const rowCount = Number(data.rowCount || 0).toLocaleString();
+  showToast(`Saved ${rowCount} rows to ${data.relativePath}`, {
+    action: 'Files',
+    onAction: () => {
+      switchToFilesTabFn?.();
+    },
+  });
 }
 
 /**
@@ -680,7 +1209,6 @@ function toggleHistoryDropdown() {
   const isHidden = queryHistoryDropdown.classList.contains('hidden');
 
   if (isHidden) {
-    // Render history items
     if (queryHistory.length === 0) {
       queryHistoryDropdown.innerHTML = '<div class="history-empty">No history</div>';
     } else {
@@ -695,8 +1223,7 @@ function toggleHistoryDropdown() {
         <button class="history-clear-btn">Clear history</button>
       `;
 
-      // Attach click handlers for history items
-      queryHistoryDropdown.querySelectorAll('.history-item').forEach(item => {
+      queryHistoryDropdown.querySelectorAll('.history-item').forEach((item) => {
         item.addEventListener('click', () => {
           const idx = parseInt(item.dataset.index, 10);
           if (sqlEditor && queryHistory[idx]) {
@@ -706,7 +1233,6 @@ function toggleHistoryDropdown() {
         });
       });
 
-      // Attach clear handler
       queryHistoryDropdown.querySelector('.history-clear-btn').addEventListener('click', () => {
         clearHistory();
         queryHistoryDropdown.classList.add('hidden');
@@ -731,7 +1257,7 @@ async function clearHistory() {
   try {
     await apiFetch(`/api/duckdb/history/${convId}`, {
       method: 'DELETE',
-      silent: true
+      silent: true,
     });
   } catch {
     // Ignore errors
@@ -746,7 +1272,7 @@ async function clearHistory() {
  */
 export async function profileFile(filePath, conversationId) {
   const res = await apiFetch(`/api/duckdb/profile?path=${encodeURIComponent(filePath)}&conversationId=${conversationId}`, {
-    silent: false
+    silent: false,
   });
 
   if (!res) return null;

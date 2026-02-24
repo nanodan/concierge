@@ -107,6 +107,14 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 |---------------------|---------|-------------|
 | `PORT` | `3577` | Server port |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
+| `GOOGLE_APPLICATION_CREDENTIALS` | _(unset)_ | Optional path to a service-account JSON for BigQuery ADC |
+
+BigQuery uses Google Application Default Credentials (ADC). Typical local setup:
+
+```bash
+gcloud auth application-default login
+gcloud config set project <project-id>
+```
 
 ## Tech Stack
 
@@ -129,6 +137,7 @@ concierge/
 │   │   ├── capabilities.js   # Provider/model capabilities
 │   │   ├── preview.js        # Live web preview server controls
 │   │   ├── duckdb.js         # DuckDB data analysis endpoints
+│   │   ├── bigquery.js       # BigQuery ADC + query endpoints
 │   │   ├── workflow.js       # Workflow locks + patch queue
 │   │   └── helpers.js        # Shared utilities
 │   ├── providers/         # LLM provider system
@@ -139,6 +148,7 @@ concierge/
 │   │   └── index.js       # Provider registry
 │   ├── claude.js          # Backwards compat wrapper
 │   ├── duckdb.js          # DuckDB query helpers
+│   ├── bigquery.js        # BigQuery ADC/token/query helpers
 │   ├── data.js            # Data storage and persistence
 │   ├── workflow/          # Locking + patch queue internals
 │   └── embeddings.js      # Semantic search with local embeddings
