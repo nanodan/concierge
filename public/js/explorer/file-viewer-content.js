@@ -1,4 +1,9 @@
-import { parseGeoSpatialContent, mountGeoPreview, unmountGeoPreview } from './geo-preview.js';
+import {
+  parseGeoSpatialContent,
+  mountGeoPreview,
+  unmountGeoPreview,
+  resizeGeoPreview,
+} from './geo-preview.js';
 
 const DEFAULT_PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
 const GEO_PREVIEW_EXTS = new Set(['geojson', 'json', 'topojson', 'jsonl', 'ndjson']);
@@ -157,25 +162,63 @@ function attachJsonHandlers(container) {
   }
 }
 
-function renderGeoPreview(container, { geoResult, fileUrl, openExternalIcon, escapeHtml }) {
+function renderGeoPreview(container, {
+  geoResult,
+  fileUrl,
+  openExternalIcon,
+  escapeHtml,
+  rawContent,
+}) {
   const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
+  const rawText = escapeHtml(toSafeString(rawContent));
 
   container.innerHTML = `
     <div class="geo-preview">
       <div class="geo-preview-toolbar">
         <span class="geo-preview-badge">Map</span>
         <span class="geo-preview-meta">${summary}</span>
+        <div class="geo-preview-view-toggle" role="tablist" aria-label="Geo preview mode">
+          <button class="geo-preview-view-btn active" data-view="map" role="tab" aria-selected="true">Map</button>
+          <button class="geo-preview-view-btn" data-view="raw" role="tab" aria-selected="false">Raw</button>
+        </div>
       </div>
-      <div class="geo-preview-map" data-role="geo-map"></div>
-      <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+      <div class="geo-preview-panel geo-preview-panel-map" data-role="geo-panel-map">
+        <div class="geo-preview-map" data-role="geo-map"></div>
+        <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+      </div>
+      <div class="geo-preview-panel geo-preview-panel-raw hidden" data-role="geo-panel-raw">
+        <pre><code class="language-json">${rawText}</code></pre>
+      </div>
     </div>
     <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
   `;
 
   attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
+  highlightCodeBlocks(container);
 
   const mapElement = container.querySelector('[data-role="geo-map"]');
   const statusElement = container.querySelector('[data-role="geo-status"]');
+  const mapPanel = container.querySelector('[data-role="geo-panel-map"]');
+  const rawPanel = container.querySelector('[data-role="geo-panel-raw"]');
+  const viewButtons = container.querySelectorAll('.geo-preview-view-btn');
+
+  const setView = (view) => {
+    const mapActive = view === 'map';
+    if (mapPanel) mapPanel.classList.toggle('hidden', !mapActive);
+    if (rawPanel) rawPanel.classList.toggle('hidden', mapActive);
+    viewButtons.forEach((btn) => {
+      const isActive = btn.dataset.view === view;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    if (mapActive) {
+      setTimeout(() => resizeGeoPreview(container), 0);
+    }
+  };
+
+  viewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setView(btn.dataset.view || 'map'));
+  });
 
   void mountGeoPreview({
     container,
@@ -376,6 +419,7 @@ export function renderFileViewerContent({
         fileUrl,
         openExternalIcon,
         escapeHtml,
+        rawContent: content,
       });
       return true;
     }

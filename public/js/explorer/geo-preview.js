@@ -39,6 +39,35 @@ const MAP_STYLE = {
 };
 
 let mapLibreLoadPromise = null;
+const INTERACTIVE_LAYER_IDS = [
+  'geo-fill-layer',
+  'geo-polygon-outline-layer',
+  'geo-line-layer',
+  'geo-point-layer',
+];
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function stringifyPropertyValue(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') {
+    try {
+      const encoded = JSON.stringify(value);
+      return encoded.length > 120 ? `${encoded.slice(0, 117)}...` : encoded;
+    } catch {
+      return '[object]';
+    }
+  }
+  const text = String(value);
+  return text.length > 120 ? `${text.slice(0, 117)}...` : text;
+}
 
 function ensureMapLibreCss() {
   if (typeof document === 'undefined') return;
@@ -263,6 +292,83 @@ export function parseGeoSpatialContent(rawContent, ext = '') {
   };
 }
 
+export function buildFeatureMetadataHtml(feature) {
+  const geometryType = feature?.geometry?.type || 'Feature';
+  const props = feature?.properties && typeof feature.properties === 'object'
+    ? Object.entries(feature.properties)
+    : [];
+
+  if (!props.length) {
+    return `
+      <div class="geo-popup">
+        <div class="geo-popup-title">${escapeHtml(geometryType)}</div>
+        <div class="geo-popup-empty">No properties</div>
+      </div>
+    `;
+  }
+
+  const rows = props.slice(0, 12).map(([key, value]) => `
+    <div class="geo-popup-row">
+      <span class="geo-popup-key">${escapeHtml(key)}</span>
+      <span class="geo-popup-value">${escapeHtml(stringifyPropertyValue(value))}</span>
+    </div>
+  `).join('');
+
+  const extraCount = props.length > 12 ? `<div class="geo-popup-extra">+${props.length - 12} more</div>` : '';
+
+  return `
+    <div class="geo-popup">
+      <div class="geo-popup-title">${escapeHtml(geometryType)}</div>
+      ${rows}
+      ${extraCount}
+    </div>
+  `;
+}
+
+function bindFeatureHover(map, maplibregl) {
+  const popup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    className: 'geo-preview-popup',
+    maxWidth: '280px',
+  });
+
+  const handlers = [];
+  const register = (eventName, layerId, fn) => {
+    map.on(eventName, layerId, fn);
+    handlers.push([eventName, layerId, fn]);
+  };
+
+  const closePopup = () => {
+    map.getCanvas().style.cursor = '';
+    popup.remove();
+  };
+
+  for (const layerId of INTERACTIVE_LAYER_IDS) {
+    register('mousemove', layerId, (event) => {
+      const feature = event?.features?.[0];
+      if (!feature) return;
+
+      map.getCanvas().style.cursor = 'pointer';
+      popup
+        .setLngLat(event.lngLat)
+        .setHTML(buildFeatureMetadataHtml(feature))
+        .addTo(map);
+    });
+
+    register('mouseleave', layerId, closePopup);
+  }
+
+  return () => {
+    closePopup();
+    for (const [eventName, layerId, fn] of handlers) {
+      try {
+        map.off(eventName, layerId, fn);
+      } catch {}
+    }
+  };
+}
+
 function addGeoLayers(map, sourceId) {
   map.addLayer({
     id: 'geo-fill-layer',
@@ -270,9 +376,27 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'fill-color': '#3ec4ff',
-      'fill-opacity': 0.22,
-      'fill-outline-color': '#74d7ff',
+      'fill-color': '#2bd4ff',
+      'fill-opacity': 0.34,
+    },
+  });
+
+  map.addLayer({
+    id: 'geo-polygon-outline-layer',
+    type: 'line',
+    source: sourceId,
+    filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+    paint: {
+      'line-color': '#00b8ff',
+      'line-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4, 1.4,
+        10, 2.5,
+        14, 3.2,
+      ],
+      'line-opacity': 0.95,
     },
   });
 
@@ -282,9 +406,20 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
     paint: {
-      'line-color': '#ffd166',
-      'line-width': 2,
-      'line-opacity': 0.9,
+      'line-color': '#ff4da0',
+      'line-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4, 2,
+        10, 4,
+        14, 6,
+      ],
+      'line-opacity': 0.98,
+    },
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
     },
   });
 
@@ -294,10 +429,17 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     paint: {
-      'circle-color': '#ff7a7a',
-      'circle-radius': 5,
+      'circle-color': '#ff4d5a',
+      'circle-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4, 4,
+        10, 6.5,
+        14, 9,
+      ],
       'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1,
+      'circle-stroke-width': 1.5,
     },
   });
 }
@@ -335,8 +477,22 @@ export function unmountGeoPreview(container) {
   if (typeof cleanup === 'function') {
     cleanup();
   }
+  if (typeof container?._geoPreviewReleaseHover === 'function') {
+    container._geoPreviewReleaseHover();
+    delete container._geoPreviewReleaseHover;
+  }
+  if (container && container._geoPreviewMap) {
+    delete container._geoPreviewMap;
+  }
   if (container && container._geoPreviewCleanup) {
     delete container._geoPreviewCleanup;
+  }
+}
+
+export function resizeGeoPreview(container) {
+  const map = container?._geoPreviewMap;
+  if (map && typeof map.resize === 'function') {
+    map.resize();
   }
 }
 
@@ -378,21 +534,33 @@ export async function mountGeoPreview({
         data: geojson,
       });
       addGeoLayers(map, sourceId);
+      const releaseHoverBindings = bindFeatureHover(map, maplibregl);
       fitGeoBounds(map, bounds);
       map.resize();
       if (statusElement) {
         statusElement.classList.add('hidden');
       }
+
+      container._geoPreviewReleaseHover = releaseHoverBindings;
     });
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     const resizeTimer = setTimeout(() => map.resize(), 120);
+    container._geoPreviewMap = map;
+
     const cleanup = () => {
       clearTimeout(resizeTimer);
+      if (typeof container._geoPreviewReleaseHover === 'function') {
+        container._geoPreviewReleaseHover();
+        delete container._geoPreviewReleaseHover;
+      }
       try {
         map.remove();
       } catch {}
+      if (container._geoPreviewMap === map) {
+        delete container._geoPreviewMap;
+      }
     };
 
     container._geoPreviewCleanup = cleanup;

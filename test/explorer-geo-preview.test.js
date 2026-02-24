@@ -10,6 +10,7 @@ describe('explorer geo preview helpers', async () => {
     normalizeGeoJson,
     computeGeoBounds,
     parseGeoSpatialContent,
+    buildFeatureMetadataHtml,
   } = await import(moduleUrl);
 
   it('normalizes geometry object into a feature collection', () => {
@@ -86,5 +87,31 @@ describe('explorer geo preview helpers', async () => {
     const topo = parseGeoSpatialContent(JSON.stringify({ type: 'Topology', objects: {} }), 'topojson');
     assert.equal(topo.ok, false);
     assert.match(topo.reason, /TopoJSON/i);
+  });
+
+  it('builds escaped feature metadata popup html', () => {
+    const html = buildFeatureMetadataHtml({
+      geometry: { type: 'Point' },
+      properties: {
+        name: '<script>alert(1)</script>',
+        count: 42,
+      },
+    });
+
+    assert.match(html, /Point/);
+    assert.match(html, /name/);
+    assert.match(html, /count/);
+    assert.doesNotMatch(html, /<script>/i);
+    assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  });
+
+  it('handles features without properties in popup html', () => {
+    const html = buildFeatureMetadataHtml({
+      geometry: { type: 'LineString' },
+      properties: {},
+    });
+
+    assert.match(html, /LineString/);
+    assert.match(html, /No properties/);
   });
 });

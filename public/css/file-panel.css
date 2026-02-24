@@ -2954,6 +2954,7 @@
 }
 
 .geo-preview-meta {
+  flex: 1;
   font-size: 11px;
   color: var(--text-secondary);
   overflow: hidden;
@@ -2961,10 +2962,69 @@
   white-space: nowrap;
 }
 
+.geo-preview-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.geo-preview-view-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.geo-preview-view-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+.geo-preview-view-btn.active {
+  background: var(--accent-alpha-20, rgba(var(--accent-rgb), 0.2));
+  color: var(--accent);
+}
+
+.geo-preview-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.geo-preview-panel.hidden {
+  display: none;
+}
+
 .geo-preview-map {
   position: relative;
   flex: 1;
   min-height: 220px;
+}
+
+.geo-preview-panel-raw {
+  overflow: auto;
+  background: var(--code-bg, var(--surface));
+  padding: 12px;
+}
+
+.geo-preview-panel-raw pre {
+  margin: 0;
+}
+
+.geo-preview-panel-raw code {
+  display: block;
+  min-width: max-content;
+  white-space: pre;
 }
 
 .geo-preview-status {
@@ -2981,6 +3041,57 @@
 
 .geo-preview-status.hidden {
   display: none;
+}
+
+.geo-preview-popup .maplibregl-popup-content {
+  background: rgba(12, 16, 22, 0.94);
+  color: #e7edf4;
+  border: 1px solid rgba(180, 205, 228, 0.32);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
+}
+
+.geo-preview-popup .maplibregl-popup-tip {
+  border-top-color: rgba(12, 16, 22, 0.94);
+}
+
+.geo-popup {
+  min-width: 180px;
+}
+
+.geo-popup-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #9cd8ff;
+}
+
+.geo-popup-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.geo-popup-key {
+  flex: 0 0 70px;
+  font-size: 10px;
+  color: #7cb4da;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.geo-popup-value {
+  flex: 1;
+  font-size: 11px;
+  color: #f0f5fa;
+  word-break: break-word;
+}
+
+.geo-popup-empty,
+.geo-popup-extra {
+  font-size: 11px;
+  color: #b8c7d6;
 }
 
 /* === JSON Preview === */
