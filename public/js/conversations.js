@@ -412,7 +412,15 @@ export function renderConversationList(items) {
 
   const showCwdOnCards = isSearch; // Only show cwd on individual cards during search
 
-  function renderCard(c) {
+  function isWorktreeConversation(c) {
+    if (!c?.cwd) return false;
+    const rootConv = findRootConversationInList(c.id);
+    const rootCwd = rootConv?.cwd || '';
+    return !!(rootCwd && c.cwd !== rootCwd);
+  }
+
+  function renderCard(c, options = {}) {
+    const inStack = !!options.inStack;
     const preview = c.lastMessage
       ? truncate(c.lastMessage.text, 60)
       : 'No messages yet';
@@ -444,7 +452,14 @@ export function renderConversationList(items) {
     const isThinking = state.isThinking(c.id);
     const isSelected = state.getSelectedConversations().has(c.id);
     const isPinned = c.pinned;
+    const isWorktree = isWorktreeConversation(c);
     const pinIcon = isPinned ? '<svg class="pin-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>' : '';
+    const branchBadge = isWorktree
+      ? '<span class="conv-card-branch-badge" title="Dedicated git worktree branch">branch</span>'
+      : '';
+    const branchesBtn = isWorktree && !inStack
+      ? `<button class="conv-card-branches-btn" data-id="${c.id}" aria-label="View branch family" title="View branch family">Branches</button>`
+      : '';
     const wrapperClasses = [isPinned && 'pinned', isUnread && 'unread'].filter(Boolean).join(' ');
     return `
       <div class="conv-card-wrapper${wrapperClasses ? ' ' + wrapperClasses : ''}">
@@ -459,6 +474,8 @@ export function renderConversationList(items) {
           <div class="conv-card-content">
             <div class="conv-card-top">
               ${isThinking ? '<span class="thinking-dot"></span>' : ''}${isUnread ? '<span class="unread-dot"></span>' : ''}${pinIcon}<span class="conv-card-name">${escapeHtml(c.name)}</span>
+              ${branchBadge}
+              ${branchesBtn}
               ${scoreHtml}<span class="conv-card-time">${time}</span>
             </div>
             <div class="conv-card-preview">${escapeHtml(preview)}</div>
@@ -474,7 +491,7 @@ export function renderConversationList(items) {
   function renderStack(rootId, family) {
     // Single conversation - no stack needed
     if (family.length === 1) {
-      return renderCard(family[0]);
+      return renderCard(family[0], { inStack: false });
     }
 
     const isExpanded = state.isStackExpanded(rootId);
@@ -484,12 +501,13 @@ export function renderConversationList(items) {
       return bTime > aTime ? b : a;
     });
     const forkCount = family.length - 1; // Exclude root from count
+    const hasWorktree = family.some(c => isWorktreeConversation(c));
 
     if (isExpanded) {
       // Expanded: show all cards in a grouped container
       // Mark the root card with a label
       const cardsHtml = family.map(c => {
-        const cardHtml = renderCard(c);
+        const cardHtml = renderCard(c, { inStack: true });
         if (c.id === rootId) {
           // Inject root label before the closing </div></div>
           return cardHtml.replace(
@@ -503,8 +521,11 @@ export function renderConversationList(items) {
       return `
         <div class="fork-stack expanded" data-root-id="${rootId}">
           <div class="stack-header" data-root-id="${rootId}">
-            <span>⑂ Fork family (${family.length})</span>
-            <span class="stack-collapse-icon">&times;</span>
+            <span>⑂ Fork family (${family.length})${hasWorktree ? ' • includes branches' : ''}</span>
+            <div class="stack-header-actions">
+              <button class="stack-branches-btn" data-root-id="${rootId}" aria-label="View branches for this fork family" title="View branches">Branches</button>
+              <span class="stack-collapse-icon">&times;</span>
+            </div>
           </div>
           ${cardsHtml}
         </div>
@@ -513,9 +534,11 @@ export function renderConversationList(items) {
       // Collapsed: show most recent card with stack shadow effect
       return `
         <div class="fork-stack" data-root-id="${rootId}">
-          ${renderCard(mostRecent)}
+          ${renderCard(mostRecent, { inStack: true })}
           <div class="stack-shadow-1"></div>
           <div class="stack-shadow-2"></div>
+          ${hasWorktree ? '<span class="stack-worktree-pill" title="Contains dedicated worktree branches">branches</span>' : ''}
+          <button class="stack-branches-btn" data-root-id="${rootId}" aria-label="View branches for this fork family" title="View branches">Branches</button>
           <span class="stack-count">+${forkCount}</span>
         </div>
       `;
@@ -609,6 +632,7 @@ export function renderConversationList(items) {
       stack.addEventListener('click', (e) => {
         // Don't expand if clicking on a card action (swipe, etc.)
         if (e.target.closest('.swipe-action-btn')) return;
+        if (e.target.closest('.stack-branches-btn')) return;
         const rootId = stack.dataset.rootId;
         state.setStackExpanded(rootId, true);
         renderConversationList();
@@ -618,13 +642,43 @@ export function renderConversationList(items) {
     // Fork stack header handlers - entire header collapses the stack
     conversationList.querySelectorAll('.fork-stack.expanded .stack-header').forEach(header => {
       header.addEventListener('click', (e) => {
+        if (e.target.closest('.stack-branches-btn')) return;
         e.stopPropagation();
         const rootId = header.dataset.rootId;
         state.setStackExpanded(rootId, false);
         renderConversationList();
       });
     });
+
+    // Fork stack branch view shortcut (collapsed + expanded)
+    conversationList.querySelectorAll('.stack-branches-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        haptic();
+        const rootId = btn.dataset.rootId;
+        if (!rootId) return;
+        const { showBranchesView, loadBranchesTree } = await import('./branches.js');
+        showBranchesView();
+        loadBranchesTree(rootId);
+      });
+    });
+
   }
+
+  // Non-stack worktree cards can jump directly to branch view
+  conversationList.querySelectorAll('.conv-card-branches-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      haptic();
+      const id = btn.dataset.id;
+      if (!id) return;
+      const { showBranchesView, loadBranchesTree } = await import('./branches.js');
+      showBranchesView();
+      loadBranchesTree(id);
+    });
+  });
 
   // Attach swipe + click + long-press handlers
   conversationList.querySelectorAll('.conv-card-wrapper').forEach(wrapper => {
@@ -637,7 +691,8 @@ export function renderConversationList(items) {
       e.preventDefault();
       showActionPopup(e.clientX, e.clientY, id);
     });
-    card.addEventListener('click', (_e) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.conv-card-branches-btn')) return;
       // Don't navigate if card is swiped open
       if (Math.abs(parseFloat(card.style.transform?.replace(/[^0-9.-]/g, '') || 0)) > 10) return;
 
