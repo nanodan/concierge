@@ -2,13 +2,13 @@
 
 ## System Overview
 
-Concierge is a mobile-first PWA interface for Claude Code. The architecture is a three-tier system: a Node.js backend manages Claude Code processes and streams output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk.
+Concierge is a mobile-first PWA interface for AI coding agents. The architecture is a three-tier system: a Node.js backend manages provider processes/requests (Claude CLI, Codex CLI, Ollama HTTP) and streams output over WebSocket to a vanilla JS frontend. Conversations persist as JSON files on disk.
 
 ```
-+-------------+                  +--------------+                  +-------------+
-|   Browser   |  WebSocket/REST  |  server.js   |  stdio/spawn     | Claude Code |
-|    (PWA)    | <--------------> |  Express+WS  | <--------------> |     CLI     |
-+-------------+                  +--------------+                  +-------------+
++-------------+                  +--------------+                  +------------------+
+|   Browser   |  WebSocket/REST  |  server.js   |  stdio/spawn/API | Provider CLI/API |
+|    (PWA)    | <--------------> |  Express+WS  | <--------------> | Claude/Codex/Ollama |
++-------------+                  +--------------+                  +------------------+
                                         |
                                         | JSON files
                                         v
@@ -25,6 +25,7 @@ Concierge supports multiple LLM providers through an abstract provider interface
 
 **Available Providers:**
 - **Claude** (default) - Claude CLI integration with full feature support (tools, files, sessions, sandbox)
+- **Codex** - OpenAI Codex CLI integration with session resume and tool tracing
 - **Ollama** - Local LLM support via Ollama HTTP API (free, offline, no tool use)
 
 **Architecture:**
@@ -37,6 +38,7 @@ LLMProvider (base.js)          # Abstract interface
     └── generateSummary()      # Compress conversations
 
 ClaudeProvider extends LLMProvider
+CodexProvider extends LLMProvider
 OllamaProvider extends LLMProvider
 
 Provider Registry (index.js)
@@ -48,11 +50,12 @@ Provider Registry (index.js)
 
 **Provider Selection:**
 - Set per conversation via `provider` field (defaults to 'claude')
-- Models are provider-specific (e.g., claude-sonnet-4.5 vs llama3.2)
+- Models are provider-specific (e.g., claude-sonnet-4.5 vs gpt-5.3-codex vs llama3.2)
 - Server calls appropriate provider based on conversation.provider
 
 **Limitations by Provider:**
 - **Claude**: Full features (tools, files, sessions, thinking, compression)
+- **Codex**: Full chat flow with tool events, sessions, and compression
 - **Ollama**: Basic chat only (no files, no tools, stateless, free)
 
 ### Module Structure
@@ -67,17 +70,24 @@ lib/
     files.js          # File browser
     memory.js         # Memory management
     capabilities.js   # Provider/model capabilities
-    preview.js        # File preview (CSV, Parquet, notebooks)
+    preview.js        # Live web preview server controls
+    duckdb.js         # DuckDB data analysis endpoints
+    workflow.js       # Write locks + patch queue APIs
     helpers.js        # Shared utilities (withConversation, etc.)
   providers/       # LLM provider system
     base.js        # Base provider interface
     claude.js      # Claude CLI provider
+    codex.js       # OpenAI Codex CLI provider
     ollama.js      # Ollama provider
     index.js       # Provider registry
   memory-prompt.txt  # Memory injection template
   claude.js        # Backwards compat wrapper
   data.js          # Storage, atomic writes, lazy loading
+  duckdb.js        # DuckDB query/load helpers
   embeddings.js    # Semantic search with local embeddings
+  workflow/        # Parallel workflow coordination
+    locks.js       # Single-writer repository locks
+    patch-queue.js # Queue/apply/reject patch proposals
   constants.js     # Shared constants
 ```
 
@@ -95,6 +105,16 @@ claude -p "{text}" --output-format stream-json --verbose \
   [--append-system-prompt {memories}]
 ```
 
+**Codex Provider:** Each conversation spawns one Codex CLI child process:
+
+```bash
+codex exec --json -m {model} -C {cwd} --skip-git-repo-check \
+  [-s workspace-write|read-only] [--add-dir {uploads}] "{prompt}"
+
+codex exec resume {sessionId} --json -m {model} --skip-git-repo-check "{prompt}"
+```
+(`exec resume` does not use `-C` or `-s`.)
+
 **Ollama Provider:** Stateless HTTP requests to Ollama API:
 - POST to `/api/chat` with full message history
 - Streaming response via newline-delimited JSON
@@ -104,7 +124,7 @@ claude -p "{text}" --output-format stream-json --verbose \
 **Lifecycle:**
 - Process/request starts → `status: "thinking"` sent to client
 - Output stream → parsed and forwarded as `delta` events
-- Tool calls (Claude only) → `tool_start` and `tool_result` events
+- Tool calls (Claude/Codex) → `tool_start` and `tool_result` events
 - Process/request completes → `result` event with cost/duration/tokens, then `status: "idle"`
 - 5 minute timeout per message
 
@@ -142,6 +162,12 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 - `tool_result` → send as `tool_result` event
 - `result` → extract cost, duration, sessionId, tokens → send as `result`
 
+**Codex Provider:** CLI outputs newline-delimited JSON events:
+- `thread.started` → capture `thread_id` as resume session id
+- `item.completed` with `reasoning` / `agent_message` → `thinking` / `delta`
+- `item.started` / `item.completed` (tool items) → `tool_start` / `tool_result`
+- `turn.completed` → final `result` with usage + session id
+
 **Ollama Provider:** HTTP stream with newline-delimited JSON:
 - `message.content` → send as `delta`
 - `done: true` → send as `result` with token counts (cost always $0)
@@ -175,7 +201,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 **Conversation Metadata:**
 ```javascript
 {
-  id, name, cwd, claudeSessionId, status,
+  id, name, cwd, claudeSessionId, codexSessionId, status,
   archived, pinned, autopilot, sandboxed, useMemory,
   provider, model, createdAt,
   messageCount, parentId, forkIndex,
@@ -183,7 +209,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 }
 ```
 - `sandboxed` - boolean, defaults to true for safety
-- `provider` - string, defaults to 'claude' ('claude' | 'ollama')
+- `provider` - string, defaults to 'claude' ('claude' | 'codex' | 'ollama')
 - `model` - string, provider-specific model ID
 
 ### REST API
@@ -209,12 +235,13 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 |--------|----------|-------------|
 | `GET` | `/api/browse` | Directory listing (cwd picker) |
 | `GET` | `/api/files` | General file browser |
+| `GET` | `/api/files/content` | Get structured file content (standalone cwd) |
 | `GET` | `/api/files/download` | Download file |
 | `POST` | `/api/files/upload` | Upload file |
 | `GET` | `/api/conversations/:id/files` | List files in cwd |
 | `GET` | `/api/conversations/:id/files/content` | Get file content |
-| `GET` | `/api/conversations/:id/files/preview` | Preview data files (CSV, Parquet, notebooks) |
 | `GET` | `/api/conversations/:id/files/search` | Git grep search |
+| `GET` | `/api/conversations/:id/files/download` | Download file from conversation cwd |
 
 **Git Integration:**
 | Method | Endpoint | Description |
@@ -237,17 +264,41 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 | `POST` | `.../git/revert` | Revert commit |
 | `POST` | `.../git/reset` | Reset to commit |
 | `POST` | `.../git/undo-commit` | Undo last commit |
+| `POST` | `.../git/hunk-action` | Accept/reject hunk (stage/discard/unstage) |
+| `POST` | `.../git/revert-hunk` | Legacy hunk revert endpoint (compatibility) |
 
-**File Preview:**
+**File Viewer Content:**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `.../files/preview?path=&type=` | Preview data files |
+| `GET` | `/api/files/content?path=` | Standalone viewer content payload |
+| `GET` | `/api/conversations/:id/files/content?path=` | Conversation-scoped viewer content payload |
 
 Supported file types:
+- **Text/code** - UTF-8 content with language hinting
 - **CSV/TSV** - Parsed and rendered as tables
 - **Parquet** - Decoded using parquetjs-lite, rendered as tables
 - **Jupyter Notebooks (.ipynb)** - Rendered with code cells and outputs
-- **Images** - Displayed inline (handled via file content API)
+- **GeoJSON/TopoJSON/JSONL/NDJSON** - Map viewer (Map/Raw toggle, basemap switch, feature hover/details, fit-to-bounds)
+- **Images** - Displayed inline via download/content URL
+
+**Live Web Preview Server:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/conversations/:id/preview/start` | Start project preview server |
+| `POST` | `/api/conversations/:id/preview/stop` | Stop preview server |
+| `GET` | `/api/conversations/:id/preview/status` | Get preview status + URL |
+
+**Workflow Coordination:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/workflow/lock?cwd=` | Read current writer lock |
+| `POST` | `/api/workflow/lock/acquire` | Acquire single-writer lock |
+| `POST` | `/api/workflow/lock/heartbeat` | Renew lock TTL |
+| `POST` | `/api/workflow/lock/release` | Release lock |
+| `GET` | `/api/workflow/patches` | List queued patches |
+| `POST` | `/api/workflow/patches` | Submit patch proposal |
+| `POST` | `/api/workflow/patches/:id/apply` | Apply queued patch |
+| `POST` | `/api/workflow/patches/:id/reject` | Reject queued patch |
 
 ### WebSocket Protocol
 
@@ -290,7 +341,9 @@ public/js/
   ui.js            # UI interactions, event handlers
   markdown.js      # Markdown parser
   branches.js      # Branch tree visualization
-  file-panel/      # File browser + git
+  explorer/        # Shared file viewer + git controllers
+  file-panel/      # Conversation-scoped shell for explorer modules
+  files-standalone.js # Cwd-scoped shell reusing explorer modules
   ui/              # Modular UI features (stats, memory, voice, theme, etc.)
 ```
 

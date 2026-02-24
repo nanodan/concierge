@@ -1,6 +1,6 @@
 # Concierge
 
-A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or local LLMs (via [Ollama](https://ollama.ai)) from your phone, tablet, or any browser. Features real-time streaming, conversation management, git integration, and file preview. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
+A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenAI Codex CLI](https://github.com/openai/codex), or local LLMs (via [Ollama](https://ollama.ai)) from your phone, tablet, or any browser. Features real-time streaming, conversation management, git integration, and file preview. Pair with [Tailscale](https://tailscale.com) for secure access from anywhere.
 
 ![Screenshot](docs/screenshots/concierge.png)
 
@@ -8,8 +8,10 @@ A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://
 
 ### Project Integration
 - **File browser** - Browse and view files in the conversation's working directory
-- **File preview** - View CSV, TSV, Parquet, and Jupyter notebook files inline
+- **File preview** - View text/code, Markdown, JSON, images, CSV/TSV, Parquet, Jupyter notebooks, and geospatial files inline
+- **Geospatial map viewer** - Interactive GeoJSON/JSONL map mode with Map/Raw toggle, basemap switcher, thematic styling, feature hover metadata, and fit-to-bounds controls
 - **Git integration** - Full git workflow: status, stage/unstage, commit, push/pull, branches, stash
+- **Granular git review** - Accept/reject individual diff hunks (chunk-level stage/discard/unstage)
 - **Commit history** - View commits, diffs, revert changes, reset to commit
 - **Code search** - Search files with git grep from within the app
 
@@ -21,9 +23,10 @@ A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://
 
 ### Multi-Provider Support
 - **Claude Code** - Full-featured integration with Claude CLI (default)
+- **OpenAI Codex** - Codex CLI integration with GPT-5 Codex models
 - **Ollama** - Local LLM support for free, offline conversations
 - **Per-conversation provider** - Choose provider and model when creating conversations
-- **Provider-specific models** - Access Claude models (Sonnet, Opus, Haiku) or Ollama models (Llama, Mistral, etc.)
+- **Provider-specific models** - Access Claude models, Codex models (GPT-5.3/5.2 Codex), or Ollama models (Llama, Mistral, etc.)
 
 ### Mobile UX
 - **Swipe gestures** - Swipe to reveal actions, swipe back to list
@@ -67,6 +70,7 @@ The app runs at `https://localhost:3577` (or `http://` if no certs are configure
 
 - **Node.js** (v18+)
 - **Claude CLI** installed and authenticated (`claude` must be available on PATH) — required for Claude provider
+- **Codex CLI** installed and authenticated (`codex` must be available on PATH) — required for Codex provider
 - **Ollama** (optional) - Install from [ollama.ai](https://ollama.ai) for local LLM support
 
 ### HTTPS Setup (required for voice input on non-localhost)
@@ -123,15 +127,20 @@ concierge/
 │   │   ├── files.js          # File browser
 │   │   ├── memory.js         # Memory management
 │   │   ├── capabilities.js   # Provider/model capabilities
-│   │   ├── preview.js        # File preview (CSV, Parquet, notebooks)
+│   │   ├── preview.js        # Live web preview server controls
+│   │   ├── duckdb.js         # DuckDB data analysis endpoints
+│   │   ├── workflow.js       # Workflow locks + patch queue
 │   │   └── helpers.js        # Shared utilities
 │   ├── providers/         # LLM provider system
 │   │   ├── base.js        # Base provider interface
 │   │   ├── claude.js      # Claude CLI provider
+│   │   ├── codex.js       # OpenAI Codex CLI provider
 │   │   ├── ollama.js      # Ollama provider
 │   │   └── index.js       # Provider registry
 │   ├── claude.js          # Backwards compat wrapper
+│   ├── duckdb.js          # DuckDB query helpers
 │   ├── data.js            # Data storage and persistence
+│   ├── workflow/          # Locking + patch queue internals
 │   └── embeddings.js      # Semantic search with local embeddings
 ├── public/
 │   ├── index.html         # Single-page app HTML
@@ -140,7 +149,9 @@ concierge/
 │   │   ├── app.js         # Frontend entry point
 │   │   ├── state.js       # Shared state management
 │   │   ├── ui.js          # UI interactions
-│   │   ├── file-panel/    # File browser, git integration, file preview
+│   │   ├── explorer/      # Shared file viewer shell, git controllers, geo preview
+│   │   ├── file-panel/    # Conversation-scoped file panel
+│   │   ├── files-standalone.js  # Standalone cwd-scoped files/git view
 │   │   └── ui/            # Modular UI features (stats, memory, voice, etc.)
 │   ├── css/               # Modular stylesheets + themes/
 │   ├── sw.js              # Service worker

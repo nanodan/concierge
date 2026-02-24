@@ -13,11 +13,14 @@ lib/
     files.js           # File browser
     memory.js          # Memory system
     capabilities.js    # Model/CLI capabilities
-    preview.js         # File preview (CSV, Parquet, notebooks)
+    preview.js         # Live web preview server controls
+    duckdb.js          # DuckDB data analysis routes
+    workflow.js        # Write lock + patch queue routes
     helpers.js         # Shared utilities (withConversation, etc.)
   providers/           # LLM provider system
     base.js            # Base provider interface
     claude.js          # Claude CLI provider
+    codex.js           # OpenAI Codex CLI provider
     ollama.js          # Ollama HTTP API provider
     index.js           # Provider registry
   memory-prompt.txt    # Memory injection template
@@ -39,15 +42,16 @@ public/js/
   ui.js                # Event handlers
   markdown.js          # Markdown parser
   branches.js          # Fork tree visualization
-  file-panel/          # File browser + git modules
-  file-panel/          # File browser + git modules
+  explorer/            # Shared file viewer + git controllers
+  files-standalone.js  # Standalone cwd-scoped files/git view
+  file-panel/          # Conversation-scoped shell + live preview tab
     index.js           # Main file panel module
-    file-browser.js    # File tree browser
-    git-branches.js    # Branch management
-    git-changes.js     # Stage/unstage/commit
-    git-commits.js     # Commit history
+    file-browser.js    # File tree shell bindings
+    git-branches.js    # Branch shell bindings
+    git-changes.js     # Changes shell bindings
+    git-commits.js     # Commit history shell bindings
     gestures.js        # Touch interactions
-    preview.js         # File preview (data files, images)
+    preview.js         # Live preview server controls
   ui/                  # Modular UI features
     capabilities.js    # Provider/model capabilities
     context-bar.js     # Context usage indicator
@@ -84,7 +88,8 @@ public/css/
   id: string,              // UUID
   name: string,
   cwd: string,             // Working directory
-  claudeSessionId: string, // For --resume (Claude only)
+  claudeSessionId: string, // For --resume (Claude)
+  codexSessionId: string,  // For `codex exec resume` (Codex)
   messages: Message[],     // null when not loaded
   status: 'idle' | 'thinking',
   archived: boolean,
@@ -92,7 +97,7 @@ public/css/
   autopilot: boolean,      // Skip permissions (when unsandboxed)
   sandboxed: boolean,      // Default true - use sandbox settings
   useMemory: boolean,      // Default true - inject memories
-  provider: string,        // 'claude' | 'ollama' (default: 'claude')
+  provider: string,        // 'claude' | 'codex' | 'ollama' (default: 'claude')
   model: string,           // Provider-specific model ID
   createdAt: number,
   messageCount: number,
@@ -142,7 +147,7 @@ public/css/
 ### Provider
 ```javascript
 {
-  id: string,             // 'claude' | 'ollama'
+  id: string,             // 'claude' | 'codex' | 'ollama'
   name: string,           // Display name
 }
 ```
@@ -266,12 +271,12 @@ public/css/
 6. Unsandboxed without autopilot prompts for each permission
 
 ### Adding file preview support
-1. Add route in `lib/routes/preview.js` for new file type
-2. Handle file reading and transformation (parse, format)
-3. Stream large files in chunks to avoid memory issues
-4. Add viewer component in `public/js/file-panel/preview.js`
-5. Update supported types check in file panel
-6. Add appropriate MIME type handling
+1. Extend structured content handling in `lib/routes/files.js` (`sendFileContentResponse`)
+2. Add/adjust parsing or normalization logic for the new format
+3. Add rendering support in `public/js/explorer/file-viewer-content.js`
+4. If interactive, add helper module(s) in `public/js/explorer/` (for example `geo-preview.js`)
+5. Reuse shared viewer wiring from `public/js/explorer/context.js` so both convo and standalone shells inherit it
+6. Update docs and supported-type UI hints in the viewer header
 
 ---
 
