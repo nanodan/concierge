@@ -193,9 +193,15 @@ function renderGeoPreview(container, {
   openExternalIcon,
   escapeHtml,
   rawContent,
+  rawDisabled = false,
+  rawPreviewSize = null,
+  formatFileSize,
 }) {
   const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
   const rawText = escapeHtml(toSafeString(rawContent));
+  const rawDisabledLimit = Number.isFinite(Number(rawPreviewSize))
+    ? formatFileSize(Number(rawPreviewSize))
+    : '500KB';
   const { geojson: mapGeoJson, fieldProfiles } = prepareGeoJsonForMap(geoResult.geojson);
   const styleOptions = getGeoStyleOptions(fieldProfiles);
   const numericOptions = styleOptions.filter((option) => option.numeric);
@@ -231,6 +237,17 @@ function renderGeoPreview(container, {
       `<option value="${escapeHtml(option.key)}">Size: ${escapeHtml(option.label)}</option>`
     ))
     .join('');
+  const rawButtonAttrs = rawDisabled
+    ? ' disabled title="Raw view disabled for large files"'
+    : '';
+  const rawPanelHtml = rawDisabled
+    ? `
+      <div class="geo-preview-raw-disabled">
+        <p>Raw view is disabled above ${rawDisabledLimit} to keep the app responsive.</p>
+        <button class="geo-preview-open-raw-btn">${openExternalIcon} Open file in new tab</button>
+      </div>
+    `
+    : `<pre><code class="language-json">${rawText}</code></pre>`;
 
   container.innerHTML = `
     <div class="geo-preview">
@@ -251,7 +268,7 @@ function renderGeoPreview(container, {
         </div>
         <div class="geo-preview-view-toggle" role="tablist" aria-label="Geo preview mode">
           <button class="geo-preview-view-btn active" data-view="map" role="tab" aria-selected="true">Map</button>
-          <button class="geo-preview-view-btn" data-view="raw" role="tab" aria-selected="false">Raw</button>
+          <button class="geo-preview-view-btn" data-view="raw" role="tab" aria-selected="false"${rawButtonAttrs}>Raw</button>
         </div>
       </div>
       <div class="geo-preview-panel geo-preview-panel-map" data-role="geo-panel-map">
@@ -266,13 +283,16 @@ function renderGeoPreview(container, {
         </div>
       </div>
       <div class="geo-preview-panel geo-preview-panel-raw hidden" data-role="geo-panel-raw">
-        <pre><code class="language-json">${rawText}</code></pre>
+        ${rawPanelHtml}
       </div>
     </div>
     <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
   `;
 
   attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
+  if (rawDisabled) {
+    attachOpenButton(container, '.geo-preview-open-raw-btn', fileUrl);
+  }
   highlightCodeBlocks(container);
 
   const mapElement = container.querySelector('[data-role="geo-map"]');
@@ -532,11 +552,17 @@ export function renderFileViewerContent({
   }
 
   if (data.truncated) {
+    const maxPreview = Number.isFinite(Number(data.maxPreviewSize))
+      ? formatFileSize(Number(data.maxPreviewSize))
+      : '500KB';
+    const sizeErrorTitle = GEO_PREVIEW_EXTS.has(ext)
+      ? 'File too large for map preview'
+      : 'File too large to preview';
     container.innerHTML = `
       <div class="file-viewer-error">
         ${fileLikeIcon}
-        <p>File too large to preview</p>
-        <p style="font-size: 12px; opacity: 0.7;">${formatFileSize(data.size)} (max 500KB)</p>
+        <p>${sizeErrorTitle}</p>
+        <p style="font-size: 12px; opacity: 0.7;">${formatFileSize(data.size)} (max ${maxPreview})</p>
       </div>
     `;
     return true;
@@ -552,7 +578,10 @@ export function renderFileViewerContent({
         fileUrl,
         openExternalIcon,
         escapeHtml,
-        rawContent: content,
+        rawContent: data.rawTruncated ? '' : content,
+        rawDisabled: !!data.rawTruncated,
+        rawPreviewSize: data.rawPreviewSize,
+        formatFileSize,
       });
       return true;
     }
