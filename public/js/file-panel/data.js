@@ -1,6 +1,6 @@
 // --- Data Tab (DuckDB + BigQuery SQL Analysis) ---
 import { escapeHtml } from '../markdown.js';
-import { haptic, showToast, apiFetch } from '../utils.js';
+import { haptic, showToast, apiFetch, showDialog } from '../utils.js';
 import * as state from '../state.js';
 
 const DATA_SOURCE_DUCKDB = 'duckdb';
@@ -12,8 +12,9 @@ let dataSourceSelect = null;
 let dataTablesRow = null;
 let bigQueryControls = null;
 let bigQueryAuthStatus = null;
+let bigQueryAuthHint = null;
 let bigQueryConnectBtn = null;
-let bigQueryProjectSelect = null;
+let bigQueryProjectInput = null;
 let sqlEditor = null;
 let runQueryBtn = null;
 let cancelQueryBtn = null;
@@ -37,9 +38,7 @@ let lastBigQueryJob = null;
 
 let bigQueryConfigured = false;
 let bigQueryConnected = false;
-let bigQueryPrincipal = null;
 let bigQueryDefaultProject = null;
-let bigQueryProjects = [];
 const bigQueryProjectByConversation = new Map();
 let activeBigQueryJob = null;
 let bigQueryPollTimer = null;
@@ -132,8 +131,9 @@ export function initDataTab(elements) {
   dataTablesRow = elements.dataTablesRow;
   bigQueryControls = elements.bigQueryControls;
   bigQueryAuthStatus = elements.bigQueryAuthStatus;
+  bigQueryAuthHint = elements.bigQueryAuthHint;
   bigQueryConnectBtn = elements.bigQueryConnectBtn;
-  bigQueryProjectSelect = elements.bigQueryProjectSelect;
+  bigQueryProjectInput = elements.bigQueryProjectInput;
   sqlEditor = elements.sqlEditor;
   runQueryBtn = elements.runQueryBtn;
   cancelQueryBtn = elements.cancelQueryBtn;
@@ -204,7 +204,7 @@ export function setupDataTabEventListeners() {
       if (querySource === DATA_SOURCE_DUCKDB) {
         refreshTables();
       } else {
-        void loadBigQueryState({ forceProjects: false });
+        void loadBigQueryState();
       }
     });
   }
@@ -216,14 +216,21 @@ export function setupDataTabEventListeners() {
     });
   }
 
-  if (bigQueryProjectSelect) {
-    bigQueryProjectSelect.addEventListener('change', () => {
+  if (bigQueryProjectInput) {
+    const persistProjectInput = () => {
       const convId = state.getCurrentConversationId();
       if (!convId) return;
-      if (bigQueryProjectSelect.value) {
-        bigQueryProjectByConversation.set(convId, bigQueryProjectSelect.value);
+      const value = (bigQueryProjectInput.value || '').trim();
+      if (value) {
+        bigQueryProjectByConversation.set(convId, value);
+      } else {
+        bigQueryProjectByConversation.delete(convId);
       }
-    });
+      bigQueryProjectInput.value = value;
+    };
+
+    bigQueryProjectInput.addEventListener('change', persistProjectInput);
+    bigQueryProjectInput.addEventListener('blur', persistProjectInput);
   }
 
 }
@@ -233,7 +240,7 @@ export function setupDataTabEventListeners() {
  */
 export async function loadDataTabState() {
   await loadHistory();
-  await loadBigQueryState({ forceProjects: false });
+  await loadBigQueryState();
 
   applyDataSourceMode();
 
@@ -291,51 +298,30 @@ function applyDataSourceMode() {
 }
 
 function getCurrentBigQueryProjectId() {
-  if (bigQueryProjectSelect?.value) {
-    return bigQueryProjectSelect.value;
-  }
-
   const convId = state.getCurrentConversationId();
-  if (!convId) return '';
-  return bigQueryProjectByConversation.get(convId) || '';
+  const fromInput = (bigQueryProjectInput?.value || '').trim();
+  if (fromInput) return fromInput;
+  const fromConversation = convId ? (bigQueryProjectByConversation.get(convId) || '') : '';
+  if (fromConversation) return fromConversation;
+  return bigQueryDefaultProject || '';
 }
 
-function updateBigQueryProjectSelect() {
-  if (!bigQueryProjectSelect) return;
+function updateBigQueryProjectInput() {
+  if (!bigQueryProjectInput) return;
 
   const convId = state.getCurrentConversationId();
-  const savedProject = convId ? bigQueryProjectByConversation.get(convId) : null;
-  const options = bigQueryProjects || [];
-
-  let selected = savedProject || '';
-  if (selected && !options.some((p) => p.id === selected)) {
-    selected = '';
-  }
-  if (!selected && options.length > 0) {
-    selected = options[0].id;
+  let projectId = convId ? (bigQueryProjectByConversation.get(convId) || '') : '';
+  if (!projectId && bigQueryDefaultProject) {
+    projectId = bigQueryDefaultProject;
   }
 
-  if (convId && selected) {
-    bigQueryProjectByConversation.set(convId, selected);
+  if (convId && projectId && !bigQueryProjectByConversation.get(convId)) {
+    bigQueryProjectByConversation.set(convId, projectId);
   }
 
-  if (!bigQueryConnected) {
-    bigQueryProjectSelect.innerHTML = '<option value="">ADC unavailable</option>';
-    bigQueryProjectSelect.disabled = true;
-    return;
-  }
-
-  if (options.length === 0) {
-    bigQueryProjectSelect.innerHTML = '<option value="">No projects found</option>';
-    bigQueryProjectSelect.disabled = true;
-    return;
-  }
-
-  bigQueryProjectSelect.innerHTML = options.map((project) => `
-    <option value="${escapeHtml(project.id)}">${escapeHtml(project.friendlyName || project.id)}</option>
-  `).join('');
-  bigQueryProjectSelect.disabled = false;
-  bigQueryProjectSelect.value = selected;
+  bigQueryProjectInput.value = projectId;
+  bigQueryProjectInput.disabled = !bigQueryConnected;
+  bigQueryProjectInput.placeholder = bigQueryConnected ? 'my-gcp-project' : 'Connect BigQuery first';
 }
 
 function updateBigQueryControls(message = '') {
@@ -343,24 +329,27 @@ function updateBigQueryControls(message = '') {
 
   if (!bigQueryConfigured) {
     if (bigQueryAuthStatus) {
-      bigQueryAuthStatus.textContent = message || 'BigQuery ADC unavailable';
+      bigQueryAuthStatus.textContent = 'BigQuery unavailable';
+    }
+    if (bigQueryAuthHint) {
+      bigQueryAuthHint.textContent = message || 'Run gcloud auth application-default login';
     }
     if (bigQueryConnectBtn) {
       bigQueryConnectBtn.classList.remove('hidden');
       bigQueryConnectBtn.textContent = 'Recheck';
     }
-    if (bigQueryProjectSelect) {
-      bigQueryProjectSelect.innerHTML = '<option value="">Unavailable</option>';
-      bigQueryProjectSelect.disabled = true;
-    }
+    updateBigQueryProjectInput();
     return;
   }
 
   if (bigQueryConnected) {
     if (bigQueryAuthStatus) {
-      const projectLabel = bigQueryDefaultProject ? ` • ${bigQueryDefaultProject}` : '';
-      const userLabel = bigQueryPrincipal ? `${bigQueryPrincipal}${projectLabel}` : `ADC active${projectLabel}`;
-      bigQueryAuthStatus.textContent = userLabel;
+      bigQueryAuthStatus.textContent = 'ADC connected';
+    }
+    if (bigQueryAuthHint) {
+      bigQueryAuthHint.textContent = bigQueryDefaultProject
+        ? `Default project: ${bigQueryDefaultProject}`
+        : 'Enter a project ID to run queries';
     }
     if (bigQueryConnectBtn) {
       bigQueryConnectBtn.classList.remove('hidden');
@@ -370,47 +359,25 @@ function updateBigQueryControls(message = '') {
     if (bigQueryAuthStatus) {
       bigQueryAuthStatus.textContent = message || 'ADC not ready';
     }
+    if (bigQueryAuthHint) {
+      bigQueryAuthHint.textContent = 'Run gcloud auth application-default login';
+    }
     if (bigQueryConnectBtn) {
       bigQueryConnectBtn.classList.remove('hidden');
       bigQueryConnectBtn.textContent = 'Recheck';
     }
   }
 
-  updateBigQueryProjectSelect();
+  updateBigQueryProjectInput();
 }
 
-async function loadBigQueryProjects() {
-  if (!bigQueryConnected) {
-    bigQueryProjects = [];
-    updateBigQueryProjectSelect();
-    return;
-  }
-
-  const res = await apiFetch('/api/bigquery/projects', { silent: true });
-  if (!res) {
-    bigQueryProjects = [];
-    updateBigQueryProjectSelect();
-    return;
-  }
-
-  const data = await res.json();
-  bigQueryProjects = (data.projects || []).slice().sort((a, b) => {
-    const aName = a.friendlyName || a.id;
-    const bName = b.friendlyName || b.id;
-    return aName.localeCompare(bName);
-  });
-  updateBigQueryProjectSelect();
-}
-
-async function loadBigQueryState({ forceProjects = false, forceRefresh = false } = {}) {
+async function loadBigQueryState({ forceRefresh = false } = {}) {
   const statusUrl = forceRefresh ? '/api/bigquery/auth/status?refresh=1' : '/api/bigquery/auth/status';
   const res = await apiFetch(statusUrl, { silent: true });
   if (!res) {
     bigQueryConfigured = false;
     bigQueryConnected = false;
-    bigQueryPrincipal = null;
     bigQueryDefaultProject = null;
-    bigQueryProjects = [];
     updateBigQueryControls('BigQuery status unavailable');
     return;
   }
@@ -418,7 +385,6 @@ async function loadBigQueryState({ forceProjects = false, forceRefresh = false }
   const status = await res.json();
   bigQueryConfigured = status.configured !== false;
   bigQueryConnected = Boolean(status.connected);
-  bigQueryPrincipal = status.principal || null;
   bigQueryDefaultProject = status.defaultProjectId || null;
 
   if (bigQueryConnected && bigQueryDefaultProject) {
@@ -426,12 +392,6 @@ async function loadBigQueryState({ forceProjects = false, forceRefresh = false }
     if (convId && !bigQueryProjectByConversation.get(convId)) {
       bigQueryProjectByConversation.set(convId, bigQueryDefaultProject);
     }
-  }
-
-  if (bigQueryConnected && (forceProjects || bigQueryProjects.length === 0)) {
-    await loadBigQueryProjects();
-  } else if (!bigQueryConnected) {
-    bigQueryProjects = [];
   }
 
   updateBigQueryControls(status.message || '');
@@ -452,7 +412,7 @@ async function refreshBigQueryAuth() {
   } else {
     showToast('ADC check failed', { variant: 'error' });
   }
-  await loadBigQueryState({ forceProjects: true, forceRefresh: true });
+  await loadBigQueryState({ forceRefresh: true });
 }
 
 function stopBigQueryPolling() {
@@ -773,7 +733,7 @@ async function runBigQueryQuery(sql) {
 
   const projectId = getCurrentBigQueryProjectId();
   if (!projectId) {
-    showToast('Select a BigQuery project');
+    showToast('Enter a BigQuery project ID');
     return;
   }
 
@@ -921,23 +881,49 @@ async function cancelBigQueryQuery() {
   showToast('BigQuery job cancelled');
 }
 
-function buildResultsActions(source) {
+const GEO_COLUMN_HINTS = ['geojson', 'geometry', 'geom', 'the_geom'];
+const LAT_COLUMN_HINTS = ['lat', 'latitude', 'y'];
+const LON_COLUMN_HINTS = ['lon', 'lng', 'longitude', 'x'];
+
+function supportsGeoJsonExport(columns) {
+  if (!Array.isArray(columns)) return false;
+  const names = columns.map((col) => String(col?.name || '').toLowerCase());
+  const hasGeoColumn = names.some((name) => GEO_COLUMN_HINTS.some((hint) => name.includes(hint)));
+  const hasLatColumn = names.some((name) => LAT_COLUMN_HINTS.includes(name));
+  const hasLonColumn = names.some((name) => LON_COLUMN_HINTS.includes(name));
+  return hasGeoColumn || (hasLatColumn && hasLonColumn);
+}
+
+function buildBigQueryFormatOptions(columns) {
+  const geoEnabled = supportsGeoJsonExport(columns);
+  return `
+    <option value="csv">CSV</option>
+    <option value="json">JSON</option>
+    <option value="parquet">Parquet</option>
+    <option value="geojson"${geoEnabled ? '' : ' disabled'}>${geoEnabled ? 'GeoJSON' : 'GeoJSON (needs geometry or lat/lon columns)'}</option>
+  `;
+}
+
+function buildResultsActions(source, columns) {
   if (source === DATA_SOURCE_BIGQUERY) {
+    const formatOptions = buildBigQueryFormatOptions(columns);
     return `
-      <button class="results-export-btn" data-format="csv" title="Download preview as CSV">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        CSV
-      </button>
-      <button class="results-export-btn" data-format="json" title="Download preview as JSON">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        JSON
-      </button>
-      <button class="results-export-btn" data-format="bq-save-csv" title="Save full query result to CSV file in repo">
-        Save CSV File
-      </button>
-      <button class="results-export-btn" data-format="bq-save-json" title="Save full query result to JSON file in repo">
-        Save JSON File
-      </button>
+      <div class="results-export-modes">
+        <div class="results-export-mode">
+          <span class="results-export-mode-label">Browser</span>
+          <select class="results-export-select" data-target="browser">${formatOptions}</select>
+          <button class="results-export-btn results-export-run-btn" data-target="browser" title="Download full query result to this browser">
+            Download
+          </button>
+        </div>
+        <div class="results-export-mode">
+          <span class="results-export-mode-label">Project</span>
+          <select class="results-export-select" data-target="cwd">${formatOptions}</select>
+          <button class="results-export-btn results-export-run-btn" data-target="cwd" title="Save full query result into conversation cwd">
+            Save
+          </button>
+        </div>
+      </div>
     `;
   }
 
@@ -955,6 +941,52 @@ function buildResultsActions(source) {
       Parquet
     </button>
   `;
+}
+
+async function promptForFilename(defaultName, confirmLabel) {
+  const value = await showDialog({
+    title: 'Filename',
+    input: true,
+    defaultValue: defaultName,
+    placeholder: 'query-results',
+    confirmLabel,
+    cancelLabel: 'Cancel',
+  });
+
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    showToast('Filename is required');
+    return null;
+  }
+  return trimmed;
+}
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function parseDownloadFilename(contentDisposition) {
+  if (!contentDisposition) return null;
+
+  const utf8 = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8 && utf8[1]) {
+    try {
+      return decodeURIComponent(utf8[1]);
+    } catch {
+      return utf8[1];
+    }
+  }
+
+  const plain = contentDisposition.match(/filename="([^"]+)"/i) || contentDisposition.match(/filename=([^;]+)/i);
+  return plain?.[1] || null;
 }
 
 /**
@@ -993,7 +1025,7 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
     <div class="data-tab-results-header">
       <span class="results-count">${rows.length} ${resultLabel}${rows.length !== 1 ? 's' : ''}</span>
       <div class="results-export-btns">
-        ${buildResultsActions(source)}
+        ${buildResultsActions(source, columns)}
       </div>
     </div>
     <div class="data-tab-results-wrapper">
@@ -1017,7 +1049,18 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   resultsContainer.querySelectorAll('.results-export-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       haptic();
-      exportResults(btn.dataset.format);
+      if (btn.classList.contains('results-export-run-btn')) {
+        const target = btn.dataset.target;
+        const mode = btn.closest('.results-export-mode');
+        const format = mode?.querySelector('.results-export-select')?.value || 'csv';
+        if (target === 'browser') {
+          void downloadBigQueryResults(format);
+        } else if (target === 'cwd') {
+          void saveBigQueryResultsToFile(format);
+        }
+        return;
+      }
+      void exportResults(btn.dataset.format);
     });
   });
 }
@@ -1032,14 +1075,8 @@ async function exportResults(format) {
     return;
   }
 
-  if (format === 'bq-save-csv' || format === 'bq-save-json') {
-    const target = format === 'bq-save-csv' ? 'csv' : 'json';
-    await saveBigQueryResultsToFile(target);
-    return;
-  }
-
   const defaultName = 'query-results';
-  const filename = window.prompt('Enter filename (without extension):', defaultName);
+  const filename = await promptForFilename(defaultName, 'Download');
   if (!filename) return;
 
   const { columns, rows } = lastQueryResults;
@@ -1071,14 +1108,7 @@ async function exportResults(format) {
 
       const blob = await res.blob();
       const rowCount = res.headers.get('X-Row-Count') || rows.length;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${filename}.parquet`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, `${filename}.parquet`);
 
       showToast(`Exported ${rowCount} rows as Parquet`);
     } catch {
@@ -1120,16 +1150,74 @@ async function exportResults(format) {
   }
 
   const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${filename}.${extension}`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  triggerBlobDownload(blob, `${filename}.${extension}`);
 
   showToast(`Exported ${rows.length} rows as ${extension.toUpperCase()}`);
+}
+
+async function downloadBigQueryResults(format) {
+  if (lastQuerySource !== DATA_SOURCE_BIGQUERY) {
+    showToast('No BigQuery result to download');
+    return;
+  }
+
+  if (!lastBigQueryJob?.jobId) {
+    showToast('No BigQuery job reference available');
+    return;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  const projectId = lastBigQueryJob.projectId || getCurrentBigQueryProjectId();
+  if (!projectId) {
+    showToast('Enter a BigQuery project ID');
+    return;
+  }
+
+  const defaultName = `bigquery-results-${Date.now()}`;
+  const filename = await promptForFilename(defaultName, 'Download');
+  if (!filename) return;
+
+  try {
+    const res = await fetch('/api/bigquery/query/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: convId,
+        projectId,
+        jobId: lastBigQueryJob.jobId,
+        location: lastBigQueryJob.location || null,
+        format,
+        filename,
+      }),
+    });
+
+    if (!res.ok) {
+      let message = 'Download failed';
+      try {
+        const err = await res.json();
+        message = err.error || message;
+      } catch {
+        // ignore non-json error payload
+      }
+      showToast(message, { variant: 'error' });
+      return;
+    }
+
+    const blob = await res.blob();
+    const rowCount = Number(res.headers.get('X-Row-Count') || 0);
+    const downloadName = parseDownloadFilename(res.headers.get('Content-Disposition')) || `${filename}.${format}`;
+    triggerBlobDownload(blob, downloadName);
+
+    const rowCountLabel = rowCount > 0 ? rowCount.toLocaleString() : 'all';
+    showToast(`Downloaded ${rowCountLabel} rows as ${format.toUpperCase()}`);
+  } catch {
+    showToast('Download failed', { variant: 'error' });
+  }
 }
 
 async function saveBigQueryResultsToFile(format) {
@@ -1151,12 +1239,12 @@ async function saveBigQueryResultsToFile(format) {
 
   const projectId = lastBigQueryJob.projectId || getCurrentBigQueryProjectId();
   if (!projectId) {
-    showToast('Select a BigQuery project');
+    showToast('Enter a BigQuery project ID');
     return;
   }
 
   const defaultName = `bigquery-results-${Date.now()}`;
-  const filename = window.prompt('Enter filename (without extension):', defaultName);
+  const filename = await promptForFilename(defaultName, 'Save');
   if (!filename) return;
 
   const res = await apiFetch('/api/bigquery/query/save', {

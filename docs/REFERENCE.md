@@ -53,6 +53,7 @@ public/js/
     git-changes.js     # Changes shell bindings
     git-commits.js     # Commit history shell bindings
     gestures.js        # Touch interactions
+    data.js            # Data tab (DuckDB + BigQuery SQL + exports)
     preview.js         # Live preview server controls
   ui/                  # Modular UI features
     capabilities.js    # Provider/model capabilities
