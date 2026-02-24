@@ -222,6 +222,9 @@ export function createGitChangesController({
     }
 
     let html = '';
+    const stagedPathSet = new Set(staged.map((file) => file.path));
+    const unstagedPathSet = new Set(unstaged.map((file) => file.path));
+    const isSplitPath = (filePath) => stagedPathSet.has(filePath) && unstagedPathSet.has(filePath);
 
     if (staged.length > 0) {
       html += `
@@ -231,7 +234,7 @@ export function createGitChangesController({
             <span class="changes-section-count">${staged.length}</span>
             <button class="changes-section-btn" data-action="unstage-all" title="Unstage All">\u2212 All</button>
           </div>
-          ${staged.map((file) => renderChangeItem(file, 'staged')).join('')}
+          ${staged.map((file) => renderChangeItem(file, 'staged', isSplitPath(file.path))).join('')}
         </div>`;
     }
 
@@ -243,7 +246,7 @@ export function createGitChangesController({
             <span class="changes-section-count">${unstaged.length}</span>
             <button class="changes-section-btn" data-action="stage-all-unstaged" title="Stage All">+ All</button>
           </div>
-          ${unstaged.map((file) => renderChangeItem(file, 'unstaged')).join('')}
+          ${unstaged.map((file) => renderChangeItem(file, 'unstaged', isSplitPath(file.path))).join('')}
         </div>`;
     }
 
@@ -292,7 +295,7 @@ export function createGitChangesController({
       <button class="changes-section-btn select-btn" data-action="toggle-select" title="Select Multiple">Select</button>`;
   }
 
-  function renderChangeItem(file, type) {
+  function renderChangeItem(file, type, isSplit = false) {
     const statusLabels = {
       M: 'modified',
       A: 'added',
@@ -319,6 +322,7 @@ export function createGitChangesController({
         ` : ''}
         <span class="status-badge status-${file.status.toLowerCase()}" title="${statusLabel}">${file.status}</span>
         <span class="changes-item-name" title="${escapeHtml(file.path)}">${escapeHtml(filename)}</span>
+        ${isSplit ? '<span class="changes-item-split-badge" title="This file has both staged and unstaged chunks">split</span>' : ''}
         <span class="changes-item-path">${escapeHtml(file.path)}</span>
         ${showCheckbox ? '' : `
           <div class="changes-item-actions">

@@ -24,9 +24,9 @@ export function createGitDiffViewer({
   getNavigationStatus = () => null,
   setViewingDiff = noop,
   fetchDiff = async () => ({ ok: false, error: 'Failed to load diff' }),
-  revertDiffHunk = async () => ({ ok: false, error: 'Failed to revert hunk' }),
-  closeAfterRevert = noop,
-  refreshAfterRevert = noop,
+  applyDiffHunkAction = async () => ({ ok: false, error: 'Failed to apply chunk action' }),
+  closeAfterHunkAction = noop,
+  refreshAfterHunkAction = noop,
   granularStorageKey = 'gitGranularMode',
   swipeThreshold = 50,
 }) {
@@ -114,7 +114,7 @@ export function createGitDiffViewer({
   function updateGranularToggleState() {
     if (!granularToggleBtn) return;
     granularToggleBtn.classList.toggle('active', granularMode);
-    granularToggleBtn.title = granularMode ? 'Switch to simple view' : 'Switch to granular view (per-hunk revert)';
+    granularToggleBtn.title = granularMode ? 'Switch to simple view' : 'Switch to granular view (accept/reject per chunk)';
   }
 
   function renderSimpleView(raw) {
@@ -140,25 +140,48 @@ export function createGitDiffViewer({
     fileViewerContent.innerHTML = `<code class="diff-view">${html}</code>`;
   }
 
-  async function handleRevertHunk(filePath, hunkIndex, hunk, staged) {
-    const confirmed = await showDialog({
-      title: 'Revert this change?',
-      message: 'This will undo just this section of changes.',
-      danger: true,
-      confirmLabel: 'Revert',
-    });
-    if (!confirmed) return;
+  function getHunkActionDescriptors(staged) {
+    if (staged) {
+      return [{ action: 'reject', label: 'Unstage', className: 'reject', title: 'Remove this chunk from staged changes' }];
+    }
+    return [
+      { action: 'accept', label: 'Accept', className: 'accept', title: 'Stage this chunk' },
+      { action: 'reject', label: 'Reject', className: 'reject', title: 'Discard this chunk from working tree' },
+    ];
+  }
 
-    const result = await revertDiffHunk(filePath, hunkIndex, hunk, staged);
+  async function handleHunkAction(filePath, hunkIndex, hunk, staged, action) {
+    const isReject = action === 'reject';
+    if (isReject) {
+      const confirmed = await showDialog({
+        title: staged ? 'Unstage this chunk?' : 'Reject this chunk?',
+        message: staged
+          ? 'This removes this chunk from staged changes.'
+          : 'This discards this chunk from your working copy.',
+        danger: true,
+        confirmLabel: staged ? 'Unstage' : 'Reject',
+      });
+      if (!confirmed) return;
+    }
+
+    const result = await applyDiffHunkAction(filePath, hunkIndex, hunk, staged, action);
     if (!result?.ok) {
-      showToast(result?.error || 'Failed to revert hunk', { variant: 'error' });
+      showToast(result?.error || 'Failed to apply chunk action', { variant: 'error' });
       return;
     }
 
-    showToast('Change reverted');
-    clearDiffState();
-    await closeAfterRevert();
-    refreshAfterRevert();
+    if (action === 'accept') showToast('Chunk staged');
+    else if (staged) showToast('Chunk unstaged');
+    else showToast('Chunk discarded');
+
+    await refreshAfterHunkAction();
+    const reopened = await openDiff(filePath, staged);
+    if (!reopened) {
+      const reopenedOpposite = await openDiff(filePath, !staged);
+      if (reopenedOpposite) return;
+      clearDiffState();
+      await closeAfterHunkAction();
+    }
   }
 
   function renderHunksView(hunks, filePath, staged) {
@@ -177,6 +200,7 @@ export function createGitDiffViewer({
         else if (line.startsWith('-')) deletions++;
       }
 
+      const actions = getHunkActionDescriptors(staged);
       html += `
         <div class="diff-hunk" data-hunk-index="${index}">
           <div class="diff-hunk-toolbar">
@@ -188,9 +212,13 @@ export function createGitDiffViewer({
                 ${deletions > 0 ? `<span class="diff-stat-del">-${deletions}</span>` : ''}
               </span>
             </div>
-            <button class="diff-hunk-revert-btn" data-hunk-index="${index}" title="Revert this change">
-              Revert
-            </button>
+            <div class="diff-hunk-actions">
+              ${actions.map((item) => `
+                <button class="diff-hunk-action-btn ${item.className}" data-hunk-index="${index}" data-action="${item.action}" title="${item.title}">
+                  ${item.label}
+                </button>
+              `).join('')}
+            </div>
           </div>
           <code class="diff-hunk-code">`;
 
@@ -206,15 +234,22 @@ export function createGitDiffViewer({
 
     fileViewerContent.innerHTML = `<div class="diff-hunks-view">${html}</div>`;
 
-    fileViewerContent.querySelectorAll('.diff-hunk-revert-btn').forEach((btn) => {
+    fileViewerContent.querySelectorAll('.diff-hunk-action-btn').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (btn.dataset.processing === 'true') return;
+        btn.dataset.processing = 'true';
         haptic();
 
-        const hunkIndex = parseInt(btn.dataset.hunkIndex, 10);
-        const hunk = hunks[hunkIndex];
-        await handleRevertHunk(filePath, hunkIndex, hunk, staged);
+        try {
+          const hunkIndex = parseInt(btn.dataset.hunkIndex, 10);
+          const hunk = hunks[hunkIndex];
+          const action = btn.dataset.action || 'reject';
+          await handleHunkAction(filePath, hunkIndex, hunk, staged, action);
+        } finally {
+          btn.dataset.processing = 'false';
+        }
       });
     });
   }

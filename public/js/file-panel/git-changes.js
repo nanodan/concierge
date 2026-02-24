@@ -82,29 +82,30 @@ export function initGitChanges(elements) {
       if (data.error) return { ok: false, error: data.error };
       return { ok: true, data };
     },
-    revertDiffHunk: async (filePath, _hunkIndex, hunk, staged) => {
-      const gitUrl = context.getGitUrl('revert-hunk');
+    applyDiffHunkAction: async (filePath, _hunkIndex, hunk, staged, intent) => {
+      const gitUrl = context.getGitUrl('hunk-action');
       if (!gitUrl) return { ok: false, error: 'No conversation selected' };
+      const action = intent === 'accept' ? 'stage' : (staged ? 'unstage' : 'discard');
 
       const res = await apiFetch(gitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath, hunk, staged }),
+        body: JSON.stringify({ path: filePath, hunk, staged, action }),
       });
-      if (!res) return { ok: false, error: 'Failed to revert hunk' };
+      if (!res) return { ok: false, error: 'Failed to apply chunk action' };
 
       const data = await res.json();
       if (data.error) return { ok: false, error: data.error };
       return { ok: true };
     },
-    closeAfterRevert: () => {
+    closeAfterHunkAction: () => {
       if (!fileViewer) return;
       fileViewer.classList.remove('open');
       setTimeout(() => {
         fileViewer.classList.add('hidden');
       }, ANIMATION_DELAY_SHORT);
     },
-    refreshAfterRevert: () => {
+    refreshAfterHunkAction: () => {
       loadGitStatus();
     },
   });

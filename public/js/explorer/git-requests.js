@@ -99,6 +99,20 @@ export function createGitChangesRequests({
       return jsonResult(res, 'Failed to discard changes');
     },
 
+    requestHunkAction: async (filePath, hunk, staged, action) => {
+      const res = await apiFetch(context.getGitUrl('hunk-action'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withCwdBody(context, {
+          path: filePath,
+          hunk,
+          staged: !!staged,
+          action,
+        })),
+      });
+      return jsonResult(res, 'Failed to apply chunk action');
+    },
+
     requestDeleteUntracked: async (relativePath) => {
       const resolvedPath = getDeletePath ? getDeletePath(relativePath) : relativePath;
       const res = await apiFetch(buildDeleteFileUrl(resolvedPath), { method: 'DELETE' });
