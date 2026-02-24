@@ -588,6 +588,7 @@
 }
 
 /* Reset padding/whitespace for special previews */
+.file-viewer-content:has(.geo-preview),
 .file-viewer-content:has(.json-preview),
 .file-viewer-content:has(.markdown-preview),
 .file-viewer-content:has(.data-preview),
@@ -2918,6 +2919,68 @@
 .copyable-cell.copied {
   background: var(--syntax-string, #98c379);
   color: #fff;
+}
+
+/* === Geospatial Map Preview === */
+
+.geo-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+.geo-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.geo-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-alpha-15, rgba(var(--accent-rgb), 0.15));
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.geo-preview-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.geo-preview-map {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+}
+
+.geo-preview-status {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  background: var(--surface);
+}
+
+.geo-preview-status.error {
+  color: #ef6b6b;
+}
+
+.geo-preview-status.hidden {
+  display: none;
 }
 
 /* === JSON Preview === */

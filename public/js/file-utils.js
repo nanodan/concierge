@@ -15,7 +15,7 @@ export const CODE_EXTS = new Set([
   'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'py', 'rb', 'go', 'rs', 'java',
   'c', 'cpp', 'h', 'hpp', 'cs', 'swift', 'kt', 'php', 'pl', 'sh', 'bash', 'zsh',
   'sql', 'html', 'htm', 'xml', 'css', 'scss', 'less', 'sass', 'json', 'yaml',
-  'yml', 'toml', 'md', 'vue', 'svelte',
+  'yml', 'toml', 'md', 'vue', 'svelte', 'geojson', 'topojson', 'jsonl', 'ndjson',
 ]);
 
 export const IMAGE_EXTS = new Set([

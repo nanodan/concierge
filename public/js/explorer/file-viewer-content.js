@@ -1,4 +1,8 @@
+import { parseGeoSpatialContent, mountGeoPreview, unmountGeoPreview } from './geo-preview.js';
+
 const DEFAULT_PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
+const GEO_PREVIEW_EXTS = new Set(['geojson', 'json', 'topojson', 'jsonl', 'ndjson']);
+const JSON_PREVIEW_EXTS = new Set(['json', 'geojson', 'topojson']);
 
 const DEFAULT_OPEN_EXTERNAL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
 
@@ -153,6 +157,35 @@ function attachJsonHandlers(container) {
   }
 }
 
+function renderGeoPreview(container, { geoResult, fileUrl, openExternalIcon, escapeHtml }) {
+  const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
+
+  container.innerHTML = `
+    <div class="geo-preview">
+      <div class="geo-preview-toolbar">
+        <span class="geo-preview-badge">Map</span>
+        <span class="geo-preview-meta">${summary}</span>
+      </div>
+      <div class="geo-preview-map" data-role="geo-map"></div>
+      <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+    </div>
+    <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
+  `;
+
+  attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
+
+  const mapElement = container.querySelector('[data-role="geo-map"]');
+  const statusElement = container.querySelector('[data-role="geo-status"]');
+
+  void mountGeoPreview({
+    container,
+    mapElement,
+    statusElement,
+    geojson: geoResult.geojson,
+    bounds: geoResult.bounds,
+  });
+}
+
 function renderNotebookOutput(output, escapeHtml) {
   if (output.output_type === 'stream') {
     const streamClass = output.name === 'stderr' ? 'nb-output-stderr' : 'nb-output-stdout';
@@ -259,6 +292,8 @@ export function renderFileViewerContent({
 }) {
   if (!container || !data || !context) return false;
 
+  unmountGeoPreview(container);
+
   const ext = toSafeString(data.ext).toLowerCase();
   const fileUrl = context.getFileDownloadUrl(filePath, { inline: true });
   const downloadUrl = context.getFileDownloadUrl(filePath);
@@ -331,8 +366,23 @@ export function renderFileViewerContent({
     return true;
   }
 
+  const content = toSafeString(data.content);
+
+  if (GEO_PREVIEW_EXTS.has(ext)) {
+    const geoResult = parseGeoSpatialContent(content, ext);
+    if (geoResult.ok && geoResult.geojson) {
+      renderGeoPreview(container, {
+        geoResult,
+        fileUrl,
+        openExternalIcon,
+        escapeHtml,
+      });
+      return true;
+    }
+  }
+
   if (ext === 'md' || ext === 'markdown') {
-    const rendered = renderMarkdown ? renderMarkdown(toSafeString(data.content)) : `<pre>${escapeHtml(toSafeString(data.content))}</pre>`;
+    const rendered = renderMarkdown ? renderMarkdown(content) : `<pre>${escapeHtml(content)}</pre>`;
     container.innerHTML = `
       <div class="markdown-preview">
         <div class="markdown-body">${rendered}</div>
@@ -343,8 +393,8 @@ export function renderFileViewerContent({
     return true;
   }
 
-  if (ext === 'json') {
-    const jsonHtml = renderJsonPreview(toSafeString(data.content), escapeHtml);
+  if (JSON_PREVIEW_EXTS.has(ext)) {
+    const jsonHtml = renderJsonPreview(content, escapeHtml);
     if (jsonHtml) {
       container.innerHTML = `
         ${jsonHtml}
@@ -356,7 +406,6 @@ export function renderFileViewerContent({
     }
   }
 
-  const content = toSafeString(data.content);
   const langClass = data.language ? `language-${data.language}` : '';
   container.innerHTML = `
     <code class="${langClass}">${escapeHtml(content)}</code>
