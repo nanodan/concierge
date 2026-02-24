@@ -15,6 +15,7 @@ lib/
     capabilities.js    # Model/CLI capabilities
     preview.js         # Live web preview server controls
     duckdb.js          # DuckDB data analysis routes
+    bigquery.js        # BigQuery ADC + query routes
     workflow.js        # Write lock + patch queue routes
     helpers.js         # Shared utilities (withConversation, etc.)
   providers/           # LLM provider system
@@ -26,6 +27,7 @@ lib/
   memory-prompt.txt    # Memory injection template
   claude.js            # Backwards compat wrapper
   data.js              # Storage, atomic writes
+  bigquery.js          # BigQuery ADC/token/query helpers
   embeddings.js        # Semantic search with local embeddings
   constants.js         # Shared constants
 ```

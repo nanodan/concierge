@@ -161,8 +161,15 @@ export function initFilePanel(elements) {
 
   initDataTab({
     dataView: elements.dataView,
+    dataSourceSelect: elements.dataSourceSelect,
+    dataTablesRow: elements.dataTablesRow,
+    bigQueryControls: elements.bigQueryControls,
+    bigQueryAuthStatus: elements.bigQueryAuthStatus,
+    bigQueryConnectBtn: elements.bigQueryConnectBtn,
+    bigQueryProjectSelect: elements.bigQueryProjectSelect,
     sqlEditor: elements.sqlEditor,
     runQueryBtn: elements.runQueryBtn,
+    cancelQueryBtn: elements.cancelQueryBtn,
     queryHistoryBtn: elements.queryHistoryBtn,
     queryHistoryDropdown: elements.queryHistoryDropdown,
     tablesContainer: elements.tablesContainer,

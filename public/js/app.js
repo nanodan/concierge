@@ -143,8 +143,15 @@ const historyView = document.getElementById('history-view');
 const historyList = document.getElementById('history-list');
 const dataTab = document.getElementById('data-tab');
 const dataView = document.getElementById('data-view');
+const dataSourceSelect = document.getElementById('data-source-select');
+const dataTablesRow = document.getElementById('data-tables-row');
+const bigQueryControls = document.getElementById('bigquery-controls');
+const bigQueryAuthStatus = document.getElementById('bigquery-auth-status');
+const bigQueryConnectBtn = document.getElementById('bigquery-connect-btn');
+const bigQueryProjectSelect = document.getElementById('bigquery-project-select');
 const sqlEditor = document.getElementById('sql-editor');
 const runQueryBtn = document.getElementById('run-query-btn');
+const cancelQueryBtn = document.getElementById('cancel-query-btn');
 const queryHistoryBtn = document.getElementById('query-history-btn');
 const queryHistoryDropdown = document.getElementById('query-history-dropdown');
 const tablesContainer = document.getElementById('tables-container');
@@ -385,8 +392,15 @@ initFilePanel({
   historyList,
   dataTab,
   dataView,
+  dataSourceSelect,
+  dataTablesRow,
+  bigQueryControls,
+  bigQueryAuthStatus,
+  bigQueryConnectBtn,
+  bigQueryProjectSelect,
   sqlEditor,
   runQueryBtn,
+  cancelQueryBtn,
   queryHistoryBtn,
   queryHistoryDropdown,
   tablesContainer,

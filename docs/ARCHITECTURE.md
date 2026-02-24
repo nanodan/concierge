@@ -72,6 +72,7 @@ lib/
     capabilities.js   # Provider/model capabilities
     preview.js        # Live web preview server controls
     duckdb.js         # DuckDB data analysis endpoints
+    bigquery.js       # BigQuery ADC + query endpoints
     workflow.js       # Write locks + patch queue APIs
     helpers.js        # Shared utilities (withConversation, etc.)
   providers/       # LLM provider system
@@ -84,6 +85,7 @@ lib/
   claude.js        # Backwards compat wrapper
   data.js          # Storage, atomic writes, lazy loading
   duckdb.js        # DuckDB query/load helpers
+  bigquery.js      # BigQuery ADC/token/query helpers
   embeddings.js    # Semantic search with local embeddings
   workflow/        # Parallel workflow coordination
     locks.js       # Single-writer repository locks
