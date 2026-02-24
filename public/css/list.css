@@ -173,7 +173,10 @@
   letter-spacing: 0.02em;
   border-radius: 999px;
   padding: 2px 8px;
+  min-height: 28px;
+  min-width: 64px;
   cursor: pointer;
+  touch-action: manipulation;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
@@ -196,6 +199,16 @@
 .conv-card-branches-btn:active,
 .stack-branches-btn:active {
   transform: translateY(1px);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .conv-card-branches-btn,
+  .stack-branches-btn {
+    min-height: 36px;
+    min-width: 78px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
 }
 
 .conv-card-preview {
