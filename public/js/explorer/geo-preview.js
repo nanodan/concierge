@@ -12,33 +12,90 @@ const GEOJSON_GEOMETRY_TYPES = new Set([
   'GeometryCollection',
 ]);
 
-const MAP_STYLE = {
-  version: 8,
-  sources: {
-    'osm-tiles': {
-      type: 'raster',
-      tiles: [
-        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      ],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: '© OpenStreetMap contributors',
-    },
+const BASEMAPS = {
+  standard: {
+    label: 'Standard',
+    tiles: [
+      'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ],
+    attribution: '© OpenStreetMap contributors',
   },
-  layers: [
-    {
-      id: 'osm-base',
-      type: 'raster',
-      source: 'osm-tiles',
-      minzoom: 0,
-      maxzoom: 22,
-    },
-  ],
+  light: {
+    label: 'Light',
+    tiles: [
+      'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    ],
+    attribution: '© OpenStreetMap contributors © CARTO',
+  },
+  dark: {
+    label: 'Dark',
+    tiles: [
+      'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    ],
+    attribution: '© OpenStreetMap contributors © CARTO',
+  },
 };
 
+const DEFAULT_BASEMAP = 'standard';
+const BASEMAP_SOURCE_PREFIX = 'geo-basemap-src-';
+const BASEMAP_LAYER_PREFIX = 'geo-basemap-layer-';
+
+export const GEO_BASEMAP_OPTIONS = Object.entries(BASEMAPS).map(([id, config]) => ({
+  id,
+  label: config.label,
+}));
+
+function buildMapStyle(activeBasemap = DEFAULT_BASEMAP) {
+  const sources = {};
+  const layers = [];
+
+  for (const [id, config] of Object.entries(BASEMAPS)) {
+    const sourceId = `${BASEMAP_SOURCE_PREFIX}${id}`;
+    const layerId = `${BASEMAP_LAYER_PREFIX}${id}`;
+
+    sources[sourceId] = {
+      type: 'raster',
+      tiles: config.tiles,
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: config.attribution,
+    };
+
+    layers.push({
+      id: layerId,
+      type: 'raster',
+      source: sourceId,
+      minzoom: 0,
+      maxzoom: 22,
+      layout: {
+        visibility: id === activeBasemap ? 'visible' : 'none',
+      },
+    });
+  }
+
+  return { version: 8, sources, layers };
+}
+
 let mapLibreLoadPromise = null;
+const SOURCE_ID = 'geo-preview-source';
+const FEATURE_ID_KEY = '__fid';
+const DEFAULT_COLORS = {
+  fill: '#2bd4ff',
+  outline: '#00b8ff',
+  line: '#ff4da0',
+  point: '#ff4d5a',
+};
+const SELECTED_COLOR = '#ffe66d';
+const THEMATIC_PALETTE = ['#5ec8ff', '#8bd450', '#ffd166', '#ff8c42', '#ef476f', '#b083ff', '#48c9b0', '#f78c6b'];
+
 const INTERACTIVE_LAYER_IDS = [
   'geo-fill-layer',
   'geo-polygon-outline-layer',
@@ -295,7 +352,7 @@ export function parseGeoSpatialContent(rawContent, ext = '') {
 export function buildFeatureMetadataHtml(feature) {
   const geometryType = feature?.geometry?.type || 'Feature';
   const props = feature?.properties && typeof feature.properties === 'object'
-    ? Object.entries(feature.properties)
+    ? Object.entries(feature.properties).filter(([key]) => !String(key).startsWith('__'))
     : [];
 
   if (!props.length) {
@@ -325,7 +382,297 @@ export function buildFeatureMetadataHtml(feature) {
   `;
 }
 
-function bindFeatureHover(map, maplibregl) {
+function toNumberOrNull(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function defaultPointRadiusExpression() {
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    4, 4,
+    10, 6.5,
+    14, 9,
+  ];
+}
+
+function buildCategoricalColorExpression(field, categories, fallbackColor) {
+  if (!categories.length) return fallbackColor;
+  const expression = ['match', ['to-string', ['get', field]]];
+  categories.forEach((value, idx) => {
+    expression.push(value);
+    expression.push(THEMATIC_PALETTE[idx % THEMATIC_PALETTE.length]);
+  });
+  expression.push(fallbackColor);
+  return expression;
+}
+
+function buildNumericColorExpression(field, min, max, fallbackColor) {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) return fallbackColor;
+  const mid = min + (max - min) / 2;
+  return [
+    'interpolate',
+    ['linear'],
+    ['coalesce', ['to-number', ['get', field]], min],
+    min, '#4d9dff',
+    mid, '#4ccf80',
+    max, '#ff4d88',
+  ];
+}
+
+function buildNumericRadiusExpression(field, min, max) {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min === max) {
+    return defaultPointRadiusExpression();
+  }
+  return [
+    'interpolate',
+    ['linear'],
+    ['coalesce', ['to-number', ['get', field]], min],
+    min, 4,
+    max, 13,
+  ];
+}
+
+function normalizeFieldOption(value) {
+  return value && value !== '__none__' ? value : '';
+}
+
+function getFeatureId(feature) {
+  const fid = feature?.properties?.[FEATURE_ID_KEY];
+  if (fid === undefined || fid === null) return null;
+  return String(fid);
+}
+
+function getFeatureIndex(container, fid) {
+  const normalized = fid === undefined || fid === null ? null : String(fid);
+  if (!normalized) return null;
+  return container?._geoPreviewFeatureIndex?.get(normalized) || null;
+}
+
+function focusFeature(map, feature) {
+  if (!map || !feature?.geometry) return;
+  const bounds = [Infinity, Infinity, -Infinity, -Infinity];
+  collectGeometryBounds(feature.geometry, bounds);
+
+  if (!hasValidBounds(bounds)) return;
+  if (bounds[0] === bounds[2] && bounds[1] === bounds[3]) {
+    map.easeTo({ center: [bounds[0], bounds[1]], zoom: Math.max(map.getZoom(), 12), duration: 250 });
+    return;
+  }
+
+  map.fitBounds(
+    [
+      [bounds[0], bounds[1]],
+      [bounds[2], bounds[3]],
+    ],
+    { padding: 52, duration: 250, maxZoom: 15 }
+  );
+}
+
+function setSelectedFeatureFilter(map, fid) {
+  const matchFilter = fid
+    ? ['==', ['to-string', ['get', FEATURE_ID_KEY]], String(fid)]
+    : ['==', 1, 0];
+
+  const selectableLayers = [
+    'geo-selected-fill-layer',
+    'geo-selected-outline-layer',
+    'geo-selected-line-layer',
+    'geo-selected-point-layer',
+  ];
+
+  selectableLayers.forEach((layerId) => {
+    if (map.getLayer(layerId)) {
+      map.setFilter(layerId, matchFilter);
+    }
+  });
+}
+
+export function prepareGeoJsonForMap(featureCollection) {
+  const features = (featureCollection?.features || []).map((feature, idx) => {
+    const properties = {
+      ...(feature?.properties && typeof feature.properties === 'object' ? feature.properties : {}),
+      [FEATURE_ID_KEY]: String(idx),
+    };
+
+    return {
+      ...feature,
+      properties,
+    };
+  });
+
+  const fieldProfiles = new Map();
+
+  for (const feature of features) {
+    const properties = feature?.properties || {};
+    for (const [key, raw] of Object.entries(properties)) {
+      if (!key || key.startsWith('__')) continue;
+      const current = fieldProfiles.get(key) || {
+        key,
+        numericCount: 0,
+        stringCount: 0,
+        min: Infinity,
+        max: -Infinity,
+        categories: new Map(),
+      };
+
+      const numeric = toNumberOrNull(raw);
+      if (numeric !== null) {
+        current.numericCount += 1;
+        current.min = Math.min(current.min, numeric);
+        current.max = Math.max(current.max, numeric);
+      } else if (raw !== null && raw !== undefined && raw !== '') {
+        current.stringCount += 1;
+      }
+
+      const category = stringifyPropertyValue(raw);
+      if (category) {
+        const prev = current.categories.get(category) || 0;
+        current.categories.set(category, prev + 1);
+      }
+
+      fieldProfiles.set(key, current);
+    }
+  }
+
+  return {
+    geojson: { type: 'FeatureCollection', features },
+    fieldProfiles,
+  };
+}
+
+export function getGeoStyleOptions(fieldProfiles) {
+  const options = [];
+  for (const profile of fieldProfiles?.values?.() || []) {
+    const isNumeric = profile.numericCount > 0 && profile.stringCount === 0;
+    options.push({
+      key: profile.key,
+      label: profile.key,
+      numeric: isNumeric,
+    });
+  }
+  options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+  return options;
+}
+
+export function setGeoBasemap(container, basemapId) {
+  const selected = BASEMAPS[basemapId] ? basemapId : DEFAULT_BASEMAP;
+  if (container) {
+    container._geoPreviewBasemap = selected;
+  }
+
+  const map = container?._geoPreviewMap;
+  if (!map) return false;
+  for (const id of Object.keys(BASEMAPS)) {
+    const layerId = `${BASEMAP_LAYER_PREFIX}${id}`;
+    if (map.getLayer(layerId)) {
+      map.setLayoutProperty(layerId, 'visibility', id === selected ? 'visible' : 'none');
+    }
+  }
+  return true;
+}
+
+export function applyGeoThematicStyle(container, style = {}) {
+  if (container) {
+    container._geoPreviewStyle = {
+      colorBy: normalizeFieldOption(style.colorBy),
+      sizeBy: normalizeFieldOption(style.sizeBy),
+    };
+  }
+
+  const map = container?._geoPreviewMap;
+  const fieldProfiles = container?._geoPreviewFieldProfiles;
+  if (!map || !fieldProfiles) return false;
+
+  const colorBy = normalizeFieldOption(style.colorBy);
+  const sizeBy = normalizeFieldOption(style.sizeBy);
+
+  let fillColor = DEFAULT_COLORS.fill;
+  let outlineColor = DEFAULT_COLORS.outline;
+  let lineColor = DEFAULT_COLORS.line;
+  let pointColor = DEFAULT_COLORS.point;
+  let pointRadius = defaultPointRadiusExpression();
+
+  if (colorBy && fieldProfiles.has(colorBy)) {
+    const profile = fieldProfiles.get(colorBy);
+    const isNumeric = profile.numericCount > 0 && profile.stringCount === 0;
+    if (isNumeric) {
+      const expression = buildNumericColorExpression(colorBy, profile.min, profile.max, DEFAULT_COLORS.fill);
+      fillColor = expression;
+      outlineColor = expression;
+      lineColor = expression;
+      pointColor = expression;
+    } else {
+      const categories = Array.from(profile.categories.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([value]) => value);
+      const expression = buildCategoricalColorExpression(colorBy, categories, DEFAULT_COLORS.fill);
+      fillColor = expression;
+      outlineColor = expression;
+      lineColor = expression;
+      pointColor = expression;
+    }
+  }
+
+  if (sizeBy && fieldProfiles.has(sizeBy)) {
+    const profile = fieldProfiles.get(sizeBy);
+    const isNumeric = profile.numericCount > 0 && profile.stringCount === 0;
+    if (isNumeric) {
+      pointRadius = buildNumericRadiusExpression(sizeBy, profile.min, profile.max);
+    }
+  }
+
+  if (map.getLayer('geo-fill-layer')) map.setPaintProperty('geo-fill-layer', 'fill-color', fillColor);
+  if (map.getLayer('geo-polygon-outline-layer')) map.setPaintProperty('geo-polygon-outline-layer', 'line-color', outlineColor);
+  if (map.getLayer('geo-line-layer')) map.setPaintProperty('geo-line-layer', 'line-color', lineColor);
+  if (map.getLayer('geo-point-layer')) {
+    map.setPaintProperty('geo-point-layer', 'circle-color', pointColor);
+    map.setPaintProperty('geo-point-layer', 'circle-radius', pointRadius);
+  }
+
+  return true;
+}
+
+export function selectGeoFeature(container, fid, options = {}) {
+  const map = container?._geoPreviewMap;
+  if (!map) return false;
+
+  const normalized = fid === undefined || fid === null ? null : String(fid);
+  setSelectedFeatureFilter(map, normalized);
+  container._geoPreviewSelectedFeatureId = normalized;
+
+  if (options.fit) {
+    const feature = getFeatureIndex(container, normalized);
+    if (feature) focusFeature(map, feature);
+  }
+  return true;
+}
+
+export function fitGeoPreviewToBounds(container) {
+  const map = container?._geoPreviewMap;
+  if (!map) return false;
+
+  const selected = container._geoPreviewSelectedFeatureId;
+  if (selected) {
+    const feature = getFeatureIndex(container, selected);
+    if (feature) {
+      focusFeature(map, feature);
+      return true;
+    }
+  }
+
+  fitGeoBounds(map, container?._geoPreviewBounds || null);
+  return true;
+}
+
+function bindFeatureHover(map, maplibregl, onFeatureSelect) {
   const popup = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: false,
@@ -357,6 +704,14 @@ function bindFeatureHover(map, maplibregl) {
     });
 
     register('mouseleave', layerId, closePopup);
+
+    register('click', layerId, (event) => {
+      const feature = event?.features?.[0];
+      const fid = getFeatureId(feature);
+      if (fid && onFeatureSelect) {
+        onFeatureSelect(fid, feature);
+      }
+    });
   }
 
   return () => {
@@ -376,7 +731,7 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'fill-color': '#2bd4ff',
+      'fill-color': DEFAULT_COLORS.fill,
       'fill-opacity': 0.34,
     },
   });
@@ -387,7 +742,7 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
     paint: {
-      'line-color': '#00b8ff',
+      'line-color': DEFAULT_COLORS.outline,
       'line-width': [
         'interpolate',
         ['linear'],
@@ -406,7 +761,7 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
     paint: {
-      'line-color': '#ff4da0',
+      'line-color': DEFAULT_COLORS.line,
       'line-width': [
         'interpolate',
         ['linear'],
@@ -429,17 +784,62 @@ function addGeoLayers(map, sourceId) {
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
     paint: {
-      'circle-color': '#ff4d5a',
-      'circle-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        4, 4,
-        10, 6.5,
-        14, 9,
-      ],
+      'circle-color': DEFAULT_COLORS.point,
+      'circle-radius': defaultPointRadiusExpression(),
       'circle-stroke-color': '#ffffff',
       'circle-stroke-width': 1.5,
+    },
+  });
+
+  map.addLayer({
+    id: 'geo-selected-fill-layer',
+    type: 'fill',
+    source: sourceId,
+    filter: ['==', 1, 0],
+    paint: {
+      'fill-color': SELECTED_COLOR,
+      'fill-opacity': 0.22,
+    },
+  });
+
+  map.addLayer({
+    id: 'geo-selected-outline-layer',
+    type: 'line',
+    source: sourceId,
+    filter: ['==', 1, 0],
+    paint: {
+      'line-color': SELECTED_COLOR,
+      'line-width': 4,
+      'line-opacity': 1,
+    },
+  });
+
+  map.addLayer({
+    id: 'geo-selected-line-layer',
+    type: 'line',
+    source: sourceId,
+    filter: ['==', 1, 0],
+    paint: {
+      'line-color': SELECTED_COLOR,
+      'line-width': 7,
+      'line-opacity': 1,
+    },
+    layout: {
+      'line-cap': 'round',
+      'line-join': 'round',
+    },
+  });
+
+  map.addLayer({
+    id: 'geo-selected-point-layer',
+    type: 'circle',
+    source: sourceId,
+    filter: ['==', 1, 0],
+    paint: {
+      'circle-color': SELECTED_COLOR,
+      'circle-radius': 11,
+      'circle-stroke-color': '#1b1f24',
+      'circle-stroke-width': 2,
     },
   });
 }
@@ -487,6 +887,24 @@ export function unmountGeoPreview(container) {
   if (container && container._geoPreviewCleanup) {
     delete container._geoPreviewCleanup;
   }
+  if (container && container._geoPreviewFeatureIndex) {
+    delete container._geoPreviewFeatureIndex;
+  }
+  if (container && container._geoPreviewFieldProfiles) {
+    delete container._geoPreviewFieldProfiles;
+  }
+  if (container && container._geoPreviewSelectedFeatureId) {
+    delete container._geoPreviewSelectedFeatureId;
+  }
+  if (container && container._geoPreviewBounds) {
+    delete container._geoPreviewBounds;
+  }
+  if (container && container._geoPreviewBasemap) {
+    delete container._geoPreviewBasemap;
+  }
+  if (container && container._geoPreviewStyle) {
+    delete container._geoPreviewStyle;
+  }
 }
 
 export function resizeGeoPreview(container) {
@@ -502,6 +920,9 @@ export async function mountGeoPreview({
   statusElement,
   geojson,
   bounds,
+  basemap = DEFAULT_BASEMAP,
+  fieldProfiles = null,
+  onFeatureSelect = null,
 }) {
   if (!container || !mapElement || !geojson) return { ok: false, error: 'Missing map target' };
 
@@ -520,21 +941,25 @@ export async function mountGeoPreview({
 
     const map = new maplibregl.Map({
       container: mapElement,
-      style: MAP_STYLE,
+      style: buildMapStyle(basemap),
       center: [0, 0],
       zoom: 1,
       attributionControl: true,
     });
 
-    const sourceId = 'geo-preview-source';
-
     map.on('load', () => {
-      map.addSource(sourceId, {
+      map.addSource(SOURCE_ID, {
         type: 'geojson',
         data: geojson,
       });
-      addGeoLayers(map, sourceId);
-      const releaseHoverBindings = bindFeatureHover(map, maplibregl);
+      addGeoLayers(map, SOURCE_ID);
+      setGeoBasemap(container, container._geoPreviewBasemap || basemap);
+      const releaseHoverBindings = bindFeatureHover(map, maplibregl, (fid, feature) => {
+        selectGeoFeature(container, fid, { fit: false });
+        if (onFeatureSelect) onFeatureSelect(fid, feature);
+      });
+      applyGeoThematicStyle(container, container._geoPreviewStyle || {});
+      setSelectedFeatureFilter(map, container._geoPreviewSelectedFeatureId || null);
       fitGeoBounds(map, bounds);
       map.resize();
       if (statusElement) {
@@ -548,6 +973,16 @@ export async function mountGeoPreview({
 
     const resizeTimer = setTimeout(() => map.resize(), 120);
     container._geoPreviewMap = map;
+    container._geoPreviewBasemap = BASEMAPS[container._geoPreviewBasemap]
+      ? container._geoPreviewBasemap
+      : (BASEMAPS[basemap] ? basemap : DEFAULT_BASEMAP);
+    container._geoPreviewFieldProfiles = fieldProfiles;
+    container._geoPreviewBounds = bounds || null;
+    container._geoPreviewFeatureIndex = new Map(
+      (geojson.features || [])
+        .map((feature) => [getFeatureId(feature), feature])
+        .filter(([fid]) => !!fid)
+    );
 
     const cleanup = () => {
       clearTimeout(resizeTimer);

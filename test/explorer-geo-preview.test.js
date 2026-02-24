@@ -11,6 +11,8 @@ describe('explorer geo preview helpers', async () => {
     computeGeoBounds,
     parseGeoSpatialContent,
     buildFeatureMetadataHtml,
+    prepareGeoJsonForMap,
+    getGeoStyleOptions,
   } = await import(moduleUrl);
 
   it('normalizes geometry object into a feature collection', () => {
@@ -113,5 +115,35 @@ describe('explorer geo preview helpers', async () => {
 
     assert.match(html, /LineString/);
     assert.match(html, /No properties/);
+  });
+
+  it('adds stable feature ids and profiles style fields', () => {
+    const prepared = prepareGeoJsonForMap({
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { category: 'a', score: 10 },
+          geometry: { type: 'Point', coordinates: [0, 0] },
+        },
+        {
+          type: 'Feature',
+          properties: { category: 'b', score: 25 },
+          geometry: { type: 'Point', coordinates: [1, 1] },
+        },
+      ],
+    });
+
+    assert.equal(prepared.geojson.features[0].properties.__fid, '0');
+    assert.equal(prepared.geojson.features[1].properties.__fid, '1');
+
+    const options = getGeoStyleOptions(prepared.fieldProfiles);
+    const category = options.find((item) => item.key === 'category');
+    const score = options.find((item) => item.key === 'score');
+
+    assert.ok(category);
+    assert.equal(category.numeric, false);
+    assert.ok(score);
+    assert.equal(score.numeric, true);
   });
 });

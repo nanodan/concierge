@@ -18,6 +18,14 @@ export function createFileViewerNavigation({
   let touchStartX = 0;
   let touchStartY = 0;
   let touchMoveX = 0;
+  let ignoreTouchSequence = false;
+
+  function isMapInteractionTarget(target) {
+    if (!target || !target.closest) return false;
+    const mapPanel = target.closest('.geo-preview-panel-map');
+    if (!mapPanel || mapPanel.classList.contains('hidden')) return false;
+    return true;
+  }
 
   function ensureNavContainer() {
     if (!fileViewer) return null;
@@ -84,6 +92,8 @@ export function createFileViewerNavigation({
 
   function handleTouchStart(e) {
     if (isNavigationBlocked()) return;
+    ignoreTouchSequence = isMapInteractionTarget(e.target);
+    if (ignoreTouchSequence) return;
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     touchMoveX = touchStartX;
@@ -91,11 +101,16 @@ export function createFileViewerNavigation({
 
   function handleTouchMove(e) {
     if (isNavigationBlocked()) return;
+    if (ignoreTouchSequence) return;
     touchMoveX = e.touches[0].clientX;
   }
 
   function handleTouchEnd(e) {
     if (isNavigationBlocked()) return;
+    if (ignoreTouchSequence) {
+      ignoreTouchSequence = false;
+      return;
+    }
     if (!fileViewer || fileViewer.classList.contains('hidden')) return;
 
     const deltaX = touchMoveX - touchStartX;
@@ -113,6 +128,7 @@ export function createFileViewerNavigation({
     touchStartX = 0;
     touchStartY = 0;
     touchMoveX = 0;
+    ignoreTouchSequence = false;
   }
 
   return {

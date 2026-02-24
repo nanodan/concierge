@@ -3,6 +3,13 @@ import {
   mountGeoPreview,
   unmountGeoPreview,
   resizeGeoPreview,
+  prepareGeoJsonForMap,
+  getGeoStyleOptions,
+  GEO_BASEMAP_OPTIONS,
+  setGeoBasemap,
+  applyGeoThematicStyle,
+  selectGeoFeature,
+  fitGeoPreviewToBounds,
 } from './geo-preview.js';
 
 const DEFAULT_PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
@@ -162,6 +169,24 @@ function attachJsonHandlers(container) {
   }
 }
 
+function renderGeoFeatureSummary(feature, previewKeys, escapeHtml) {
+  const properties = feature?.properties && typeof feature.properties === 'object'
+    ? feature.properties
+    : {};
+  const snippets = [];
+
+  previewKeys.forEach((key) => {
+    if (!(key in properties)) return;
+    const value = toSafeString(properties[key]);
+    if (!value) return;
+    const trimmed = value.length > 48 ? `${value.slice(0, 45)}...` : value;
+    snippets.push(`${escapeHtml(key)}: ${escapeHtml(trimmed)}`);
+  });
+
+  if (!snippets.length) return '<span class="geo-preview-table-empty">No properties</span>';
+  return snippets.join('<span class="geo-preview-table-sep">•</span>');
+}
+
 function renderGeoPreview(container, {
   geoResult,
   fileUrl,
@@ -171,20 +196,74 @@ function renderGeoPreview(container, {
 }) {
   const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
   const rawText = escapeHtml(toSafeString(rawContent));
+  const { geojson: mapGeoJson, fieldProfiles } = prepareGeoJsonForMap(geoResult.geojson);
+  const styleOptions = getGeoStyleOptions(fieldProfiles);
+  const numericOptions = styleOptions.filter((option) => option.numeric);
+  const previewKeys = styleOptions.slice(0, 2).map((option) => option.key);
+  const allFeatures = mapGeoJson.features || [];
+  const visibleFeatures = allFeatures.slice(0, 200);
+  const tableRowsHtml = visibleFeatures.map((feature, idx) => {
+    const fid = feature?.properties?.__fid || String(idx);
+    const geom = escapeHtml(toSafeString(feature?.geometry?.type || 'Unknown'));
+    const summaryHtml = renderGeoFeatureSummary(feature, previewKeys, escapeHtml);
+    return `
+      <button class="geo-preview-table-row" data-fid="${escapeHtml(fid)}" title="Focus feature">
+        <span class="geo-preview-table-index">${idx + 1}</span>
+        <span class="geo-preview-table-geom">${geom}</span>
+        <span class="geo-preview-table-summary">${summaryHtml}</span>
+      </button>
+    `;
+  }).join('');
+  const truncationNotice = allFeatures.length > visibleFeatures.length
+    ? `<div class="geo-preview-table-truncated">Showing ${visibleFeatures.length} of ${allFeatures.length} features</div>`
+    : '';
+
+  const basemapOptionsHtml = GEO_BASEMAP_OPTIONS.map((option) =>
+    `<option value="${escapeHtml(option.id)}">${escapeHtml(option.label)}</option>`
+  ).join('');
+  const colorOptionsHtml = ['<option value="__none__">Color: Geometry</option>']
+    .concat(styleOptions.map((option) =>
+      `<option value="${escapeHtml(option.key)}">Color: ${escapeHtml(option.label)}</option>`
+    ))
+    .join('');
+  const sizeOptionsHtml = ['<option value="__none__">Size: Default</option>']
+    .concat(numericOptions.map((option) =>
+      `<option value="${escapeHtml(option.key)}">Size: ${escapeHtml(option.label)}</option>`
+    ))
+    .join('');
 
   container.innerHTML = `
     <div class="geo-preview">
       <div class="geo-preview-toolbar">
         <span class="geo-preview-badge">Map</span>
         <span class="geo-preview-meta">${summary}</span>
+        <div class="geo-preview-controls">
+          <select class="geo-preview-select" data-role="geo-basemap" aria-label="Basemap">
+            ${basemapOptionsHtml}
+          </select>
+          <select class="geo-preview-select" data-role="geo-color-by" aria-label="Color by">
+            ${colorOptionsHtml}
+          </select>
+          <select class="geo-preview-select" data-role="geo-size-by" aria-label="Size by">
+            ${sizeOptionsHtml}
+          </select>
+          <button class="geo-preview-fit-btn" data-role="geo-fit" title="Return to bounds">Fit</button>
+        </div>
         <div class="geo-preview-view-toggle" role="tablist" aria-label="Geo preview mode">
           <button class="geo-preview-view-btn active" data-view="map" role="tab" aria-selected="true">Map</button>
           <button class="geo-preview-view-btn" data-view="raw" role="tab" aria-selected="false">Raw</button>
         </div>
       </div>
       <div class="geo-preview-panel geo-preview-panel-map" data-role="geo-panel-map">
-        <div class="geo-preview-map" data-role="geo-map"></div>
-        <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+        <div class="geo-preview-map-wrap">
+          <div class="geo-preview-map" data-role="geo-map"></div>
+          <div class="geo-preview-status" data-role="geo-status">Loading map preview...</div>
+        </div>
+        <div class="geo-preview-table-wrap">
+          <div class="geo-preview-table-header">Features</div>
+          <div class="geo-preview-table" data-role="geo-table">${tableRowsHtml}</div>
+          ${truncationNotice}
+        </div>
       </div>
       <div class="geo-preview-panel geo-preview-panel-raw hidden" data-role="geo-panel-raw">
         <pre><code class="language-json">${rawText}</code></pre>
@@ -201,6 +280,30 @@ function renderGeoPreview(container, {
   const mapPanel = container.querySelector('[data-role="geo-panel-map"]');
   const rawPanel = container.querySelector('[data-role="geo-panel-raw"]');
   const viewButtons = container.querySelectorAll('.geo-preview-view-btn');
+  const table = container.querySelector('[data-role="geo-table"]');
+  const tableRows = table ? Array.from(table.querySelectorAll('.geo-preview-table-row')) : [];
+  const basemapSelect = container.querySelector('[data-role="geo-basemap"]');
+  const colorSelect = container.querySelector('[data-role="geo-color-by"]');
+  const sizeSelect = container.querySelector('[data-role="geo-size-by"]');
+  const fitBtn = container.querySelector('[data-role="geo-fit"]');
+
+  const setSelectedRow = (fid) => {
+    if (!tableRows.length) return;
+    tableRows.forEach((row) => {
+      const selected = row.dataset.fid === fid;
+      row.classList.toggle('active', selected);
+      if (selected) {
+        row.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  };
+
+  const applyStyleSelections = () => {
+    applyGeoThematicStyle(container, {
+      colorBy: colorSelect?.value || '__none__',
+      sizeBy: sizeSelect?.value || '__none__',
+    });
+  };
 
   const setView = (view) => {
     const mapActive = view === 'map';
@@ -220,12 +323,42 @@ function renderGeoPreview(container, {
     btn.addEventListener('click', () => setView(btn.dataset.view || 'map'));
   });
 
+  if (basemapSelect) {
+    basemapSelect.addEventListener('change', () => {
+      setGeoBasemap(container, basemapSelect.value);
+    });
+  }
+
+  if (colorSelect) colorSelect.addEventListener('change', applyStyleSelections);
+  if (sizeSelect) sizeSelect.addEventListener('change', applyStyleSelections);
+  if (fitBtn) {
+    fitBtn.addEventListener('click', () => {
+      fitGeoPreviewToBounds(container);
+    });
+  }
+
+  tableRows.forEach((row) => {
+    row.addEventListener('click', () => {
+      const fid = row.dataset.fid;
+      selectGeoFeature(container, fid, { fit: true });
+      setSelectedRow(fid);
+    });
+  });
+
   void mountGeoPreview({
     container,
     mapElement,
     statusElement,
-    geojson: geoResult.geojson,
+    geojson: mapGeoJson,
     bounds: geoResult.bounds,
+    basemap: basemapSelect?.value || 'standard',
+    fieldProfiles,
+    onFeatureSelect: (fid) => {
+      setSelectedRow(fid);
+    },
+  }).then((result) => {
+    if (!result?.ok) return;
+    applyStyleSelections();
   });
 }
 
