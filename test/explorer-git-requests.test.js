@@ -32,12 +32,18 @@ describe('explorer git request adapters', async () => {
     });
 
     await requests.requestStage(['a.txt']);
+    await requests.requestHunkAction('a.txt', { header: '@@ -1 +1 @@', lines: ['-a', '+b'] }, false, 'stage');
     await requests.requestDeleteUntracked('tmp.log');
 
     const stageBody = JSON.parse(calls[0].options.body);
     assert.equal(stageBody.cwd, '/repo');
     assert.deepEqual(stageBody.paths, ['a.txt']);
-    assert.equal(calls[1].url, '/api/files?path=%2Frepo%2Ftmp.log');
+    const hunkBody = JSON.parse(calls[1].options.body);
+    assert.equal(calls[1].url, '/api/git/hunk-action?cwd=%2Frepo');
+    assert.equal(hunkBody.cwd, '/repo');
+    assert.equal(hunkBody.path, 'a.txt');
+    assert.equal(hunkBody.action, 'stage');
+    assert.equal(calls[2].url, '/api/files?path=%2Frepo%2Ftmp.log');
   });
 
   it('does not add cwd to conversation payloads', async () => {

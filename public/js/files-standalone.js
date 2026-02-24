@@ -136,22 +136,23 @@ export function initStandaloneFiles(elements) {
       if (data.error) return { ok: false, error: data.error };
       return { ok: true, data };
     },
-    revertDiffHunk: async (filePath, _hunkIndex, hunk, staged) => {
-      const res = await apiFetch(standaloneContext.getGitUrl('revert-hunk'), {
+    applyDiffHunkAction: async (filePath, _hunkIndex, hunk, staged, intent) => {
+      const action = intent === 'accept' ? 'stage' : (staged ? 'unstage' : 'discard');
+      const res = await apiFetch(standaloneContext.getGitUrl('hunk-action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath, hunk, staged, cwd: currentPath || rootPath }),
+        body: JSON.stringify({ path: filePath, hunk, staged, action, cwd: currentPath || rootPath }),
       });
-      if (!res) return { ok: false, error: 'Failed to revert hunk' };
+      if (!res) return { ok: false, error: 'Failed to apply chunk action' };
 
       const data = await res.json();
       if (data.error) return { ok: false, error: data.error };
       return { ok: true };
     },
-    closeAfterRevert: () => {
+    closeAfterHunkAction: () => {
       closeFileViewer();
     },
-    refreshAfterRevert: () => {
+    refreshAfterHunkAction: () => {
       loadGitStatus();
     },
   });

@@ -1108,6 +1108,22 @@
   min-width: 0;
 }
 
+.changes-item-split-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 74%, white 26%);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  flex-shrink: 0;
+}
+
 .changes-item-path {
   position: absolute;
   left: 38px;
@@ -1770,13 +1786,21 @@
   color: var(--error, #e06c75);
 }
 
-.diff-hunk-revert-btn {
+.diff-hunk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.diff-hunk-action-btn {
   padding: 4px 10px;
   font-size: 11px;
-  font-weight: 500;
-  color: var(--error, #e53935);
+  font-weight: 600;
+  min-height: 28px;
+  min-width: 64px;
   background: transparent;
-  border: 1px solid var(--error, #e53935);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
@@ -1784,9 +1808,43 @@
   transition: all var(--transition-fast);
 }
 
-.diff-hunk-revert-btn:hover {
-  background: var(--error, #e53935);
-  color: #fff;
+.diff-hunk-action-btn.accept {
+  color: var(--success, #22c55e);
+  border-color: color-mix(in srgb, var(--success, #22c55e) 65%, var(--border));
+}
+
+.diff-hunk-action-btn.accept:hover {
+  background: color-mix(in srgb, var(--success, #22c55e) 18%, transparent);
+  color: var(--text);
+}
+
+.diff-hunk-action-btn.reject {
+  color: var(--error, #e53935);
+  border-color: color-mix(in srgb, var(--error, #e53935) 65%, var(--border));
+}
+
+.diff-hunk-action-btn.reject:hover {
+  background: color-mix(in srgb, var(--error, #e53935) 18%, transparent);
+  color: var(--text);
+}
+
+.diff-hunk-action-btn:active {
+  transform: translateY(1px);
+}
+
+.diff-hunk-action-btn[disabled] {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.diff-hunk-action-btn[disabled]:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.diff-hunk-action-btn[data-processing='true'] {
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 .diff-hunk-code {
@@ -1820,7 +1878,14 @@
     margin-bottom: 6px;
   }
 
-  .diff-hunk-revert-btn {
+  .diff-hunk-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .diff-hunk-action-btn {
+    min-height: 36px;
+    min-width: 78px;
     padding: 6px 12px;
     font-size: 12px;
   }
