@@ -147,8 +147,9 @@ const dataSourceSelect = document.getElementById('data-source-select');
 const dataTablesRow = document.getElementById('data-tables-row');
 const bigQueryControls = document.getElementById('bigquery-controls');
 const bigQueryAuthStatus = document.getElementById('bigquery-auth-status');
+const bigQueryAuthHint = document.getElementById('bigquery-auth-hint');
 const bigQueryConnectBtn = document.getElementById('bigquery-connect-btn');
-const bigQueryProjectSelect = document.getElementById('bigquery-project-select');
+const bigQueryProjectInput = document.getElementById('bigquery-project-input');
 const sqlEditor = document.getElementById('sql-editor');
 const runQueryBtn = document.getElementById('run-query-btn');
 const cancelQueryBtn = document.getElementById('cancel-query-btn');
@@ -396,8 +397,9 @@ initFilePanel({
   dataTablesRow,
   bigQueryControls,
   bigQueryAuthStatus,
+  bigQueryAuthHint,
   bigQueryConnectBtn,
-  bigQueryProjectSelect,
+  bigQueryProjectInput,
   sqlEditor,
   runQueryBtn,
   cancelQueryBtn,

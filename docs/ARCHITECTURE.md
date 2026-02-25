@@ -245,6 +245,22 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 | `GET` | `/api/conversations/:id/files/search` | Git grep search |
 | `GET` | `/api/conversations/:id/files/download` | Download file from conversation cwd |
 
+**Data Analysis (DuckDB + BigQuery):**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/duckdb/load` | Load local CSV/Parquet/JSON data file into DuckDB |
+| `POST` | `/api/duckdb/query` | Run SQL query against loaded DuckDB tables |
+| `POST` | `/api/duckdb/export` | Download DuckDB query result (`csv|json|parquet`) |
+| `GET` | `/api/duckdb/tables` | List loaded DuckDB tables |
+| `DELETE` | `/api/duckdb/tables/:name` | Drop a loaded DuckDB table |
+| `GET` | `/api/bigquery/auth/status` | Read BigQuery ADC auth status |
+| `POST` | `/api/bigquery/auth/refresh` | Refresh BigQuery ADC auth state |
+| `POST` | `/api/bigquery/query/start` | Start BigQuery query job |
+| `GET` | `/api/bigquery/query/status` | Poll BigQuery query job status |
+| `POST` | `/api/bigquery/query/cancel` | Cancel BigQuery query job |
+| `POST` | `/api/bigquery/query/save` | Save full BigQuery result into conversation cwd (`csv|json|parquet|geojson`) |
+| `POST` | `/api/bigquery/query/download` | Download full BigQuery result to browser (`csv|json|parquet|geojson`) |
+
 **Git Integration:**
 | Method | Endpoint | Description |
 |--------|----------|-------------|

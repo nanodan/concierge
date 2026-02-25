@@ -297,11 +297,23 @@
             <option value="bigquery">BigQuery</option>
           </select>
           <div id="bigquery-controls" class="data-tab-bq-controls hidden">
-            <span id="bigquery-auth-status" class="data-tab-bq-status">Not connected</span>
-            <button id="bigquery-connect-btn" class="data-tab-bq-connect-btn" title="Re-check ADC credentials">Recheck</button>
-            <select id="bigquery-project-select" class="data-tab-bq-project-select" disabled>
-              <option value="">ADC unavailable</option>
-            </select>
+            <div class="data-tab-bq-auth">
+              <span id="bigquery-auth-status" class="data-tab-bq-status">ADC not connected</span>
+              <span id="bigquery-auth-hint" class="data-tab-bq-hint">Run gcloud auth application-default login</span>
+            </div>
+            <label class="data-tab-bq-project-wrap" for="bigquery-project-input">
+              <span class="data-tab-bq-project-label">Project ID</span>
+              <input
+                id="bigquery-project-input"
+                class="data-tab-bq-project-input"
+                type="text"
+                placeholder="my-gcp-project"
+                autocomplete="off"
+                spellcheck="false"
+                disabled
+              >
+            </label>
+            <button id="bigquery-connect-btn" class="data-tab-bq-connect-btn" title="Re-check BigQuery ADC">Refresh</button>
           </div>
         </div>
         <div id="data-tables-row" class="data-tab-tables-row">

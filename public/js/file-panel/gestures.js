@@ -1,5 +1,10 @@
 // --- File Panel Gestures (mobile drag, desktop resize) ---
-import { FILE_PANEL_MIN_WIDTH, FILE_PANEL_MAX_WIDTH, FILE_PANEL_MIN_HEIGHT } from '../constants.js';
+import {
+  FILE_PANEL_MIN_WIDTH,
+  FILE_PANEL_MAX_WIDTH,
+  FILE_PANEL_MIN_CHAT_WIDTH,
+  FILE_PANEL_MIN_HEIGHT,
+} from '../constants.js';
 
 // Snap points for mobile (percentage of viewport height)
 const SNAP_POINTS = [30, 60, 90];
@@ -17,6 +22,23 @@ let resizeStartX = 0;
 let resizeStartWidth = 0;
 let resizeScrollDistance = 0;
 let resizeMessages = null;
+
+function getDesktopMaxPanelWidth() {
+  // Let the panel grow with monitor size while preserving a minimal chat viewport.
+  const viewportLimited = window.innerWidth - FILE_PANEL_MIN_CHAT_WIDTH;
+  return Math.max(FILE_PANEL_MIN_WIDTH, Math.min(FILE_PANEL_MAX_WIDTH, viewportLimited));
+}
+
+function clampDesktopPanelWidth(width) {
+  const maxWidth = getDesktopMaxPanelWidth();
+  return Math.max(FILE_PANEL_MIN_WIDTH, Math.min(maxWidth, width));
+}
+
+function applyDesktopPanelWidth(width) {
+  const clamped = clampDesktopPanelWidth(width);
+  filePanel.style.width = clamped + 'px';
+  document.documentElement.style.setProperty('--file-panel-width', clamped + 'px');
+}
 
 /**
  * Check if current viewport is mobile width
@@ -43,6 +65,10 @@ export function initGestures(panel, closeCallback) {
   window.addEventListener('resize', () => {
     if (isMobile()) {
       setupDragGesture(closeCallback);
+      return;
+    }
+    if (filePanel?.classList.contains('open')) {
+      applyDesktopPanelWidth(filePanel.offsetWidth);
     }
   });
 }
@@ -80,10 +106,7 @@ export function setupDesktopResize() {
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     const dx = resizeStartX - e.clientX;
-    const newWidth = Math.max(FILE_PANEL_MIN_WIDTH, Math.min(FILE_PANEL_MAX_WIDTH, resizeStartWidth + dx));
-    filePanel.style.width = newWidth + 'px';
-    // Update CSS variable for margin adjustments
-    document.documentElement.style.setProperty('--file-panel-width', newWidth + 'px');
+    applyDesktopPanelWidth(resizeStartWidth + dx);
 
     // Preserve scroll position as content reflows
     if (resizeMessages) {

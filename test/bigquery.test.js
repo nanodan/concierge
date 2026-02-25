@@ -9,6 +9,7 @@ const {
   clearAdcCaches,
   parseRows,
   normalizeQueryResponse,
+  serializeResults,
   saveResultsToFile,
 } = require('../lib/bigquery');
 
@@ -136,5 +137,116 @@ describe('bigquery helpers', () => {
     assert.ok(fs.existsSync(first.path));
     assert.ok(fs.existsSync(second.path));
     assert.ok(fs.existsSync(csv.path));
+  });
+
+  it('serializes geojson when latitude/longitude columns are present', async () => {
+    const payload = await serializeResults({
+      format: 'geojson',
+      columns: [
+        { name: 'id', type: 'INT64' },
+        { name: 'lat', type: 'FLOAT64' },
+        { name: 'lon', type: 'FLOAT64' },
+      ],
+      rows: [
+        [1, 37.77, -122.42],
+        [2, 40.71, -74.0],
+      ],
+    });
+
+    assert.equal(payload.extension, 'geojson');
+    assert.equal(payload.mimeType, 'application/geo+json');
+    const parsed = JSON.parse(payload.content);
+    assert.equal(parsed.type, 'FeatureCollection');
+    assert.equal(parsed.features.length, 2);
+    assert.deepEqual(parsed.features[0].geometry, {
+      type: 'Point',
+      coordinates: [-122.42, 37.77],
+    });
+  });
+
+  it('serializes geojson from BigQuery geography WKT point values', async () => {
+    const payload = await serializeResults({
+      format: 'geojson',
+      columns: [
+        { name: 'Location', type: 'GEOGRAPHY' },
+      ],
+      rows: [
+        ['POINT(-72 40)'],
+      ],
+    });
+
+    const parsed = JSON.parse(payload.content);
+    assert.equal(parsed.type, 'FeatureCollection');
+    assert.equal(parsed.features.length, 1);
+    assert.deepEqual(parsed.features[0].geometry, {
+      type: 'Point',
+      coordinates: [-72, 40],
+    });
+  });
+
+  it('serializes WKT polygon geography values regardless of column name', async () => {
+    const payload = await serializeResults({
+      format: 'geojson',
+      columns: [
+        { name: 'ZoneShape', type: 'GEOGRAPHY' },
+      ],
+      rows: [
+        ['POLYGON((-72 40, -71 40, -71 41, -72 41, -72 40))'],
+      ],
+    });
+
+    const parsed = JSON.parse(payload.content);
+    assert.equal(parsed.features.length, 1);
+    assert.equal(parsed.features[0].geometry.type, 'Polygon');
+    assert.deepEqual(parsed.features[0].geometry.coordinates[0][0], [-72, 40]);
+  });
+
+  it('serializes parquet as binary', async () => {
+    const payload = await serializeResults({
+      format: 'parquet',
+      columns: [
+        { name: 'id', type: 'INT64' },
+        { name: 'name', type: 'STRING' },
+      ],
+      rows: [
+        [1, 'alice'],
+        [2, 'bob'],
+      ],
+    });
+
+    assert.equal(payload.extension, 'parquet');
+    assert.equal(payload.mimeType, 'application/octet-stream');
+    assert.ok(Buffer.isBuffer(payload.content));
+    assert.ok(payload.content.length > 0);
+  });
+
+  it('saves parquet and geojson files', async () => {
+    const columns = [
+      { name: 'id', type: 'INT64' },
+      { name: 'lat', type: 'FLOAT64' },
+      { name: 'lon', type: 'FLOAT64' },
+    ];
+    const rows = [[1, 35.0, -120.0]];
+
+    const parquetResult = await saveResultsToFile({
+      cwd: tmpDir,
+      filename: 'bigquery-export',
+      format: 'parquet',
+      columns,
+      rows,
+    });
+
+    const geoResult = await saveResultsToFile({
+      cwd: tmpDir,
+      filename: 'bigquery-export',
+      format: 'geojson',
+      columns,
+      rows,
+    });
+
+    assert.equal(path.extname(parquetResult.path), '.parquet');
+    assert.equal(path.extname(geoResult.path), '.geojson');
+    assert.ok(fs.existsSync(parquetResult.path));
+    assert.ok(fs.existsSync(geoResult.path));
   });
 });

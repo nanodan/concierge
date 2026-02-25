@@ -108,6 +108,7 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 | `PORT` | `3577` | Server port |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `GOOGLE_APPLICATION_CREDENTIALS` | _(unset)_ | Optional path to a service-account JSON for BigQuery ADC |
+| `BIGQUERY_EXPORT_MAX_ROWS` | `250000` | Max rows allowed for full BigQuery save/download exports (0 disables limit) |
 
 BigQuery uses Google Application Default Credentials (ADC). Typical local setup:
 
