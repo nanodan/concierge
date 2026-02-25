@@ -42,6 +42,11 @@ let bigQueryDefaultProject = null;
 const bigQueryProjectByConversation = new Map();
 let activeBigQueryJob = null;
 let bigQueryPollTimer = null;
+let bigQueryPageTokens = [null];
+let bigQueryCurrentPageIndex = 0;
+let bigQueryCurrentNextPageToken = null;
+let bigQueryTotalRows = 0;
+let bigQueryPaging = false;
 
 // Callback for switching to files tab (set by index.js)
 let switchToFilesTabFn = null;
@@ -199,6 +204,7 @@ export function setupDataTabEventListeners() {
       querySource = dataSourceSelect.value === DATA_SOURCE_BIGQUERY ? DATA_SOURCE_BIGQUERY : DATA_SOURCE_DUCKDB;
       stopBigQueryPolling();
       activeBigQueryJob = null;
+      resetBigQueryPagination();
       setQueryRunningState(false);
       applyDataSourceMode();
       if (querySource === DATA_SOURCE_DUCKDB) {
@@ -264,6 +270,38 @@ function setQueryRunningState(running) {
     const showCancel = running && querySource === DATA_SOURCE_BIGQUERY;
     cancelQueryBtn.classList.toggle('hidden', !showCancel);
     cancelQueryBtn.disabled = !showCancel;
+  }
+}
+
+function resetBigQueryPagination() {
+  bigQueryPageTokens = [null];
+  bigQueryCurrentPageIndex = 0;
+  bigQueryCurrentNextPageToken = null;
+  bigQueryTotalRows = 0;
+  bigQueryPaging = false;
+}
+
+function applyBigQueryPageState(data, pageTokenUsed = null) {
+  const token = pageTokenUsed || null;
+  let pageIndex = bigQueryPageTokens.findIndex((t) => (t || null) === token);
+  if (pageIndex === -1) {
+    pageIndex = bigQueryPageTokens.length;
+    bigQueryPageTokens.push(token);
+  }
+
+  bigQueryCurrentPageIndex = pageIndex;
+  bigQueryCurrentNextPageToken = data.pageToken || null;
+  bigQueryTotalRows = Number(data.rowCount || bigQueryTotalRows || 0);
+
+  if (bigQueryCurrentNextPageToken) {
+    if (bigQueryPageTokens.length === pageIndex + 1) {
+      bigQueryPageTokens.push(bigQueryCurrentNextPageToken);
+    } else {
+      bigQueryPageTokens[pageIndex + 1] = bigQueryCurrentNextPageToken;
+      bigQueryPageTokens = bigQueryPageTokens.slice(0, pageIndex + 2);
+    }
+  } else {
+    bigQueryPageTokens = bigQueryPageTokens.slice(0, pageIndex + 1);
   }
 }
 
@@ -745,6 +783,7 @@ async function runBigQueryQuery(sql) {
 
   stopBigQueryPolling();
   activeBigQueryJob = null;
+  resetBigQueryPagination();
 
   setStatus('Running...', true);
   setQueryRunningState(true);
@@ -776,6 +815,7 @@ async function runBigQueryQuery(sql) {
 
   if (data.jobComplete) {
     activeBigQueryJob = null;
+    applyBigQueryPageState(data, null);
     setQueryRunningState(false);
     setStatus(formatBigQueryStatus(data), false);
     renderResults(data, { source: DATA_SOURCE_BIGQUERY });
@@ -832,6 +872,7 @@ function startBigQueryPolling() {
     if (data.jobComplete) {
       activeBigQueryJob = null;
       stopBigQueryPolling();
+      applyBigQueryPageState(data, null);
       setQueryRunningState(false);
       setStatus(formatBigQueryStatus(data), false);
       renderResults(data, { source: DATA_SOURCE_BIGQUERY });
@@ -881,7 +922,7 @@ async function cancelBigQueryQuery() {
   showToast('BigQuery job cancelled');
 }
 
-const GEO_COLUMN_HINTS = ['geojson', 'geometry', 'geom', 'the_geom'];
+const GEO_COLUMN_HINTS = ['geo', 'geog', 'geography', 'geojson', 'geometry', 'geom', 'the_geom'];
 const LAT_COLUMN_HINTS = ['lat', 'latitude', 'y'];
 const LON_COLUMN_HINTS = ['lon', 'lng', 'longitude', 'x'];
 
@@ -889,9 +930,10 @@ function supportsGeoJsonExport(columns) {
   if (!Array.isArray(columns)) return false;
   const names = columns.map((col) => String(col?.name || '').toLowerCase());
   const hasGeoColumn = names.some((name) => GEO_COLUMN_HINTS.some((hint) => name.includes(hint)));
+  const hasGeoType = columns.some((col) => String(col?.type || '').toUpperCase().includes('GEOGRAPHY'));
   const hasLatColumn = names.some((name) => LAT_COLUMN_HINTS.includes(name));
   const hasLonColumn = names.some((name) => LON_COLUMN_HINTS.includes(name));
-  return hasGeoColumn || (hasLatColumn && hasLonColumn);
+  return hasGeoType || hasGeoColumn || (hasLatColumn && hasLonColumn);
 }
 
 function buildBigQueryFormatOptions(columns) {
@@ -900,7 +942,21 @@ function buildBigQueryFormatOptions(columns) {
     <option value="csv">CSV</option>
     <option value="json">JSON</option>
     <option value="parquet">Parquet</option>
-    <option value="geojson"${geoEnabled ? '' : ' disabled'}>${geoEnabled ? 'GeoJSON' : 'GeoJSON (needs geometry or lat/lon columns)'}</option>
+    <option value="geojson"${geoEnabled ? '' : ' disabled'}>${geoEnabled ? 'GeoJSON' : 'GeoJSON (needs geography/geometry or lat/lon columns)'}</option>
+  `;
+}
+
+function buildBigQueryPaginationControls() {
+  const hasPrev = bigQueryCurrentPageIndex > 0;
+  const hasNext = Boolean(bigQueryCurrentNextPageToken);
+  const totalLabel = bigQueryTotalRows > 0 ? `${bigQueryTotalRows.toLocaleString()} total` : 'preview';
+
+  return `
+    <div class="results-page-controls">
+      <button class="results-page-btn" data-bq-page="prev"${hasPrev ? '' : ' disabled'}>Prev</button>
+      <span class="results-page-label">Page ${bigQueryCurrentPageIndex + 1} • ${totalLabel}</span>
+      <button class="results-page-btn" data-bq-page="next"${hasNext ? '' : ' disabled'}>Next</button>
+    </div>
   `;
 }
 
@@ -941,6 +997,72 @@ function buildResultsActions(source, columns) {
       Parquet
     </button>
   `;
+}
+
+async function loadBigQueryPreviewPage(direction) {
+  if (querySource !== DATA_SOURCE_BIGQUERY) return;
+  if (bigQueryPaging) return;
+  if (activeBigQueryJob?.jobId) {
+    showToast('Query still running');
+    return;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  const projectId = lastBigQueryJob?.projectId || getCurrentBigQueryProjectId();
+  if (!projectId || !lastBigQueryJob?.jobId) {
+    showToast('No BigQuery result to paginate');
+    return;
+  }
+
+  const delta = direction === 'prev' ? -1 : 1;
+  const targetIndex = bigQueryCurrentPageIndex + delta;
+  if (targetIndex < 0 || targetIndex >= bigQueryPageTokens.length) {
+    return;
+  }
+
+  const pageToken = bigQueryPageTokens[targetIndex] || null;
+  const qs = new URLSearchParams({
+    conversationId: convId,
+    projectId,
+    jobId: lastBigQueryJob.jobId,
+    maxResults: '1000',
+  });
+  if (lastBigQueryJob.location) {
+    qs.set('location', lastBigQueryJob.location);
+  }
+  if (pageToken) {
+    qs.set('pageToken', pageToken);
+  }
+
+  bigQueryPaging = true;
+  setStatus('Loading page...', true);
+  try {
+    const res = await apiFetch(`/api/bigquery/query/status?${qs.toString()}`, { silent: true });
+    if (!res) {
+      showToast('Failed to load page', { variant: 'error' });
+      setStatus('Paging failed', false);
+      return;
+    }
+
+    const data = await res.json();
+    if (!data.jobComplete) {
+      showToast('Query is still running');
+      setStatus('BigQuery job running...', true);
+      return;
+    }
+
+    lastBigQueryJob = data.job || lastBigQueryJob;
+    applyBigQueryPageState(data, pageToken);
+    setStatus(formatBigQueryStatus(data), false);
+    renderResults(data, { source: DATA_SOURCE_BIGQUERY });
+  } finally {
+    bigQueryPaging = false;
+  }
 }
 
 async function promptForFilename(defaultName, confirmLabel) {
@@ -1020,10 +1142,14 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   }).join('');
 
   const resultLabel = source === DATA_SOURCE_BIGQUERY ? 'preview row' : 'row';
+  const paginationControls = source === DATA_SOURCE_BIGQUERY ? buildBigQueryPaginationControls() : '';
 
   resultsContainer.innerHTML = `
     <div class="data-tab-results-header">
-      <span class="results-count">${rows.length} ${resultLabel}${rows.length !== 1 ? 's' : ''}</span>
+      <div class="data-tab-results-header-left">
+        <span class="results-count">${rows.length} ${resultLabel}${rows.length !== 1 ? 's' : ''}</span>
+        ${paginationControls}
+      </div>
       <div class="results-export-btns">
         ${buildResultsActions(source, columns)}
       </div>
@@ -1043,6 +1169,16 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
         cell.classList.add('copied');
         setTimeout(() => cell.classList.remove('copied'), 1000);
       });
+    });
+  });
+
+  resultsContainer.querySelectorAll('.results-page-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      haptic();
+      const direction = btn.dataset.bqPage;
+      if (direction === 'prev' || direction === 'next') {
+        void loadBigQueryPreviewPage(direction);
+      }
     });
   });
 

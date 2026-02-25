@@ -164,6 +164,43 @@ describe('bigquery helpers', () => {
     });
   });
 
+  it('serializes geojson from BigQuery geography WKT point values', async () => {
+    const payload = await serializeResults({
+      format: 'geojson',
+      columns: [
+        { name: 'Location', type: 'GEOGRAPHY' },
+      ],
+      rows: [
+        ['POINT(-72 40)'],
+      ],
+    });
+
+    const parsed = JSON.parse(payload.content);
+    assert.equal(parsed.type, 'FeatureCollection');
+    assert.equal(parsed.features.length, 1);
+    assert.deepEqual(parsed.features[0].geometry, {
+      type: 'Point',
+      coordinates: [-72, 40],
+    });
+  });
+
+  it('serializes WKT polygon geography values regardless of column name', async () => {
+    const payload = await serializeResults({
+      format: 'geojson',
+      columns: [
+        { name: 'ZoneShape', type: 'GEOGRAPHY' },
+      ],
+      rows: [
+        ['POLYGON((-72 40, -71 40, -71 41, -72 41, -72 40))'],
+      ],
+    });
+
+    const parsed = JSON.parse(payload.content);
+    assert.equal(parsed.features.length, 1);
+    assert.equal(parsed.features[0].geometry.type, 'Polygon');
+    assert.deepEqual(parsed.features[0].geometry.coordinates[0][0], [-72, 40]);
+  });
+
   it('serializes parquet as binary', async () => {
     const payload = await serializeResults({
       format: 'parquet',

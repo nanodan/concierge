@@ -149,6 +149,7 @@ export function showDialog({ title, message, input, defaultValue, placeholder, c
       dialogCancel.removeEventListener('click', onCancel);
       dialogOverlay.removeEventListener('click', onOverlay);
       dialogInput.removeEventListener('keydown', onKeydown);
+      document.removeEventListener('keydown', onGlobalKeydown, true);
     }
 
     function onOk() {
@@ -169,10 +170,22 @@ export function showDialog({ title, message, input, defaultValue, placeholder, c
       if (e.key === 'Enter') { e.preventDefault(); onOk(); }
     }
 
+    function onGlobalKeydown(e) {
+      if (dialogOverlay.classList.contains('hidden')) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onOk();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    }
+
     dialogOk.addEventListener('click', onOk);
     dialogCancel.addEventListener('click', onCancel);
     dialogOverlay.addEventListener('click', onOverlay);
     if (input) dialogInput.addEventListener('keydown', onKeydown);
+    document.addEventListener('keydown', onGlobalKeydown, true);
   });
 }
 
