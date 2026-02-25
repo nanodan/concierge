@@ -95,6 +95,12 @@ describe('convMeta', () => {
     const meta = convMeta(conv);
     assert.equal(meta.claudeForkSessionId, 'sess-parent');
   });
+
+  it('includes forkSourceCwd when present', () => {
+    const conv = { id: 'x', name: 'X', forkSourceCwd: '/repo/original', messages: [] };
+    const meta = convMeta(conv);
+    assert.equal(meta.forkSourceCwd, '/repo/original');
+  });
 });
 
 describe('stats cache', () => {

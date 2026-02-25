@@ -206,7 +206,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
   id, name, cwd, claudeSessionId, codexSessionId, status,
   archived, pinned, autopilot, sandboxed, useMemory,
   provider, model, createdAt,
-  messageCount, parentId, forkIndex,
+  messageCount, parentId, forkIndex, forkSourceCwd,
   lastMessage: { role, text, timestamp, cost, duration, sessionId }
 }
 ```

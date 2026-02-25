@@ -2,6 +2,7 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { processStreamEvent, MODELS } = require('../lib/claude');
 const { handleNoOutputClose } = require('../lib/providers/claude');
+const { buildInlineHistoryContext } = require('../lib/providers/claude')._private;
 
 describe('MODELS', () => {
   it('contains expected models', () => {
@@ -151,6 +152,27 @@ describe('processStreamEvent - tool calls', () => {
     const delta = sent.find(m => m.type === 'delta');
     assert.ok(delta.text.includes('(truncated)'));
     assert.ok(delta.text.length < longContent.length);
+  });
+});
+
+describe('buildInlineHistoryContext', () => {
+  it('rewrites inherited absolute paths when replacements are provided', () => {
+    const history = [
+      { role: 'user', text: 'Please update /Users/djlewis/Git/geoarch/fix_data.py' },
+      { role: 'assistant', text: 'I will write to /Users/djlewis/Git/geoarch/fix_data.py' },
+    ];
+
+    const context = buildInlineHistoryContext(history, '', {
+      pathReplacements: [
+        {
+          from: '/Users/djlewis/Git/geoarch',
+          to: '/Users/djlewis/Git/geoarch-xrd-ad4d4321',
+        },
+      ],
+    });
+
+    assert.ok(context.includes('/Users/djlewis/Git/geoarch-xrd-ad4d4321/fix_data.py'));
+    assert.ok(!context.includes('/Users/djlewis/Git/geoarch/fix_data.py'));
   });
 });
 

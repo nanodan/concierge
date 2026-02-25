@@ -106,6 +106,7 @@ public/css/
   messageCount: number,
   parentId: string,        // Fork parent
   forkIndex: number,       // Fork point
+  forkSourceCwd: string,   // Original cwd when forked into dedicated worktree
   lastMessage: { role, text, timestamp, cost, duration }
 }
 ```

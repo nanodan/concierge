@@ -275,6 +275,14 @@ async function clearInheritedForkSessionIfNeeded(conv, conversationId, providerI
   }
 }
 
+function hydrateForkSourceCwd(conv) {
+  if (!conv || conv.forkSourceCwd || !conv.parentId || !conv.cwd) return false;
+  const parent = conversations.get(conv.parentId);
+  if (!parent?.cwd || parent.cwd === conv.cwd) return false;
+  conv.forkSourceCwd = parent.cwd;
+  return true;
+}
+
 async function handleCancel(ws, msg) {
   const { conversationId } = msg;
 
@@ -323,6 +331,7 @@ async function handleMessage(ws, msg) {
       ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
       return;
     }
+    hydrateForkSourceCwd(conv);
 
     // Get the correct provider for this conversation
     const providerId = conv.provider || 'claude';
@@ -381,6 +390,7 @@ async function handleRegenerate(ws, msg) {
       ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
       return;
     }
+    hydrateForkSourceCwd(conv);
 
     // Get the correct provider for this conversation
     const providerId = conv.provider || 'claude';
@@ -442,6 +452,7 @@ async function handleEdit(ws, msg) {
       ws.send(JSON.stringify({ type: 'error', error: 'Conversation not found' }));
       return;
     }
+    hydrateForkSourceCwd(conv);
 
     // Get the correct provider for this conversation
     const providerId = conv.provider || 'claude';
