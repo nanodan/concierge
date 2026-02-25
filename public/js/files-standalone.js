@@ -385,9 +385,10 @@ export function initStandaloneFiles(elements) {
       loadDirectory(parent);
     },
     refreshButton: fileRefreshBtn,
-    onRefresh: () => {
+    onRefresh: async () => {
       haptic();
-      loadDirectory(currentPath);
+      await loadDirectory(currentPath);
+      await explorerShell?.refreshOpenFile();
     },
     uploadButton: uploadBtn,
     fileInput,

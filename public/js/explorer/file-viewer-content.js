@@ -196,6 +196,7 @@ function renderGeoPreview(container, {
   rawDisabled = false,
   rawPreviewSize = null,
   formatFileSize,
+  onRefresh = null,
 }) {
   const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
   const rawText = escapeHtml(toSafeString(rawContent));
@@ -265,6 +266,7 @@ function renderGeoPreview(container, {
             ${sizeOptionsHtml}
           </select>
           <button class="geo-preview-fit-btn" data-role="geo-fit" title="Return to bounds">Fit</button>
+          <button class="geo-preview-fit-btn geo-preview-refresh-btn" data-role="geo-refresh" title="Reload file from disk">Refresh</button>
         </div>
         <div class="geo-preview-view-toggle" role="tablist" aria-label="Geo preview mode">
           <button class="geo-preview-view-btn active" data-view="map" role="tab" aria-selected="true">Map</button>
@@ -306,6 +308,7 @@ function renderGeoPreview(container, {
   const colorSelect = container.querySelector('[data-role="geo-color-by"]');
   const sizeSelect = container.querySelector('[data-role="geo-size-by"]');
   const fitBtn = container.querySelector('[data-role="geo-fit"]');
+  const refreshBtn = container.querySelector('[data-role="geo-refresh"]');
 
   const setSelectedRow = (fid) => {
     if (!tableRows.length) return;
@@ -354,6 +357,21 @@ function renderGeoPreview(container, {
   if (fitBtn) {
     fitBtn.addEventListener('click', () => {
       fitGeoPreviewToBounds(container);
+    });
+  }
+
+  if (refreshBtn && typeof onRefresh === 'function') {
+    refreshBtn.addEventListener('click', async () => {
+      if (refreshBtn.disabled) return;
+      refreshBtn.disabled = true;
+      const originalLabel = refreshBtn.textContent;
+      refreshBtn.textContent = 'Refreshing...';
+      try {
+        await onRefresh();
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = originalLabel;
+      }
     });
   }
 
@@ -485,6 +503,7 @@ export function renderFileViewerContent({
   imageExts,
   previewableExts = DEFAULT_PREVIEWABLE_EXTS,
   enableCopyCells = true,
+  onRefresh = null,
 }) {
   if (!container || !data || !context) return false;
 
@@ -582,6 +601,7 @@ export function renderFileViewerContent({
         rawDisabled: !!data.rawTruncated,
         rawPreviewSize: data.rawPreviewSize,
         formatFileSize,
+        onRefresh,
       });
       return true;
     }

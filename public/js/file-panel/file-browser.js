@@ -178,9 +178,10 @@ export function setupFileBrowserEventListeners() {
       loadFileTree(parent);
     },
     refreshButton: filePanelRefreshBtn,
-    onRefresh: () => {
+    onRefresh: async () => {
       haptic();
-      loadFileTree(currentPath);
+      await loadFileTree(currentPath);
+      await explorerShell?.refreshOpenFile();
     },
     uploadButton: filePanelUploadBtn,
     fileInput: filePanelFileInput,

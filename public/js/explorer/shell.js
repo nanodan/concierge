@@ -64,6 +64,7 @@ export function createExplorerShell({
   let currentPath = '';
   let viewableFiles = [];
   let currentFileIndex = -1;
+  let currentFilePath = '';
 
   const viewerNavigation = createFileViewerNavigation({
     fileViewer: viewer,
@@ -168,6 +169,8 @@ export function createExplorerShell({
     if (!context.isAvailable()) return false;
     if (!viewer || !viewerContent || !viewerName) return false;
 
+    currentFilePath = filePath;
+
     const geoCleanup = viewerContent?._geoPreviewCleanup;
     if (typeof geoCleanup === 'function') {
       geoCleanup();
@@ -208,6 +211,7 @@ export function createExplorerShell({
       formatFileSize,
       imageExts,
       enableCopyCells: true,
+      onRefresh: () => viewFile(filePath),
     });
 
     return true;
@@ -231,6 +235,7 @@ export function createExplorerShell({
     onViewerWillClose();
     viewer.classList.remove('open');
     currentFileIndex = -1;
+    currentFilePath = '';
 
     setTimeout(() => {
       viewer.classList.add('hidden');
@@ -239,11 +244,17 @@ export function createExplorerShell({
     }, closeDelayMs);
   }
 
+  async function refreshOpenFile() {
+    if (!currentFilePath || !isViewerOpen()) return false;
+    return viewFile(currentFilePath);
+  }
+
   return {
     setCurrentPath,
     getCurrentPath,
     loadDirectory,
     refreshDirectory,
+    refreshOpenFile,
     uploadFiles,
     viewFile,
     closeViewer,
