@@ -17,6 +17,7 @@ A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://
 
 ### Conversation Management
 - **Conversation forking** - Fork from any message to explore alternative paths
+- **Worktree forks** - Optionally fork into a dedicated git worktree to isolate changes
 - **Branch visualization** - Visual tree of conversation forks with navigation
 - **Edit auto-fork** - Editing a message creates a fork instead of losing history
 - **Memory system** - Save important context that persists across conversations (global or per-project)
@@ -177,6 +178,7 @@ concierge/
 ├── test/                  # Unit tests
 └── docs/
     ├── ARCHITECTURE.md    # System architecture
+    ├── FEATURES.md        # Feature inventory
     └── REFERENCE.md       # Developer quick reference
 ```
 
@@ -190,6 +192,7 @@ npm run lint  # Run ESLint
 ## Documentation
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - Detailed system design, data flow, APIs, and component breakdown
+- [Feature Catalog](docs/FEATURES.md) - Canonical list of user-facing capabilities
 - [Developer Reference](docs/REFERENCE.md) - Quick-reference for file map, data models, functions, and common patterns
 
 ## License

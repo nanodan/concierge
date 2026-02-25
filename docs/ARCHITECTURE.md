@@ -296,7 +296,7 @@ Supported file types:
 - **CSV/TSV** - Parsed and rendered as tables
 - **Parquet** - Decoded using parquetjs-lite, rendered as tables
 - **Jupyter Notebooks (.ipynb)** - Rendered with code cells and outputs
-- **GeoJSON/TopoJSON/JSONL/NDJSON** - Map viewer (Map/Raw toggle, basemap switch, feature hover/details, fit-to-bounds)
+- **GeoJSON/JSON/JSONL/NDJSON** - Map viewer for GeoJSON-compatible payloads (Map/Raw toggle, basemap switch, feature hover/details, fit-to-bounds)
 - **Images** - Displayed inline via download/content URL
 
 **Live Web Preview Server:**
