@@ -39,7 +39,8 @@ export const MARKDOWN_CACHE_SIZE = 500;      // Max cached markdown entries
 
 // File panel constraints
 export const FILE_PANEL_MIN_WIDTH = 280;     // Minimum panel width (px)
-export const FILE_PANEL_MAX_WIDTH = 800;     // Maximum panel width (px)
+export const FILE_PANEL_MAX_WIDTH = 2400;    // Hard safety cap for panel width (px)
+export const FILE_PANEL_MIN_CHAT_WIDTH = 240; // Keep at least this much chat area visible (px)
 export const FILE_PANEL_MIN_HEIGHT = 100;    // Minimum panel height (px)
 
 // WebSocket reconnect parameters
