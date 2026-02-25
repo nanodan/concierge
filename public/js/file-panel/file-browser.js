@@ -21,7 +21,7 @@ const ICONS = createExplorerIcons({
 });
 
 // Data files that can be loaded into DuckDB
-const DATA_FILE_EXTS = new Set(['csv', 'tsv', 'parquet', 'json', 'jsonl']);
+const DATA_FILE_EXTS = new Set(['csv', 'tsv', 'parquet', 'json', 'jsonl', 'geojson']);
 
 // Callback for when a file is loaded to data tab (set by data.js)
 let onFileLoadedToDataTab = null;

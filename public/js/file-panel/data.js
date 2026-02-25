@@ -670,7 +670,7 @@ async function dropTable(tableName) {
 function showLoadTableDialog() {
   if (switchToFilesTabFn) {
     switchToFilesTabFn();
-    showToast('Click the table icon on CSV/JSON/Parquet files to load');
+    showToast('Click the table icon on CSV/TSV/JSON/GeoJSON/Parquet files to load');
   } else {
     showToast('Browse files in Files tab to load data');
   }

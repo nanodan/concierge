@@ -35,6 +35,18 @@ let resizeRafId = null; // For throttling resize updates
 let resizeEndTimeout = null; // For detecting resize end
 let scrollEndTimeout = null; // For detecting scroll end
 
+function encodePreviewFilePath(filePath) {
+  if (!filePath) return '';
+  return filePath.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+}
+
+function buildPreviewFileUrl(port, filePath) {
+  const encodedPath = encodePreviewFilePath(filePath);
+  return encodedPath
+    ? `http://localhost:${port}/${encodedPath}`
+    : `http://localhost:${port}`;
+}
+
 /**
  * Initialize preview elements
  */
@@ -184,7 +196,7 @@ function handleFileSelect() {
 
   // Update state
   previewState.currentFile = selectedFile;
-  const newUrl = `http://localhost:${previewState.port}/${selectedFile}`;
+  const newUrl = buildPreviewFileUrl(previewState.port, selectedFile);
   previewState.url = newUrl;
 
   // Update UI

@@ -248,7 +248,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 **Data Analysis (DuckDB + BigQuery):**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/duckdb/load` | Load local CSV/Parquet/JSON data file into DuckDB |
+| `POST` | `/api/duckdb/load` | Load local CSV/TSV/Parquet/JSON/GeoJSON data file into DuckDB |
 | `POST` | `/api/duckdb/query` | Run SQL query against loaded DuckDB tables |
 | `POST` | `/api/duckdb/export` | Download DuckDB query result (`csv|json|parquet`) |
 | `GET` | `/api/duckdb/tables` | List loaded DuckDB tables |

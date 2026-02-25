@@ -52,6 +52,7 @@ describe('duckdb module', () => {
     it('returns true for JSON files', () => {
       assert.equal(duckdb.isSupportedFile('data.json'), true);
       assert.equal(duckdb.isSupportedFile('data.jsonl'), true);
+      assert.equal(duckdb.isSupportedFile('data.geojson'), true);
     });
 
     it('returns false for unsupported files', () => {
@@ -68,6 +69,7 @@ describe('duckdb module', () => {
       assert.equal(duckdb.SUPPORTED_EXTENSIONS.has('.parquet'), true);
       assert.equal(duckdb.SUPPORTED_EXTENSIONS.has('.json'), true);
       assert.equal(duckdb.SUPPORTED_EXTENSIONS.has('.jsonl'), true);
+      assert.equal(duckdb.SUPPORTED_EXTENSIONS.has('.geojson'), true);
     });
   });
 
@@ -88,6 +90,33 @@ describe('duckdb module', () => {
 
       assert.ok(result.tableName.startsWith('test_'));
       assert.equal(Number(result.rowCount), 3);
+    });
+
+    it('loads a GeoJSON file into a table', async () => {
+      const geojsonPath = path.join(tmpDir, 'points.geojson');
+      const geojsonContent = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: { id: 1, name: 'alpha' },
+            geometry: { type: 'Point', coordinates: [-72.0, 40.0] }
+          },
+          {
+            type: 'Feature',
+            properties: { id: 2, name: 'beta' },
+            geometry: { type: 'Point', coordinates: [-73.0, 41.0] }
+          }
+        ]
+      };
+      fs.writeFileSync(geojsonPath, JSON.stringify(geojsonContent));
+
+      const result = await duckdb.loadFile(geojsonPath, 'geo_data');
+
+      assert.equal(result.tableName, 'geo_data');
+      assert.equal(Number(result.rowCount), 2);
+      assert.ok(result.columns.some(col => col.name === 'geometry'));
+      assert.ok(result.columns.some(col => col.name === 'properties'));
     });
 
     it('throws error for non-existent file', async () => {
