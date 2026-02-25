@@ -271,6 +271,7 @@ export async function forkConversation(fromMessageIndex) {
   if (!currentConversationId) return;
 
   let forkWorkspaceMode = 'same';
+  let forkCopyLocalState = false;
   const useWorktree = await showDialog({
     title: 'Fork Workspace',
     message: 'Create this fork in a dedicated git worktree? This avoids file conflicts between chats.',
@@ -280,6 +281,13 @@ export async function forkConversation(fromMessageIndex) {
 
   if (useWorktree === true) {
     forkWorkspaceMode = 'worktree';
+    const copyLocalState = await showDialog({
+      title: 'Copy Local State?',
+      message: 'Include uncommitted changes and local untracked/ignored files in the new worktree?',
+      confirmLabel: 'Copy Local State',
+      cancelLabel: 'Start Clean',
+    });
+    forkCopyLocalState = copyLocalState === true;
   } else {
     const proceedSame = await showDialog({
       title: 'Fork In Same Workspace?',
@@ -293,7 +301,7 @@ export async function forkConversation(fromMessageIndex) {
   const res = await apiFetch(`/api/conversations/${currentConversationId}/fork`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fromMessageIndex, forkWorkspaceMode }),
+    body: JSON.stringify({ fromMessageIndex, forkWorkspaceMode, forkCopyLocalState }),
   });
   if (!res) return;
   const conv = await res.json();
@@ -302,7 +310,10 @@ export async function forkConversation(fromMessageIndex) {
   await copyQueryHistory(currentConversationId, conv.id);
 
   if (conv.workspaceMode === 'worktree') {
-    showToast(`Forked in new worktree: ${conv.cwd}`, { duration: 2200 });
+    const copied = conv.copiedLocalState
+      ? ` (copied local state${conv.copiedLocalPathCount ? `, ${conv.copiedLocalPathCount} local path${conv.copiedLocalPathCount === 1 ? '' : 's'}` : ''})`
+      : '';
+    showToast(`Forked in new worktree: ${conv.cwd}${copied}`, { duration: 2600 });
   } else {
     showToast('Forked conversation', { duration: 1500 });
   }

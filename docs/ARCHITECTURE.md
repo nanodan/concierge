@@ -224,7 +224,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 | `GET` | `/api/conversations/semantic-search` | Semantic search by meaning |
 | `GET` | `/api/conversations/:id/tree` | Branch tree (forks) |
 | `GET` | `/api/conversations/:id/export` | Export as markdown/JSON |
-| `POST` | `/api/conversations/:id/fork` | Fork from message index |
+| `POST` | `/api/conversations/:id/fork` | Fork from message index (same workspace or worktree, optional local-state copy) |
 | `POST` | `/api/conversations/:id/compress` | Compress old messages |
 | `GET` | `/api/providers` | List available providers |
 | `GET` | `/api/providers/:id/models` | Get models for a provider |

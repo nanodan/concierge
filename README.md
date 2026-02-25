@@ -17,7 +17,7 @@ A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://
 
 ### Conversation Management
 - **Conversation forking** - Fork from any message to explore alternative paths
-- **Worktree forks** - Optionally fork into a dedicated git worktree to isolate changes
+- **Worktree forks** - Optionally fork into a dedicated git worktree to isolate changes, with optional local-state copy (uncommitted + local files)
 - **Branch visualization** - Visual tree of conversation forks with navigation
 - **Edit auto-fork** - Editing a message creates a fork instead of losing history
 - **Memory system** - Save important context that persists across conversations (global or per-project)
