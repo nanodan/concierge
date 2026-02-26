@@ -119,9 +119,10 @@
 
 .conv-card-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 4px;
+  min-width: 0;
 }
 
 .conv-card-name {
@@ -129,6 +130,10 @@
   font-weight: 600;
   font-size: 17px;
   letter-spacing: -0.02em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Pin icon */
@@ -147,12 +152,13 @@
   font-size: 12px;
   color: var(--text-secondary);
   flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .conv-card-branch-badge {
   display: inline-flex;
   align-items: center;
-  margin-left: 8px;
   padding: 1px 7px;
   border-radius: 999px;
   font-size: 10px;
@@ -181,8 +187,7 @@
 }
 
 .conv-card-branches-btn {
-  margin-left: auto;
-  margin-right: 8px;
+  margin: 0;
 }
 
 .stack-branches-btn {
@@ -462,8 +467,7 @@
   background: var(--accent);
   padding: 3px 8px;
   border-radius: 10px;
-  margin-left: auto;
-  margin-right: 8px;
+  margin: 0;
   flex-shrink: 0;
   min-width: 70px;
   text-align: center;

@@ -548,7 +548,6 @@ export function renderConversationList(items) {
           ${renderCard(mostRecent, { inStack: true })}
           <div class="stack-shadow-1"></div>
           <div class="stack-shadow-2"></div>
-          ${hasWorktree ? '<span class="stack-worktree-pill" title="Contains dedicated worktree branches">branches</span>' : ''}
           <button class="stack-branches-btn" data-root-id="${rootId}" aria-label="View branches for this fork family" title="View branches">Branches</button>
           <span class="stack-count">+${forkCount}</span>
         </div>
