@@ -187,19 +187,29 @@ function buildBreadcrumbSegments(pathValue) {
   return [{ label: normalized, path: normalized }];
 }
 
+function formatPathSummary(pathValue) {
+  const normalized = normalizePathValue(pathValue);
+  if (!normalized || normalized === '/') return '/';
+
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return '/';
+  return parts[parts.length - 1];
+}
+
 function renderBreadcrumbs() {
   if (!dirBreadcrumbs) return;
   const currentPath = state.getCurrentBrowsePath() || convCwdInput?.value || '';
   const segments = buildBreadcrumbSegments(currentPath);
+  const hasRootSegment = segments.length > 0 && segments[0].label === '/';
   dirBreadcrumbs.innerHTML = segments.map((segment, index) => {
-    const separator = index < segments.length - 1
-      ? '<span class="dir-breadcrumb-sep">/</span>'
-      : '';
+    const separator = hasRootSegment
+      ? (index > 1 ? '<span class="dir-breadcrumb-sep">/</span>' : '')
+      : (index > 0 ? '<span class="dir-breadcrumb-sep">/</span>' : '');
     return (
-      `<button type="button" class="dir-breadcrumb-btn" data-path="${escapeHtml(segment.path)}">`
+      separator
+      + `<button type="button" class="dir-breadcrumb-btn" data-path="${escapeHtml(segment.path)}">`
       + `${escapeHtml(segment.label)}`
       + '</button>'
-      + separator
     );
   }).join('');
 }
@@ -244,7 +254,7 @@ function renderRecents() {
   renderPathChipSection(dirRecents, dirRecentsList, recents, 'dir-recent-chip');
 }
 
-function updateActiveDirItem() {
+function updateActiveDirItem({ ensureVisible = false } = {}) {
   if (!dirList) return;
   const items = dirList.querySelectorAll('.dir-item');
   if (!items.length) {
@@ -261,6 +271,9 @@ function updateActiveDirItem() {
     item.setAttribute('aria-selected', isActive ? 'true' : 'false');
     if (isActive) {
       dirList.setAttribute('aria-activedescendant', item.id);
+      if (ensureVisible && typeof item.scrollIntoView === 'function') {
+        item.scrollIntoView({ block: 'nearest' });
+      }
     }
   });
 }
@@ -346,7 +359,10 @@ async function applyBrowseData(payload, { preserveFilter = false } = {}) {
   currentDirs = Array.isArray(payload.dirs) ? [...payload.dirs] : [];
   currentDirs.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
-  if (dirCurrentPath) dirCurrentPath.textContent = payload.path;
+  if (dirCurrentPath) {
+    dirCurrentPath.textContent = formatPathSummary(payload.path);
+    dirCurrentPath.title = payload.path;
+  }
   if (convCwdInput) convCwdInput.value = payload.path;
   setCwdInputValidity(true);
   if (!preserveFilter && dirFilterInput) dirFilterInput.value = '';
@@ -481,20 +497,20 @@ function queueDeepSearch(force = false) {
   }, DEEP_SEARCH_DEBOUNCE_MS);
 }
 
-function setActiveIndex(nextIndex) {
+function setActiveIndex(nextIndex, { ensureVisible = false } = {}) {
   if (filteredDirs.length === 0) {
     activeDirIndex = -1;
     updateActiveDirItem();
     return;
   }
   activeDirIndex = Math.max(0, Math.min(filteredDirs.length - 1, nextIndex));
-  updateActiveDirItem();
+  updateActiveDirItem({ ensureVisible });
 }
 
 function moveActiveIndex(delta) {
   if (filteredDirs.length === 0) return;
   const start = activeDirIndex < 0 ? 0 : activeDirIndex;
-  setActiveIndex(start + delta);
+  setActiveIndex(start + delta, { ensureVisible: true });
 }
 
 async function openActiveDirectory() {
