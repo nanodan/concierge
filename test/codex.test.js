@@ -1,6 +1,12 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { processCodexEvent, MODELS, handleNoOutputClose } = require('../lib/providers/codex');
+const {
+  processCodexEvent,
+  MODELS,
+  handleNoOutputClose,
+  partitionAttachments,
+  buildFileAttachmentPrompt,
+} = require('../lib/providers/codex');
 
 describe('Codex MODELS', () => {
   it('contains expected models', () => {
@@ -19,6 +25,37 @@ describe('Codex MODELS', () => {
       assert.ok(typeof model.context === 'number', 'model should have numeric context');
       assert.ok(model.context > 0, 'context should be positive');
     }
+  });
+});
+
+describe('Codex attachment helpers', () => {
+  it('partitions image and non-image attachments with valid paths', () => {
+    const result = partitionAttachments([
+      { path: '/tmp/a.png' },
+      { path: '/tmp/b.jpeg' },
+      { path: '/tmp/c.pdf' },
+      { path: '/tmp/d.txt' },
+      { path: null },
+      {},
+    ]);
+
+    assert.deepEqual(result.imageAttachments.map((item) => item.path), ['/tmp/a.png', '/tmp/b.jpeg']);
+    assert.deepEqual(result.fileAttachments.map((item) => item.path), ['/tmp/c.pdf', '/tmp/d.txt']);
+  });
+
+  it('builds non-image attachment prompt block', () => {
+    const text = buildFileAttachmentPrompt([
+      { path: '/tmp/report.pdf' },
+      { path: '/tmp/data.csv' },
+    ]);
+
+    assert.ok(text.includes('[Attached files'));
+    assert.ok(text.includes('/tmp/report.pdf'));
+    assert.ok(text.includes('/tmp/data.csv'));
+  });
+
+  it('returns empty prompt block when no files are provided', () => {
+    assert.equal(buildFileAttachmentPrompt([]), '');
   });
 });
 

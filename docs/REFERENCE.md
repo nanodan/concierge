@@ -126,7 +126,7 @@ public/css/
   role: 'user',
   text: string,
   timestamp: number,
-  attachments: [{ filename, url }]  // optional
+  attachments: [{ path, filename, url }]  // optional
 }
 ```
 
@@ -235,7 +235,7 @@ public/css/
 | `loadConversations()` | conversations.js | Fetch + render list |
 | `openConversation(id)` | conversations.js | Load + display conversation |
 | `forkConversation(idx)` | conversations.js | Fork from message |
-| `sendMessage(text)` | ui.js | Send with attachments |
+| `sendMessage(text)` | ui.js | Send with local uploads or pre-attached server files |
 | `renderMarkdown(text)` | markdown.js | Markdown → HTML |
 
 ---

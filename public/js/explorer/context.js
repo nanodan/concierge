@@ -67,6 +67,12 @@ export function createConversationContext(conversationIdOrGetter) {
       return withQuery(`/api/conversations/${conversationId}/upload`, { filename });
     },
 
+    getAttachExistingFilesUrl() {
+      const conversationId = getConversationId();
+      if (!conversationId) return null;
+      return `/api/conversations/${conversationId}/attachments/from-files`;
+    },
+
     getGitUrl(endpoint) {
       const conversationId = getConversationId();
       if (!conversationId) return null;

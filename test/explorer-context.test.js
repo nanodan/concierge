@@ -30,6 +30,10 @@ describe('explorer context adapters', async () => {
       '/api/conversations/conv-123/upload?filename=a+b.txt'
     );
     assert.equal(
+      context.getAttachExistingFilesUrl(),
+      '/api/conversations/conv-123/attachments/from-files'
+    );
+    assert.equal(
       context.getFileSearchUrl('hello world'),
       '/api/conversations/conv-123/files/search?q=hello+world'
     );

@@ -416,11 +416,11 @@
 }
 
 /* Load to Data tab button */
-.file-tree-load-data-btn {
+.file-tree-load-data-btn,
+.file-tree-attach-btn {
   display: none;
   background: none;
   border: none;
-  color: var(--accent);
   min-width: 32px;
   min-height: 32px;
   padding: 0;
@@ -432,9 +432,23 @@
   border-radius: 6px;
 }
 
+.file-tree-load-data-btn {
+  color: var(--accent);
+}
+
+.file-tree-attach-btn {
+  color: var(--text-secondary);
+}
+
 .file-tree-load-data-btn:hover {
   opacity: 1;
   background: var(--accent-bg);
+}
+
+.file-tree-attach-btn:hover {
+  opacity: 1;
+  background: var(--hover-bg);
+  color: var(--text);
 }
 
 .file-tree-load-data-btn:active {
@@ -443,15 +457,23 @@
   color: var(--bg);
 }
 
+.file-tree-attach-btn:active {
+  opacity: 1;
+  background: var(--active-bg, var(--hover-bg));
+}
+
 .file-tree-item:hover .file-tree-load-data-btn,
-.file-tree-item:focus-within .file-tree-load-data-btn {
+.file-tree-item:focus-within .file-tree-load-data-btn,
+.file-tree-item:hover .file-tree-attach-btn,
+.file-tree-item:focus-within .file-tree-attach-btn {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 @media (hover: none) {
-  .file-tree-load-data-btn {
+  .file-tree-load-data-btn,
+  .file-tree-attach-btn {
     display: flex;
     align-items: center;
     justify-content: center;

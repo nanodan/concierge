@@ -98,6 +98,17 @@ export let semanticSearchEnabled = localStorage.getItem('semanticSearch') === 't
 
 // Pending attachments
 export let pendingAttachments = [];
+const PENDING_ATTACHMENTS_EVENT = 'pending-attachments-changed';
+
+function maybeRevokeObjectUrl(url) {
+  if (typeof url !== 'string') return;
+  if (!url.startsWith('blob:')) return;
+  URL.revokeObjectURL(url);
+}
+
+function emitPendingAttachmentsChanged() {
+  window.dispatchEvent(new CustomEvent(PENDING_ATTACHMENTS_EVENT));
+}
 
 // Directory browser
 export let currentBrowsePath = '';
@@ -597,6 +608,7 @@ export function toggleSemanticSearch() {
 
 export function setPendingAttachments(attachments) {
   pendingAttachments = attachments;
+  emitPendingAttachmentsChanged();
 }
 
 export function getPendingAttachments() {
@@ -605,18 +617,23 @@ export function getPendingAttachments() {
 
 export function addPendingAttachment(att) {
   pendingAttachments.push(att);
+  emitPendingAttachmentsChanged();
 }
 
 export function removePendingAttachment(idx) {
-  if (pendingAttachments[idx]?.previewUrl) {
-    URL.revokeObjectURL(pendingAttachments[idx].previewUrl);
-  }
+  maybeRevokeObjectUrl(pendingAttachments[idx]?.previewUrl);
   pendingAttachments.splice(idx, 1);
+  emitPendingAttachmentsChanged();
 }
 
 export function clearPendingAttachments() {
-  pendingAttachments.forEach(a => { if (a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+  pendingAttachments.forEach(a => maybeRevokeObjectUrl(a.previewUrl));
   pendingAttachments = [];
+  emitPendingAttachmentsChanged();
+}
+
+export function getPendingAttachmentsEventName() {
+  return PENDING_ATTACHMENTS_EVENT;
 }
 
 export function setCurrentBrowsePath(path) {

@@ -67,6 +67,52 @@ async function loadFileToDataTab(filePath) {
   }
 }
 
+async function attachExistingFileToChat(filePath) {
+  if (!fileBrowserContext.isAvailable()) {
+    showToast('No conversation selected', { variant: 'error' });
+    return;
+  }
+
+  const url = fileBrowserContext.getAttachExistingFilesUrl?.();
+  if (!url) {
+    showToast('Unable to attach file', { variant: 'error' });
+    return;
+  }
+
+  const res = await apiFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths: [filePath] }),
+  });
+  if (!res) return;
+
+  const data = await res.json();
+  const attachments = Array.isArray(data.attachments) ? data.attachments : [];
+  const failed = Array.isArray(data.failed) ? data.failed : [];
+
+  if (attachments.length === 0) {
+    showToast(data.error || failed[0]?.error || 'Failed to attach file', { variant: 'error' });
+    return;
+  }
+
+  for (const attachment of attachments) {
+    if (!attachment?.path || !attachment?.filename) continue;
+    const ext = (attachment.filename.split('.').pop() || '').toLowerCase();
+    state.addPendingAttachment({
+      kind: 'server',
+      attachment,
+      name: attachment.filename,
+      previewUrl: IMAGE_EXTS.has(ext) ? attachment.url : undefined,
+    });
+  }
+
+  const fileCount = attachments.length;
+  showToast(`Attached ${fileCount} file${fileCount > 1 ? 's' : ''} to chat`);
+  if (failed.length > 0) {
+    showToast(`Skipped ${failed.length} file${failed.length > 1 ? 's' : ''}: ${failed[0].error}`, { variant: 'error' });
+  }
+}
+
 // DOM elements (set by init)
 let filePanelUp = null;
 let filePanelPath = null;
@@ -135,16 +181,30 @@ export function initFileBrowser(elements) {
       return baseCwd ? `${baseCwd}/${entry.path}` : entry.path;
     },
     getExtraButtonHtml: (entry) => {
+      const isFile = entry.type === 'file';
       const isDataFile = entry.type === 'file' && DATA_FILE_EXTS.has(entry.ext);
-      if (!isDataFile) return '';
-      return `<button class="file-tree-load-data-btn" title="Load to Data tab">
+      if (!isFile) return '';
+
+      const attachButton = `<button class="file-tree-extra-btn file-tree-attach-btn" data-action="attach" title="Attach to chat">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.65l-9.2 9.2a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>`;
+
+      if (!isDataFile) return attachButton;
+      const dataButton = `<button class="file-tree-extra-btn file-tree-load-data-btn" data-action="data" title="Load to Data tab">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6"/><path d="M9 15h6"/><path d="M9 12h6"/></svg>
       </button>`;
+      return attachButton + dataButton;
     },
-    extraButtonSelector: '.file-tree-load-data-btn',
-    onExtra: async (entry) => {
+    extraButtonSelector: '.file-tree-extra-btn',
+    onExtra: async (entry, button) => {
       haptic();
-      await loadFileToDataTab(entry.path);
+      if (button?.dataset.action === 'data') {
+        await loadFileToDataTab(entry.path);
+        return;
+      }
+      if (button?.dataset.action === 'attach') {
+        await attachExistingFileToChat(entry.path);
+      }
     },
     onItemActivate: () => haptic(5),
     onDirectoryPathChanged: (path) => {
