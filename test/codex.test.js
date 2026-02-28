@@ -95,6 +95,32 @@ describe('processCodexEvent - item.completed', () => {
     assert.equal(result.assistantText, 'Here is my response.');
   });
 
+  it('closes open traces before appending agent_message text', () => {
+    const conv = { messages: [], status: 'thinking' };
+    const started = {
+      type: 'item.started',
+      item: {
+        type: 'tool_use',
+        name: 'command_execution',
+        id: 'tool-open-1',
+        input: { command: 'ls -1' },
+      },
+    };
+    const agent = {
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: 'Summary outside trace.',
+      },
+    };
+
+    let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
+    result = processCodexEvent(fakeWs, 'c', conv, agent, result.assistantText, onSave, broadcastStatus);
+
+    assert.ok(result.assistantText.includes(':::trace'));
+    assert.ok(result.assistantText.includes('\n:::\n\nSummary outside trace.'));
+  });
+
   it('accumulates assistant text across multiple messages', () => {
     const conv = { messages: [], status: 'thinking' };
     const event1 = {
@@ -485,6 +511,24 @@ describe('processCodexEvent - turn.completed', () => {
     assert.ok(toolStart);
     assert.ok(toolResult);
     assert.ok(result.assistantText.includes(':::trace'));
+  });
+
+  it('handles agent_message entries in turn.completed items without misclassifying tool results', () => {
+    const conv = { codexSessionId: 'sess-123', messages: [], status: 'thinking', model: 'gpt-5.3-codex' };
+    const event = {
+      type: 'turn.completed',
+      items: [
+        { type: 'tool_use', id: 'tool-batch-2', name: 'command_execution', input: { command: 'ls -1' } },
+        { type: 'agent_message', output: [{ type: 'output_text', text: 'Final explanation.' }] },
+      ],
+      usage: { input_tokens: 30, output_tokens: 15 },
+    };
+    processCodexEvent(fakeWs, 'conv-1', conv, event, '', onSave, broadcastStatus);
+
+    const toolResults = sent.filter(m => m.type === 'tool_result');
+    assert.equal(toolResults.length, 0);
+    assert.ok(conv.messages[0].text.includes('Final explanation.'));
+    assert.ok(conv.messages[0].text.includes('\n:::\n\nFinal explanation.'));
   });
 
   it('marks empty 0/0 resumed turn for fresh-session retry when enabled', () => {
