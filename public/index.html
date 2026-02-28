@@ -538,8 +538,27 @@
           <div class="dir-browser-header">
             <button type="button" id="dir-up-btn" class="btn-icon" aria-label="Parent directory">&#x2191;</button>
             <span id="dir-current-path" class="dir-current-path"></span>
+            <button type="button" id="dir-favorite-toggle" class="btn-icon" aria-label="Toggle favorite directory" title="Toggle favorite">&#9734;</button>
           </div>
-          <div id="dir-list" class="dir-list"></div>
+          <div class="dir-browser-search-row">
+            <input type="text" id="dir-filter-input" class="dir-filter-input" placeholder="Filter folders..." autocomplete="off">
+            <button type="button" id="dir-deep-search-btn" class="btn-secondary btn-sm">Search deeper</button>
+          </div>
+          <div id="dir-breadcrumbs" class="dir-breadcrumbs" aria-label="Directory breadcrumbs"></div>
+          <div id="dir-favorites" class="dir-section hidden">
+            <div class="dir-section-title">Favorites</div>
+            <div id="dir-favorites-list" class="dir-chip-list"></div>
+          </div>
+          <div id="dir-recents" class="dir-section hidden">
+            <div class="dir-section-title">Recent</div>
+            <div id="dir-recents-list" class="dir-chip-list"></div>
+          </div>
+          <div id="dir-search-results" class="dir-section hidden">
+            <div class="dir-section-title">Matches in subfolders</div>
+            <div id="dir-search-results-list" class="dir-list dir-list-compact"></div>
+          </div>
+          <div id="dir-list" class="dir-list" role="listbox" tabindex="0" aria-label="Directories"></div>
+          <div id="dir-status" class="dir-status" aria-live="polite"></div>
           <div class="dir-browser-actions">
             <button type="button" id="dir-new-btn" class="btn-secondary btn-sm">New Folder</button>
             <button type="button" id="dir-select-btn" class="btn-primary btn-sm">Select</button>

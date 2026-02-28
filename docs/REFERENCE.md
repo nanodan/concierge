@@ -19,7 +19,7 @@ lib/
     index.js           # Route setup
     conversations.js   # CRUD, export, fork, compress, search
     git.js             # Git operations
-    files.js           # File browser
+    files.js           # File browser + cwd picker (browse + recursive search)
     memory.js          # Memory system
     capabilities.js    # Model/CLI capabilities
     preview.js         # Live web preview server controls

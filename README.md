@@ -8,6 +8,7 @@ A mobile-first PWA for AI-assisted development. Chat with [Claude Code](https://
 
 ### Project Integration
 - **File browser** - Browse and view files in the conversation's working directory
+- **Directory picker** - New-chat cwd chooser with breadcrumbs, fuzzy filtering, deep recursive search, favorites, and keyboard navigation
 - **File preview** - View text/code, Markdown, JSON, images, CSV/TSV, Parquet, Jupyter notebooks, and geospatial files inline
 - **Geospatial map viewer** - Interactive GeoJSON/JSONL map mode with Map/Raw toggle, basemap switcher, thematic styling, feature hover metadata, and fit-to-bounds controls
 - **Git integration** - Full git workflow: status, stage/unstage, commit, push/pull, branches, stash
