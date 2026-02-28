@@ -1,0 +1,255 @@
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const path = require('path');
+const os = require('os');
+const fs = require('fs').promises;
+
+const { requireWithMocks } = require('./helpers/require-with-mocks.cjs');
+
+async function startServer(app) {
+  return new Promise((resolve) => {
+    const server = app.listen(0, () => resolve(server));
+  });
+}
+
+async function stopServer(server) {
+  if (!server) return;
+  await new Promise((resolve) => server.close(resolve));
+}
+
+async function requestJson(baseUrl, method, routePath, body) {
+  const response = await fetch(`${baseUrl}${routePath}`, {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: body == null ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  return {
+    status: response.status,
+    body: text ? JSON.parse(text) : null,
+  };
+}
+
+function isInside(baseCwd, targetPath) {
+  const rel = path.relative(path.resolve(baseCwd), path.resolve(targetPath));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+function createFileRouteFixture() {
+  const conversations = new Map([
+    ['conv-1', { id: 'conv-1', cwd: '/workspace/project' }],
+  ]);
+
+  let directoryError = null;
+  let isRepo = true;
+  let gitResult = { ok: true, stdout: '', stderr: '' };
+  const downloads = [];
+
+  const helpers = {
+    withConversation(handler) {
+      return async (req, res) => {
+        const conv = conversations.get(req.params.id);
+        if (!conv) return res.status(404).json({ error: 'Not found' });
+        return handler(req, res, conv);
+      };
+    },
+    sanitizeFilename(name) {
+      return String(name || '').replace(/[^a-zA-Z0-9._-]/g, '_');
+    },
+    handleFileUpload(_req, res, filePath, formatter) {
+      const response = formatter ? formatter(filePath, path.basename(filePath)) : { path: filePath };
+      res.json(response);
+    },
+    isPathWithinCwd(baseCwd, targetPath) {
+      return isInside(baseCwd, targetPath);
+    },
+    async listDirectory(_resolved, _opts) {
+      if (directoryError) return directoryError;
+      return {
+        entries: [
+          { name: 'a.txt', isDirectory: false },
+          { name: 'subdir', isDirectory: true },
+        ],
+      };
+    },
+    async isGitRepo() {
+      return isRepo;
+    },
+    async runGit(_cwd, _args) {
+      return gitResult;
+    },
+    async sendFileDownload(res, filePath, { inline }) {
+      downloads.push({ filePath, inline });
+      res.json({ ok: true, filePath, inline });
+    },
+  };
+
+  const routeModule = requireWithMocks('../lib/routes/files', {
+    [require.resolve('../lib/data')]: {
+      UPLOAD_DIR: '/tmp/uploads',
+    },
+    [require.resolve('../lib/routes/helpers')]: helpers,
+  }, __filename);
+
+  return {
+    setupFileRoutes: routeModule.setupFileRoutes,
+    state: {
+      setDirectoryError(err) {
+        directoryError = err;
+      },
+      setIsRepo(value) {
+        isRepo = !!value;
+      },
+      setGitResult(value) {
+        gitResult = value;
+      },
+      getDownloads() {
+        return [...downloads];
+      },
+    },
+  };
+}
+
+describe('file routes', () => {
+  let server;
+  let baseUrl;
+  let state;
+  let tmpRoot;
+
+  beforeEach(async () => {
+    const fixture = createFileRouteFixture();
+    state = fixture.state;
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'concierge-files-routes-'));
+    const app = express();
+    app.use(express.json());
+    fixture.setupFileRoutes(app);
+    server = await startServer(app);
+    baseUrl = `http://127.0.0.1:${server.address().port}`;
+  });
+
+  afterEach(async () => {
+    await stopServer(server);
+    if (tmpRoot) {
+      await fs.rm(tmpRoot, { recursive: true, force: true });
+    }
+    server = null;
+    baseUrl = null;
+    state = null;
+    tmpRoot = null;
+  });
+
+  it('returns listDirectory errors for /api/files', async () => {
+    state.setDirectoryError({ status: 403, error: 'Access denied', code: 'ACCESS_DENIED' });
+    const response = await requestJson(baseUrl, 'GET', '/api/files?path=/restricted');
+    assert.equal(response.status, 403);
+    assert.equal(response.body.error, 'Access denied');
+    assert.equal(response.body.code, 'ACCESS_DENIED');
+  });
+
+  it('returns directory entries for /api/files', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/files?path=/workspace/project');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.path, '/workspace/project');
+    assert.equal(response.body.entries.length, 2);
+  });
+
+  it('denies traversal outside cwd for conversation file list', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files?path=../secrets');
+    assert.equal(response.status, 403);
+    assert.equal(response.body.error, 'Access denied');
+  });
+
+  it('validates required q parameter on conversation file search', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/search');
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, 'q parameter required');
+  });
+
+  it('requires git repository for conversation file search', async () => {
+    state.setIsRepo(false);
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/search?q=hello');
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, 'Search requires a git repository');
+  });
+
+  it('parses git grep output into structured search results', async () => {
+    state.setGitResult({
+      ok: true,
+      stdout: 'src/a.js:10:const value = 1\nsrc/b.js:3:hello world\n',
+      stderr: '',
+    });
+
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/search?q=hello');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.results.length, 2);
+    assert.deepEqual(response.body.results[0], { path: 'src/a.js', line: 10, content: 'const value = 1' });
+  });
+
+  it('validates required path for general download endpoint', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/files/download');
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, 'path required');
+  });
+
+  it('validates required path for file content endpoints', async () => {
+    const general = await requestJson(baseUrl, 'GET', '/api/files/content');
+    assert.equal(general.status, 400);
+    assert.equal(general.body.error, 'path required');
+
+    const convo = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/content');
+    assert.equal(convo.status, 400);
+    assert.equal(convo.body.error, 'path required');
+  });
+
+  it('blocks traversal for conversation file content endpoint', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/content?path=../secret.txt');
+    assert.equal(response.status, 403);
+    assert.equal(response.body.error, 'Access denied');
+  });
+
+  it('validates upload filename for generic upload route', async () => {
+    const response = await requestJson(baseUrl, 'POST', '/api/files/upload?path=/workspace/project');
+    assert.equal(response.status, 400);
+    assert.equal(response.body.error, 'filename required');
+  });
+
+  it('returns conversation upload URL and sanitizes filename', async () => {
+    const response = await requestJson(baseUrl, 'POST', '/api/conversations/conv-1/upload?filename=../../unsafe name.txt');
+    assert.equal(response.status, 200);
+    assert.ok(response.body.filename.includes('_'));
+    assert.ok(response.body.url.startsWith('/uploads/conv-1/'));
+  });
+
+  it('returns browse error for invalid directory path', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/browse?path=/definitely/not/a/real/path');
+    assert.equal(response.status, 400);
+    assert.equal(typeof response.body.error, 'string');
+  });
+
+  it('creates a directory through mkdir endpoint', async () => {
+    const target = path.join(tmpRoot, 'nested', 'folder');
+    const response = await requestJson(baseUrl, 'POST', '/api/mkdir', { path: target });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.ok, true);
+    const stat = await fs.stat(target);
+    assert.equal(stat.isDirectory(), true);
+  });
+
+  it('validates and handles delete endpoint errors', async () => {
+    const missingParam = await requestJson(baseUrl, 'DELETE', '/api/files');
+    assert.equal(missingParam.status, 400);
+    assert.equal(missingParam.body.error, 'path required');
+
+    const missingFile = await requestJson(baseUrl, 'DELETE', `/api/files?path=${encodeURIComponent(path.join(tmpRoot, 'missing.txt'))}`);
+    assert.equal(missingFile.status, 404);
+    assert.equal(missingFile.body.error, 'File not found');
+  });
+
+  it('rejects conversation file download outside cwd', async () => {
+    const response = await requestJson(baseUrl, 'GET', '/api/conversations/conv-1/files/download?path=../../passwd');
+    assert.equal(response.status, 403);
+    assert.equal(response.body.error, 'Access denied');
+    assert.equal(state.getDownloads().length, 0);
+  });
+});

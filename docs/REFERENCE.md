@@ -1,5 +1,14 @@
 # Developer Quick Reference
 
+## Testing Commands
+
+```bash
+npm test
+npm run lint
+npm run test:coverage
+npm run test:coverage -- --line-min=45 --branch-min=65 --func-min=50
+```
+
 ## File Structure
 
 ### Backend

@@ -179,6 +179,8 @@ concierge/
 └── docs/
     ├── ARCHITECTURE.md    # System architecture
     ├── FEATURES.md        # Feature inventory
+    ├── testing/           # Testing and coverage docs
+    │   └── COVERAGE_BASELINE.md
     └── REFERENCE.md       # Developer quick reference
 ```
 
@@ -187,6 +189,8 @@ concierge/
 ```bash
 npm test      # Run unit tests
 npm run lint  # Run ESLint
+npm run test:coverage                  # Run tests with coverage + summary
+npm run test:coverage -- --line-min=45 # Optional coverage threshold gate
 ```
 
 ## Documentation
@@ -194,6 +198,7 @@ npm run lint  # Run ESLint
 - [Architecture Guide](docs/ARCHITECTURE.md) - Detailed system design, data flow, APIs, and component breakdown
 - [Feature Catalog](docs/FEATURES.md) - Canonical list of user-facing capabilities
 - [Developer Reference](docs/REFERENCE.md) - Quick-reference for file map, data models, functions, and common patterns
+- [Coverage Baseline](docs/testing/COVERAGE_BASELINE.md) - Current coverage snapshot and milestone targets
 
 ## License
 
