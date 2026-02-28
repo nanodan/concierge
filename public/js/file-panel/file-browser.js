@@ -221,6 +221,10 @@ export function initFileBrowser(elements) {
       viewingDiff = null;
       hideGranularToggle();
     },
+    onAttachFromViewer: async (filePath) => {
+      haptic();
+      await attachExistingFileToChat(filePath);
+    },
     isNavigationBlocked: () => viewingDiff,
     onNavigateHaptic: haptic,
   });

@@ -374,7 +374,7 @@ public/js/
 Five mutually exclusive views with CSS transform transitions:
 
 1. **List View** — Conversation browser grouped by cwd, search (keyword + semantic), archive toggle
-2. **Chat View** — Messages, input bar, file panel with preview
+2. **Chat View** — Messages, input bar, file panel with preview, and direct file-to-chat attachment from file tree/viewer actions
 3. **Stats View** — Analytics dashboard with cost tracking, activity charts
 4. **Branches View** — Fork tree visualization with parent/child navigation
 5. **Memory View** — Memory management (global + project-scoped)

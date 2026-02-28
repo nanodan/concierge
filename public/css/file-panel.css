@@ -722,15 +722,38 @@
 }
 
 .file-viewer-fullsize-btn:hover,
-.file-viewer-open-tab-btn:hover {
+.file-viewer-open-tab-btn:hover,
+.file-viewer-attach-tab-btn:hover,
+.file-viewer-attach-float-btn:hover {
   background: var(--hover-bg);
   color: var(--text);
 }
 
 .file-viewer-fullsize-btn svg,
-.file-viewer-open-tab-btn svg {
+.file-viewer-open-tab-btn svg,
+.file-viewer-attach-tab-btn svg,
+.file-viewer-attach-float-btn svg {
   width: 18px;
   height: 18px;
+}
+
+.file-viewer-attach-float-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 2px 8px rgba(0, 0, 0, 0.15));
+  transition: background var(--transition-fast), color var(--transition-fast);
+  z-index: 10;
 }
 
 /* Open in new tab button (for text files) */
@@ -751,6 +774,38 @@
   box-shadow: var(--shadow-md, 0 2px 8px rgba(0, 0, 0, 0.15));
   transition: background var(--transition-fast), color var(--transition-fast);
   z-index: 10;
+}
+
+.file-viewer-attach-tab-btn {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  right: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 2px 8px rgba(0, 0, 0, 0.15));
+  transition: background var(--transition-fast), color var(--transition-fast);
+  z-index: 10;
+}
+
+.file-viewer-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.file-viewer-attach-inline-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 /* Dragging state */
