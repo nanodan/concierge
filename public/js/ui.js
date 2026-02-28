@@ -86,11 +86,11 @@ export { fetchMemories, createMemory, updateMemoryAPI, deleteMemoryAPI } from '.
 
 // --- File browser mode routing ---
 let fileBrowserMode = 'conversation';
-const WRITE_LOCK_HEARTBEAT_MS = 20_000;
+const _WRITE_LOCK_HEARTBEAT_MS = 20_000;
 let workflowHeartbeatTimer = null;
 let workflowHeartbeatConversationId = null;
 let workflowHeartbeatCwd = null;
-let lastWorkflowLockErrorAt = 0;
+let _lastWorkflowLockErrorAt = 0;
 
 function isStandaloneVisible() {
   const view = document.getElementById('files-standalone-view');
@@ -126,7 +126,7 @@ function setupFileBrowserEventListeners(generalFilesBtn, hapticFn = () => {}) {
   });
 }
 
-function getCurrentConversationCwd() {
+function _getCurrentConversationCwd() {
   const convId = state.getCurrentConversationId();
   if (!convId) return '';
   const conv = state.conversations.find((item) => item.id === convId);
@@ -183,7 +183,7 @@ async function downgradeFromAutonomousLockLoss(conversationId) {
   showToast('Autonomous lock lost - switched to patch mode', { variant: 'error' });
 }
 
-async function sendWorkflowHeartbeat() {
+async function _sendWorkflowHeartbeat() {
   const conversationId = workflowHeartbeatConversationId;
   const cwd = workflowHeartbeatCwd;
   if (!conversationId || !cwd) return;

@@ -305,7 +305,7 @@ describe('processCodexEvent - item.completed', () => {
     };
 
     let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
-    result = processCodexEvent(fakeWs, 'c', conv, completed, result.assistantText, onSave, broadcastStatus);
+    processCodexEvent(fakeWs, 'c', conv, completed, result.assistantText, onSave, broadcastStatus);
 
     const starts = sent.filter(m => m.type === 'tool_start');
     assert.equal(starts.length, 1);
@@ -358,7 +358,7 @@ describe('processCodexEvent - item.completed', () => {
 
     let result = processCodexEvent(fakeWs, 'c', conv, started, '', onSave, broadcastStatus);
     result = processCodexEvent(fakeWs, 'c', conv, textEvent, result.assistantText, onSave, broadcastStatus);
-    result = processCodexEvent(fakeWs, 'c', conv, done, result.assistantText, onSave, broadcastStatus);
+    processCodexEvent(fakeWs, 'c', conv, done, result.assistantText, onSave, broadcastStatus);
 
     const saved = conv.messages[0].text;
     assert.ok(saved.includes(':::trace'));

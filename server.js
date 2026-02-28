@@ -238,7 +238,7 @@ function stripSessionIdsFromMessages(messages = []) {
   const next = messages.map((msg) => {
     if (!msg || typeof msg !== 'object' || !msg.sessionId) return msg;
     changed = true;
-    const { sessionId, ...rest } = msg;
+    const { sessionId: _sessionId, ...rest } = msg;
     return rest;
   });
   return { messages: changed ? next : messages, changed };
@@ -482,7 +482,7 @@ async function handleEdit(ws, msg) {
     // Auto-fork: create a new conversation instead of truncating
     newId = uuidv4();
     const messages = conv.messages.slice(0, messageIndex + 1).map((m) => {
-      const { sessionId, ...rest } = m || {};
+      const { sessionId: _sessionId, ...rest } = m || {};
       return { ...rest };
     });
 
@@ -608,7 +608,7 @@ async function handleResend(ws, msg) {
       // Fork from this message and spawn provider on the fork
       newId = uuidv4();
       const messages = conv.messages.slice(0, messageIndex + 1).map((m) => {
-        const { sessionId, ...rest } = m || {};
+        const { sessionId: _sessionId, ...rest } = m || {};
         return { ...rest };
       });
 
