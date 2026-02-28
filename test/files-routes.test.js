@@ -227,6 +227,68 @@ describe('file routes', () => {
     assert.equal(typeof response.body.error, 'string');
   });
 
+  it('validates browse search parameters', async () => {
+    const missingBase = await requestJson(baseUrl, 'GET', '/api/browse/search?q=data');
+    assert.equal(missingBase.status, 400);
+    assert.equal(missingBase.body.error, 'base required');
+
+    const missingQuery = await requestJson(baseUrl, 'GET', `/api/browse/search?base=${encodeURIComponent(tmpRoot)}`);
+    assert.equal(missingQuery.status, 400);
+    assert.equal(missingQuery.body.error, 'q required');
+  });
+
+  it('returns recursive directory search matches', async () => {
+    await fs.mkdir(path.join(tmpRoot, 'datasets', 'raw-data'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'datasets', 'processed-data'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'reports'), { recursive: true });
+
+    const response = await requestJson(
+      baseUrl,
+      'GET',
+      `/api/browse/search?base=${encodeURIComponent(tmpRoot)}&q=${encodeURIComponent('data')}&depth=4&limit=10`
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.body.base, tmpRoot);
+    assert.equal(Array.isArray(response.body.results), true);
+    assert.equal(response.body.results.length >= 2, true);
+
+    const relPaths = response.body.results.map((item) => item.relPath);
+    assert.equal(relPaths.includes('datasets/raw-data'), true);
+    assert.equal(relPaths.includes('datasets/processed-data'), true);
+  });
+
+  it('skips hidden and heavy directories in browse search', async () => {
+    await fs.mkdir(path.join(tmpRoot, '.git', 'data-hidden'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'node_modules', 'data-packages'), { recursive: true });
+    await fs.mkdir(path.join(tmpRoot, 'safe-data'), { recursive: true });
+
+    const response = await requestJson(
+      baseUrl,
+      'GET',
+      `/api/browse/search?base=${encodeURIComponent(tmpRoot)}&q=${encodeURIComponent('data')}&depth=4&limit=20`
+    );
+    assert.equal(response.status, 200);
+    const relPaths = response.body.results.map((item) => item.relPath);
+    assert.equal(relPaths.includes('safe-data'), true);
+    assert.equal(relPaths.some((relPath) => relPath.includes('.git')), false);
+    assert.equal(relPaths.some((relPath) => relPath.includes('node_modules')), false);
+  });
+
+  it('enforces search result limits and marks truncation', async () => {
+    for (let i = 0; i < 8; i++) {
+      await fs.mkdir(path.join(tmpRoot, `data-${i}`), { recursive: true });
+    }
+
+    const response = await requestJson(
+      baseUrl,
+      'GET',
+      `/api/browse/search?base=${encodeURIComponent(tmpRoot)}&q=${encodeURIComponent('data')}&depth=2&limit=3`
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.body.results.length <= 3, true);
+    assert.equal(response.body.truncated, true);
+  });
+
   it('creates a directory through mkdir endpoint', async () => {
     const target = path.join(tmpRoot, 'nested', 'folder');
     const response = await requestJson(baseUrl, 'POST', '/api/mkdir', { path: target });

@@ -236,6 +236,7 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/browse` | Directory listing (cwd picker) |
+| `GET` | `/api/browse/search` | Recursive directory search for cwd picker fuzzy find |
 | `GET` | `/api/files` | General file browser |
 | `GET` | `/api/files/content` | Get structured file content (standalone cwd) |
 | `GET` | `/api/files/download` | Download file |

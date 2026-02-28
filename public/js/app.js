@@ -71,7 +71,18 @@ const browseBtn = document.getElementById('browse-btn');
 const dirBrowser = document.getElementById('dir-browser');
 const dirUpBtn = document.getElementById('dir-up-btn');
 const dirCurrentPath = document.getElementById('dir-current-path');
+const dirFavoriteToggle = document.getElementById('dir-favorite-toggle');
+const dirFilterInput = document.getElementById('dir-filter-input');
+const dirDeepSearchBtn = document.getElementById('dir-deep-search-btn');
+const dirBreadcrumbs = document.getElementById('dir-breadcrumbs');
+const dirFavorites = document.getElementById('dir-favorites');
+const dirFavoritesList = document.getElementById('dir-favorites-list');
+const dirRecents = document.getElementById('dir-recents');
+const dirRecentsList = document.getElementById('dir-recents-list');
+const dirSearchResults = document.getElementById('dir-search-results');
+const dirSearchResultsList = document.getElementById('dir-search-results-list');
 const dirList = document.getElementById('dir-list');
+const dirStatus = document.getElementById('dir-status');
 const dirNewBtn = document.getElementById('dir-new-btn');
 const dirSelectBtn = document.getElementById('dir-select-btn');
 const micBtn = document.getElementById('mic-btn');
@@ -301,7 +312,18 @@ initUI({
   dirBrowser,
   dirUpBtn,
   dirCurrentPath,
+  dirFavoriteToggle,
+  dirFilterInput,
+  dirDeepSearchBtn,
+  dirBreadcrumbs,
+  dirFavorites,
+  dirFavoritesList,
+  dirRecents,
+  dirRecentsList,
+  dirSearchResults,
+  dirSearchResultsList,
   dirList,
+  dirStatus,
   dirNewBtn,
   dirSelectBtn,
   micBtn,
