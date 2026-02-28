@@ -7,6 +7,7 @@ const {
   partitionAttachments,
   buildFileAttachmentPrompt,
 } = require('../lib/providers/codex');
+const { buildInlineHistoryContext } = require('../lib/providers/codex')._private;
 
 describe('Codex MODELS', () => {
   it('contains expected models', () => {
@@ -56,6 +57,20 @@ describe('Codex attachment helpers', () => {
 
   it('returns empty prompt block when no files are provided', () => {
     assert.equal(buildFileAttachmentPrompt([]), '');
+  });
+});
+
+describe('buildInlineHistoryContext', () => {
+  it('skips summarized messages from inline history', () => {
+    const history = [
+      { role: 'user', text: 'old message', summarized: true },
+      { role: 'assistant', text: 'kept message' },
+    ];
+
+    const context = buildInlineHistoryContext(history, '');
+
+    assert.ok(context.includes('kept message'));
+    assert.ok(!context.includes('old message'));
   });
 });
 
