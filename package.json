@@ -6,9 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test 'test/*.test.js'",
+    "test": "node --test",
     "test:coverage": "node scripts/coverage-summary.js",
-    "test:coverage:raw": "node --test --experimental-test-coverage 'test/*.test.js'",
+    "test:coverage:raw": "node --test --experimental-test-coverage",
     "lint": "eslint ."
   },
   "devDependencies": {
