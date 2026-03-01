@@ -6,6 +6,54 @@ import {
   THINKING_TEXT_TRUNCATE,
 } from './constants.js';
 
+// --- localStorage schema versioning ---
+// Increment this when localStorage data structures change
+const LOCALSTORAGE_SCHEMA_VERSION = 1;
+
+function migrateLocalStorage() {
+  const storedVersion = parseInt(localStorage.getItem('schemaVersion'), 10) || 0;
+
+  if (storedVersion < LOCALSTORAGE_SCHEMA_VERSION) {
+    // Run migrations in order
+    if (storedVersion < 1) {
+      // v1: Initial schema - clean up any invalid JSON
+      cleanupInvalidJson();
+    }
+    // Future migrations go here: if (storedVersion < 2) { ... }
+
+    localStorage.setItem('schemaVersion', String(LOCALSTORAGE_SCHEMA_VERSION));
+  }
+}
+
+function cleanupInvalidJson() {
+  const jsonKeys = ['pendingMessages', 'collapsedScopes', 'expandedStacks',
+                    'unreadConversations', 'messageReactions'];
+  for (const key of jsonKeys) {
+    const val = localStorage.getItem(key);
+    if (val) {
+      try {
+        JSON.parse(val);
+      } catch {
+        console.warn(`[localStorage] Removing invalid JSON for key: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
+  }
+}
+
+function safeParseJson(key, fallback) {
+  try {
+    const val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : fallback;
+  } catch {
+    console.warn(`[localStorage] Invalid JSON for ${key}, using fallback`);
+    return fallback;
+  }
+}
+
+// Run migration before any localStorage reads
+migrateLocalStorage();
+
 // Conversations
 export let conversations = [];
 export let currentConversationId = null;
@@ -67,22 +115,22 @@ let originalTitle = document.title;
 let titleModified = false;
 
 // Message queue for offline resilience
-export let pendingMessages = JSON.parse(localStorage.getItem('pendingMessages') || '[]');
+export let pendingMessages = safeParseJson('pendingMessages', []);
 
 // Scope grouping collapsed state
-export let collapsedScopes = JSON.parse(localStorage.getItem('collapsedScopes') || '{}');
+export let collapsedScopes = safeParseJson('collapsedScopes', {});
 
 // Fork stack expanded state (Set of root IDs)
-export let expandedStacks = new Set(JSON.parse(localStorage.getItem('expandedStacks') || '[]'));
+export let expandedStacks = new Set(safeParseJson('expandedStacks', []));
 
 // Unread conversations
-export const unreadConversations = new Set(JSON.parse(localStorage.getItem('unreadConversations') || '[]'));
+export const unreadConversations = new Set(safeParseJson('unreadConversations', []));
 
 // Thinking conversations (which are currently processing)
 export const thinkingConversations = new Set();
 
 // Message reactions
-export let messageReactions = JSON.parse(localStorage.getItem('messageReactions') || '{}');
+export let messageReactions = safeParseJson('messageReactions', {});
 
 // Long press
 export let longPressTimer = null;
