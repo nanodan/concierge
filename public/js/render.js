@@ -184,10 +184,12 @@ function attachCompressedSectionToggle() {
   const messagesContainer = state.getMessagesContainer();
   const toggle = messagesContainer.querySelector('#compressed-section-toggle');
   if (!toggle) return;
+  if (toggle.dataset.bound === 'true') return;
+  toggle.dataset.bound = 'true';
 
   toggle.addEventListener('click', () => {
     const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', !isExpanded);
+    toggle.setAttribute('aria-expanded', String(!isExpanded));
 
     // Toggle visibility of summarized messages
     messagesContainer.querySelectorAll('.message-wrapper.summarized, .message.summarized').forEach(el => {
@@ -211,8 +213,11 @@ export function renderMessageSlice(messages, startIndex) {
   let compressedSection = '';
   if (compressedCount > 0 && startIndex === 0) {
     compressedSection = `<div class="compressed-section" id="compressed-section-toggle" aria-expanded="false" role="button" tabindex="0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-      <span class="compressed-section-text">${compressedCount} compressed message${compressedCount > 1 ? 's' : ''}</span>
+      <span class="compressed-section-main">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="compressed-section-text">${compressedCount} compressed message${compressedCount > 1 ? 's' : ''}</span>
+      </span>
+      <span class="compressed-section-hint">Excluded from active context</span>
     </div>`;
   }
 
@@ -258,16 +263,19 @@ export function renderMessageSlice(messages, startIndex) {
       ? buildActionButtons({ includeTTS: !isSummarized, includeRegen: isLastAssistant, includeCopy: true })
       : buildActionButtons({ includeTTS: false, includeRegen: false, includeCopy: true, isUser: true });
 
+    const compressedBadge = isSummarized
+      ? `<div class="compressed-context-badge"><span class="compressed-context-badge-dot"></span>Compressed • excluded from active context</div>`
+      : '';
     const summarizedClass = isSummarized ? ' summarized' : '';
 
     // Wrap assistant messages with avatar
     if (cls === 'assistant') {
       return `<div class="message-wrapper assistant${summarizedClass}">
         <div class="claude-avatar">${CLAUDE_AVATAR_SVG}</div>
-        <div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>
+        <div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${compressedBadge}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>
       </div>`;
     }
-    return `<div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>`;
+    return `<div class="message ${cls}${summarizedClass}" data-index="${globalIndex}">${attachHtml}${compressedBadge}${content}<div class="meta" data-ts="${timestamp}">${meta}</div>${actionBtns}</div>`;
   }).join('');
 
   return compressedSection + messagesHtml;
@@ -292,6 +300,7 @@ export function loadMoreMessages() {
   attachImageHandlers();
   attachCopyMsgHandlers();
   attachMessageActions();
+  attachCompressedSectionToggle();
   state.setMessagesOffset(newOffset);
   // Preserve scroll position
   messagesContainer.scrollTop += messagesContainer.scrollHeight - prevScrollHeight;
