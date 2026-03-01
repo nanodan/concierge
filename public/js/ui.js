@@ -613,6 +613,9 @@ export function openNewChatModal(cwd = '') {
 
 // Thank you easter egg - check for gratitude and show hearts
 const THANK_YOU_PATTERNS = /\b(thanks?|thank\s*you|thx|ty|tysm|thank\s*u|cheers|gracias|merci|danke|arigatou?|grazie)\b/i;
+
+// Hitchhiker's Guide easter eggs
+const DONT_PANIC_PATTERN = /\bdon'?t\s*panic\b/i;
 const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 function buildUserMessageActionButtons() {
@@ -653,6 +656,149 @@ function triggerHeartsAnimation() {
   }
 }
 
+// /dance command - make the UI wiggle
+function triggerDanceMode() {
+  haptic(30);
+  const chatView = document.getElementById('chat-view');
+  if (!chatView) return;
+
+  // Add dance animation
+  if (!document.getElementById('dance-style')) {
+    const style = document.createElement('style');
+    style.id = 'dance-style';
+    style.textContent = `
+      @keyframes ui-dance {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        10% { transform: rotate(-1deg) scale(1.01); }
+        20% { transform: rotate(1deg) scale(0.99); }
+        30% { transform: rotate(-0.5deg) scale(1.02); }
+        40% { transform: rotate(0.5deg) scale(1); }
+        50% { transform: rotate(-1deg) scale(1.01); }
+        60% { transform: rotate(1deg) scale(0.99); }
+        70% { transform: rotate(-0.5deg) scale(1); }
+        80% { transform: rotate(0.5deg) scale(1.01); }
+        90% { transform: rotate(-0.5deg) scale(1); }
+      }
+      .dancing { animation: ui-dance 0.8s ease-in-out 3; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  chatView.classList.add('dancing');
+  setTimeout(() => chatView.classList.remove('dancing'), 2500);
+  showToast('💃🕺');
+}
+
+// /matrix command - green falling code rain
+function triggerMatrixMode() {
+  haptic(30);
+
+  // Create canvas overlay
+  const canvas = document.createElement('canvas');
+  canvas.id = 'matrix-canvas';
+  canvas.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.9;
+  `;
+  document.body.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const fontSize = 14;
+  const columns = Math.floor(canvas.width / fontSize);
+  const drops = Array(columns).fill(1);
+
+  let frameCount = 0;
+  const maxFrames = 180; // ~3 seconds at 60fps
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = '#0f0';
+    ctx.font = `${fontSize}px monospace`;
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+
+    frameCount++;
+    if (frameCount < maxFrames) {
+      requestAnimationFrame(draw);
+    } else {
+      // Fade out
+      canvas.style.transition = 'opacity 0.5s';
+      canvas.style.opacity = '0';
+      setTimeout(() => canvas.remove(), 500);
+    }
+  }
+
+  draw();
+  showToast('🐇 Follow the white rabbit...');
+}
+
+// 42 characters - Hitchhiker's Guide reference
+function triggerHitchhikersEgg() {
+  haptic(20);
+  showToast('🌌 The Answer to the Ultimate Question of Life, the Universe, and Everything');
+}
+
+// Don't Panic - large friendly letters
+function triggerDontPanic() {
+  haptic(20);
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      font-family: 'Georgia', serif;
+      font-size: clamp(3rem, 15vw, 8rem);
+      font-weight: bold;
+      color: #f39c12;
+      text-shadow: 0 0 30px rgba(243, 156, 18, 0.5);
+      letter-spacing: 0.1em;
+    ">DON'T PANIC</div>
+  `;
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    setTimeout(() => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 300);
+    }, 1500);
+  });
+}
+
 export async function sendMessage(text) {
   const pendingAttachments = state.getPendingAttachments();
   const currentConversationId = state.getCurrentConversationId();
@@ -666,6 +812,32 @@ export async function sendMessage(text) {
   // Easter egg: hearts when thanking Claude
   if (THANK_YOU_PATTERNS.test(text)) {
     triggerHeartsAnimation();
+  }
+
+  // Easter egg: /dance command - UI wiggles
+  if (text.trim().toLowerCase() === '/dance') {
+    triggerDanceMode();
+    messageInput.value = '';
+    autoResizeInput();
+    return; // Don't send as a message
+  }
+
+  // Easter egg: /matrix command - green falling code
+  if (text.trim().toLowerCase() === '/matrix') {
+    triggerMatrixMode();
+    messageInput.value = '';
+    autoResizeInput();
+    return; // Don't send as a message
+  }
+
+  // Easter egg: exactly 42 characters - Hitchhiker's Guide
+  if (text.trim().length === 42) {
+    triggerHitchhikersEgg();
+  }
+
+  // Easter egg: "don't panic" - large friendly letters
+  if (DONT_PANIC_PATTERN.test(text)) {
+    triggerDontPanic();
   }
 
   // Queue if offline (without attachments)
