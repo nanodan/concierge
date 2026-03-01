@@ -615,7 +615,7 @@ export function openNewChatModal(cwd = '') {
 const THANK_YOU_PATTERNS = /\b(thanks?|thank\s*you|thx|ty|tysm|thank\s*u|cheers|gracias|merci|danke|arigatou?|grazie)\b/i;
 
 // Hitchhiker's Guide easter eggs
-const DONT_PANIC_PATTERN = /\bdon'?t\s*panic\b/i;
+const DONT_PANIC_PATTERN = /\bdon['']?t\s*panic\b/i;
 const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 function buildUserMessageActionButtons() {
@@ -715,10 +715,12 @@ function triggerMatrixMode() {
   const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const fontSize = 14;
   const columns = Math.floor(canvas.width / fontSize);
-  const drops = Array(columns).fill(1);
+  const rows = Math.floor(canvas.height / fontSize);
+  // Randomize initial positions so columns don't all start together
+  const drops = Array(columns).fill(0).map(() => Math.floor(Math.random() * -rows));
 
   let frameCount = 0;
-  const maxFrames = 180; // ~3 seconds at 60fps
+  const maxFrames = 300; // ~5 seconds at 60fps
 
   function draw() {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
@@ -728,8 +730,11 @@ function triggerMatrixMode() {
     ctx.font = `${fontSize}px monospace`;
 
     for (let i = 0; i < drops.length; i++) {
-      const char = chars[Math.floor(Math.random() * chars.length)];
-      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      // Only draw when on screen (drops[i] > 0)
+      if (drops[i] > 0) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      }
 
       if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
         drops[i] = 0;
