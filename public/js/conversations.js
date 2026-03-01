@@ -1012,6 +1012,7 @@ export async function openConversation(id) {
 
   state.setCurrentConversationId(id);
   state.deleteUnread(id);
+  state.resetCompressionPromptShown(); // Reset for fresh check in this conversation
   // Clear any text from previous conversation
   if (messageInput) messageInput.value = '';
   setLoading(chatView, true);
