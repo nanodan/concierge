@@ -76,7 +76,9 @@ export function calculateCumulativeTokens(messages) {
   }
 
   return {
-    inputTokens: lastAssistant.inputTokens || 0,
+    inputTokens: lastAssistant.rawInputTokens != null
+      ? (lastAssistant.rawInputTokens || 0)
+      : (lastAssistant.inputTokens || 0),
     outputTokens: lastAssistant.outputTokens || 0,
   };
 }

@@ -139,8 +139,13 @@ public/css/
   cost: number,           // USD
   duration: number,       // ms
   sessionId: string,
-  inputTokens: number,
-  outputTokens: number
+  inputTokens: number,    // Provider-reported input token count (raw when available)
+  outputTokens: number,
+  netInputTokens?: number,    // rawInputTokens - cachedInputTokens
+  typedInputTokens?: number,  // rough estimate of user-typed prompt tokens
+  rawInputTokens?: number,    // full provider-reported prompt/context tokens
+  cachedInputTokens?: number, // provider cache hit tokens (if available)
+  reasoningTokens?: number    // provider-reported reasoning/thinking tokens
 }
 ```
 

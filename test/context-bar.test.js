@@ -70,4 +70,15 @@ describe('context bar token calculation', async () => {
       { inputTokens: 42, outputTokens: 8 }
     );
   });
+
+  it('prefers raw input tokens for context usage when available', () => {
+    const messages = [
+      { role: 'assistant', text: 'new', inputTokens: 42, rawInputTokens: 2048, outputTokens: 8, timestamp: 1500 },
+    ];
+
+    assert.deepEqual(
+      calculateCumulativeTokens(messages),
+      { inputTokens: 2048, outputTokens: 8 }
+    );
+  });
 });

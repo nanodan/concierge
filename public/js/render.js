@@ -36,8 +36,34 @@ function buildMessageMeta(msg) {
     meta += ` &middot; ${(msg.duration / 1000).toFixed(1)}s`;
   }
   if (msg.inputTokens != null) {
-    const displayIn = msg.displayInputTokens != null ? msg.displayInputTokens : msg.inputTokens;
-    meta += ` &middot; ${formatTokens(displayIn)} in / ${formatTokens(msg.outputTokens)} out`;
+    const netIn = msg.netInputTokens != null ? msg.netInputTokens : msg.inputTokens;
+    const typedIn = msg.typedInputTokens;
+    const rawIn = msg.rawInputTokens;
+    const cachedIn = msg.cachedInputTokens;
+    const hasDetailedInput = typedIn != null || rawIn != null || cachedIn != null || msg.netInputTokens != null;
+    const reasoningOut = msg.reasoningTokens;
+
+    if (!hasDetailedInput) {
+      const displayIn = msg.displayInputTokens != null ? msg.displayInputTokens : msg.inputTokens;
+      meta += ` &middot; ${formatTokens(displayIn)} in / ${formatTokens(msg.outputTokens)} out`;
+    } else {
+      const inputParts = [];
+      if (typedIn != null) inputParts.push(`${formatTokens(typedIn)} typed`);
+      inputParts.push(`${formatTokens(netIn)} net in`);
+
+      const rawCachedParts = [];
+      if (rawIn != null) rawCachedParts.push(`${formatTokens(rawIn)} raw`);
+      if (cachedIn != null) rawCachedParts.push(`${formatTokens(cachedIn)} cached`);
+      if (rawCachedParts.length > 0) {
+        inputParts.push(`(${rawCachedParts.join(', ')})`);
+      }
+
+      let outputPart = `${formatTokens(msg.outputTokens)} out`;
+      if (reasoningOut != null && reasoningOut > 0) {
+        outputPart += ` (${formatTokens(reasoningOut)} reasoning)`;
+      }
+      meta += ` &middot; ${inputParts.join(' / ')} / ${outputPart}`;
+    }
   }
   // Show incomplete indicator if explicitly marked OR if assistant message is missing cost/tokens
   // (retroactive detection for messages saved before we added the incomplete flag)
@@ -406,8 +432,13 @@ export function finalizeMessage(data) {
     cost: data.cost,
     duration: data.duration,
     inputTokens: data.inputTokens,
+    netInputTokens: data.netInputTokens,
+    typedInputTokens: data.typedInputTokens,
     displayInputTokens: data.displayInputTokens,
     outputTokens: data.outputTokens,
+    reasoningTokens: data.reasoningTokens,
+    rawInputTokens: data.rawInputTokens,
+    cachedInputTokens: data.cachedInputTokens,
     incomplete: data.incomplete,
   });
 

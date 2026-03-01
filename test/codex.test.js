@@ -543,7 +543,9 @@ describe('processCodexEvent - turn.completed', () => {
     assert.equal(conv.messages[0].rawInputTokens, 12000);
     assert.equal(conv.messages[0].cachedInputTokens, 11000);
     assert.equal(conv.messages[0].inputTokens, 1000);
+    assert.equal(conv.messages[0].netInputTokens, 1000);
     assert.equal(conv.messages[0].displayInputTokens, 1);
+    assert.equal(conv.messages[0].typedInputTokens, 1);
   });
 
   it('renders tool calls from batched turn.completed items', () => {
