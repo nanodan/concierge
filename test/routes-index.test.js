@@ -23,13 +23,14 @@ describe('route index setup', () => {
       [require.resolve('../lib/routes/duckdb')]: { setupDuckDBRoutes: makeSetup('duckdb') },
       [require.resolve('../lib/routes/bigquery')]: { setupBigQueryRoutes: makeSetup('bigquery') },
       [require.resolve('../lib/routes/workflow')]: { setupWorkflowRoutes: makeSetup('workflow') },
+      [require.resolve('../lib/routes/system')]: { setupSystemRoutes: makeSetup('system') },
     }, __filename);
 
     routes.setupRoutes(app);
 
     assert.deepEqual(
       calls.map((entry) => entry.name),
-      ['conversations', 'files', 'git', 'memory', 'capabilities', 'preview', 'duckdb', 'bigquery', 'workflow']
+      ['conversations', 'files', 'git', 'memory', 'capabilities', 'preview', 'duckdb', 'bigquery', 'workflow', 'system']
     );
     assert.equal(calls.every((entry) => entry.receivedApp === app), true);
   });

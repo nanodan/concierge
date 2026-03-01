@@ -97,6 +97,23 @@ function isStandaloneVisible() {
   return !!view && view.classList.contains('slide-in');
 }
 
+/**
+ * Wait for server to come back up after restart
+ * Polls health endpoint until server responds
+ */
+async function waitForServerRestart(maxAttempts = 20, intervalMs = 500) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) return true;
+    } catch {
+      // Server not yet available
+    }
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return false;
+}
+
 export function openFileBrowser(mode = 'conversation') {
   fileBrowserMode = mode;
 
@@ -2165,6 +2182,36 @@ export function setupEventListeners(createConversation) {
       closeMoreMenu();
       haptic();
       showMemoryView();
+    });
+  }
+
+  // Restart server menu item
+  const moreRestartServer = document.getElementById('more-restart-server');
+  if (moreRestartServer) {
+    moreRestartServer.addEventListener('click', async () => {
+      closeMoreMenu();
+      haptic();
+
+      const confirmed = await showDialog({
+        title: 'Restart Server',
+        body: 'Are you sure you want to restart the server? The app will briefly disconnect.',
+        confirmLabel: 'Restart',
+        cancelLabel: 'Cancel',
+      });
+
+      if (!confirmed) return;
+
+      showToast('Restarting server...');
+
+      try {
+        await apiFetch('/api/restart', { method: 'POST' });
+        // Server will restart - wait a moment then check health
+        await new Promise(r => setTimeout(r, 1500));
+        await waitForServerRestart();
+        showToast('Server restarted');
+      } catch {
+        showToast('Restart failed');
+      }
     });
   }
 
