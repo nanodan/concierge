@@ -446,10 +446,12 @@ export function finalizeMessage(data) {
     // Import dynamically to avoid circular dependency
     import('./ui.js').then(ui => {
       // Calculate cumulative tokens from all messages (since we resume sessions)
-      const { inputTokens, outputTokens } = ui.calculateCumulativeTokens(state.getAllMessages());
+      const allMessages = state.getAllMessages();
+      const { inputTokens, outputTokens } = ui.calculateCumulativeTokens(allMessages);
       ui.updateContextBar(inputTokens, outputTokens, state.getCurrentModel());
 
       // Check if context is near limit (85%) and show compression prompt
+      // But don't show if conversation was already compressed recently
       const models = state.getModels();
       const modelId = state.getCurrentModel();
       const model = models.find(m => m.id === modelId);
@@ -457,7 +459,18 @@ export function finalizeMessage(data) {
       const totalTokens = inputTokens + outputTokens;
       const pct = (totalTokens / contextLimit) * 100;
 
-      if (pct >= 85 && !state.getCompressionPromptShown()) {
+      // Check if conversation has been compressed
+      const hasCompression = allMessages.some(m => m.compressionMeta);
+
+      // Only show compression prompt if:
+      // 1. At 85%+ context
+      // 2. Haven't shown the prompt this session
+      // 3. Either never compressed OR at 95%+ (need to compress again urgently)
+      const shouldPrompt = pct >= 85 &&
+        !state.getCompressionPromptShown() &&
+        (!hasCompression || pct >= 95);
+
+      if (shouldPrompt) {
         ui.showCompressionPrompt(pct, totalTokens, contextLimit);
       }
     });
