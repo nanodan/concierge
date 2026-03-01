@@ -268,6 +268,9 @@ export function selectColorTheme(newTheme) {
   // Don't close dropdown - let user compare themes by clicking through
   const info = COLOR_THEMES[newTheme] || { name: newTheme };
   showToast(`Color theme: ${info.name}`);
+
+  // Dispatch event for easter egg mode cleanup
+  window.dispatchEvent(new CustomEvent('color-theme-changed', { detail: { theme: newTheme } }));
 }
 
 export function updateColorThemeIcon() {

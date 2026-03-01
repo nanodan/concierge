@@ -1,0 +1,228 @@
+/*
+ * Hitchhiker's Guide to the Galaxy Theme
+ * DON'T PANIC - Hidden theme activated via easter egg
+ * Inspired by the book covers: deep space blue with warm friendly orange lettering
+ */
+
+/* ========== DARK MODE (default) ========== */
+:root {
+  /* === Core Palette === */
+  --palette-panic-orange: #FF9F1C;
+  --palette-panic-gold: #FFBF69;
+  --palette-towel-brown: #A67C52;
+  --palette-space-deep: #0D1B2A;
+  --palette-space-mid: #1B263B;
+  --palette-space-light: #243B53;
+  --palette-space-lighter: #334E68;
+  --palette-space-border: #486581;
+  --palette-starlight: #F0F4F8;
+  --palette-starlight-muted: #9FB3C8;
+  --palette-improbability-purple: #7B68EE;
+  --palette-babel-fish-yellow: #FFE066;
+
+  /* === Semantic: Backgrounds === */
+  --bg: var(--palette-space-deep);
+  --bg-secondary: var(--palette-space-mid);
+  --bg-tertiary: var(--palette-space-lighter);
+  --surface: var(--palette-space-light);
+  --input-bg: var(--palette-space-mid);
+
+  /* === Semantic: Text === */
+  --text: var(--palette-starlight);
+  --text-secondary: var(--palette-starlight-muted);
+
+  /* === Semantic: Accent === */
+  --accent: var(--palette-panic-orange);
+  --accent-light: var(--palette-panic-gold);
+  --accent-secondary: var(--palette-improbability-purple);
+
+  /* === Semantic: Status === */
+  --danger: #E63946;
+  --success: #06D6A0;
+  --warning: var(--palette-panic-orange);
+
+  /* === Semantic: Borders === */
+  --border: var(--palette-space-border);
+  --glass-bg: rgba(27, 38, 59, 0.9);
+  --glass-border: rgba(255, 159, 28, 0.15);
+
+  /* === Semantic: Message Bubbles === */
+  --user-bubble: var(--palette-panic-orange);
+  --user-bubble-end: #E8890C;
+  --assistant-bubble: var(--palette-space-mid);
+
+  /* === Semantic: List View === */
+  --scope-header-color: var(--palette-panic-orange);
+  --card-border: rgba(255, 159, 28, 0.4);
+  --pinned-border: rgba(255, 159, 28, 0.6);
+  --pinned-bg: rgba(255, 159, 28, 0.1);
+
+  /* === Alpha Variants === */
+  --accent-alpha-8: rgba(255, 159, 28, 0.08);
+  --accent-alpha-12: rgba(255, 159, 28, 0.12);
+  --accent-alpha-15: rgba(255, 159, 28, 0.15);
+  --accent-alpha-20: rgba(255, 159, 28, 0.2);
+  --accent-alpha-25: rgba(255, 159, 28, 0.25);
+  --accent-alpha-30: rgba(255, 159, 28, 0.3);
+  --accent-alpha-35: rgba(255, 159, 28, 0.35);
+  --accent-alpha-50: rgba(255, 159, 28, 0.5);
+
+  --danger-alpha-15: rgba(230, 57, 70, 0.15);
+  --danger-alpha-40: rgba(230, 57, 70, 0.4);
+
+  --teal-alpha-6: rgba(6, 214, 160, 0.06);
+  --teal-alpha-25: rgba(6, 214, 160, 0.25);
+
+  --terracotta-alpha-6: rgba(255, 159, 28, 0.06);
+  --terracotta-alpha-10: rgba(255, 159, 28, 0.1);
+
+  --white-alpha-6: rgba(255, 255, 255, 0.06);
+  --white-alpha-10: rgba(255, 255, 255, 0.1);
+  --white-alpha-60: rgba(255, 255, 255, 0.6);
+
+  --black-alpha-8: rgba(0, 0, 0, 0.08);
+  --black-alpha-15: rgba(0, 0, 0, 0.15);
+  --black-alpha-20: rgba(0, 0, 0, 0.2);
+  --black-alpha-25: rgba(0, 0, 0, 0.25);
+  --black-alpha-30: rgba(0, 0, 0, 0.3);
+  --black-alpha-40: rgba(0, 0, 0, 0.4);
+  --black-alpha-50: rgba(0, 0, 0, 0.5);
+
+  /* === Component: Status Indicators === */
+  --status-idle: var(--palette-panic-gold);
+  --status-thinking: var(--palette-panic-orange);
+  --status-disconnected: var(--palette-space-border);
+
+  /* === Component: Mode Badges === */
+  --mode-autopilot-bg: var(--teal-alpha-25);
+  --mode-autopilot-text: #06D6A0;
+  --mode-readonly-bg: var(--accent-alpha-20);
+  --mode-readonly-text: var(--palette-panic-orange);
+
+  /* === Component: Syntax Highlighting === */
+  --syntax-keyword: var(--palette-panic-orange);
+  --syntax-string: var(--palette-babel-fish-yellow);
+  --syntax-number: #E63946;
+  --syntax-comment: #627D98;
+  --syntax-function: var(--palette-panic-gold);
+  --syntax-type: var(--palette-improbability-purple);
+  --syntax-variable: var(--palette-towel-brown);
+  --syntax-operator: var(--palette-starlight-muted);
+
+  /* === Component: Code Blocks === */
+  --code-bg: var(--bg);
+  --code-header-bg: var(--bg-tertiary);
+  --code-inline-bg: var(--accent-alpha-15);
+
+  /* === Component: Gradient (list view background) === */
+  --mesh-color-1: rgba(255, 159, 28, 0.08);
+  --mesh-color-2: rgba(123, 104, 238, 0.06);
+  --mesh-color-3: rgba(166, 124, 82, 0.04);
+
+  /* === Component: Brand === */
+  --brand-icon-color: var(--palette-panic-orange);
+  --brand-gradient: linear-gradient(135deg, var(--palette-panic-orange) 0%, var(--palette-improbability-purple) 100%);
+
+  /* === PWA: Theme Colors === */
+  --theme-color: #0D1B2A;
+}
+
+/* ========== LIGHT MODE ========== */
+html[data-theme="light"] {
+  --palette-space-deep: #F0F4F8;
+  --palette-space-mid: #D9E2EC;
+  --palette-space-light: #FFFFFF;
+  --palette-space-lighter: #BCCCDC;
+  --palette-space-border: #9FB3C8;
+  --palette-starlight: #102A43;
+  --palette-starlight-muted: #486581;
+  --palette-panic-orange: #E8890C;
+
+  --bg: #F0F4F8;
+  --bg-secondary: #D9E2EC;
+  --bg-tertiary: #BCCCDC;
+  --surface: #FFFFFF;
+  --input-bg: #FFFFFF;
+  --text: #102A43;
+  --text-secondary: #486581;
+  --border: #9FB3C8;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(232, 137, 12, 0.15);
+  --assistant-bubble: #F0F4F8;
+
+  --scope-header-color: #D97706;
+  --card-border: rgba(217, 119, 6, 0.4);
+  --pinned-border: rgba(217, 119, 6, 0.6);
+  --pinned-bg: rgba(217, 119, 6, 0.1);
+
+  --white-alpha-6: rgba(0, 0, 0, 0.03);
+  --white-alpha-10: rgba(0, 0, 0, 0.06);
+  --code-bg: #D9E2EC;
+  --code-header-bg: #BCCCDC;
+  --code-inline-bg: rgba(232, 137, 12, 0.1);
+  --mesh-color-1: rgba(217, 119, 6, 0.12);
+  --mesh-color-2: rgba(123, 104, 238, 0.04);
+  --mesh-color-3: rgba(166, 124, 82, 0.03);
+
+  --syntax-keyword: #B45309;
+  --syntax-string: #92400E;
+  --syntax-number: #BE123C;
+  --syntax-comment: #64748B;
+  --syntax-function: #D97706;
+  --syntax-type: #6D28D9;
+  --syntax-variable: #78350F;
+  --syntax-operator: #486581;
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --theme-color: #F0F4F8;
+}
+
+/* Auto theme via media query */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]) {
+    --palette-space-deep: #F0F4F8;
+    --palette-space-mid: #D9E2EC;
+    --palette-space-light: #FFFFFF;
+    --palette-space-lighter: #BCCCDC;
+    --palette-space-border: #9FB3C8;
+    --palette-starlight: #102A43;
+    --palette-starlight-muted: #486581;
+    --palette-panic-orange: #E8890C;
+
+    --bg: #F0F4F8;
+    --bg-secondary: #D9E2EC;
+    --bg-tertiary: #BCCCDC;
+    --surface: #FFFFFF;
+    --input-bg: #FFFFFF;
+    --text: #102A43;
+    --text-secondary: #486581;
+    --border: #9FB3C8;
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(232, 137, 12, 0.15);
+    --assistant-bubble: #F0F4F8;
+
+    --scope-header-color: #D97706;
+    --card-border: rgba(217, 119, 6, 0.4);
+    --pinned-border: rgba(217, 119, 6, 0.6);
+    --pinned-bg: rgba(217, 119, 6, 0.1);
+
+    --white-alpha-6: rgba(0, 0, 0, 0.03);
+    --white-alpha-10: rgba(0, 0, 0, 0.06);
+    --code-bg: #D9E2EC;
+    --code-header-bg: #BCCCDC;
+    --code-inline-bg: rgba(232, 137, 12, 0.1);
+    --mesh-color-1: rgba(217, 119, 6, 0.12);
+    --mesh-color-2: rgba(123, 104, 238, 0.04);
+    --mesh-color-3: rgba(166, 124, 82, 0.03);
+    --syntax-keyword: #B45309;
+    --syntax-string: #92400E;
+    --syntax-number: #BE123C;
+    --syntax-comment: #64748B;
+    --syntax-function: #D97706;
+    --syntax-type: #6D28D9;
+    --syntax-variable: #78350F;
+    --syntax-operator: #486581;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --theme-color: #F0F4F8;
+  }
+}
