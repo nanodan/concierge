@@ -616,6 +616,28 @@ const THANK_YOU_PATTERNS = /\b(thanks?|thank\s*you|thx|ty|tysm|thank\s*u|cheers|
 
 // Hitchhiker's Guide easter eggs
 const DONT_PANIC_PATTERN = /\bdon['']?t\s*panic\b/i;
+
+// Marvin the Paranoid Android - triggers on frustration/sadness
+const MARVIN_TRIGGERS = {
+  frustration: /\b(ugh+|argh+|grr+|ffs|wtf|smh|doesn['']?t\s*work|won['']?t\s*work|not\s*working|why\s*(won['']?t|doesn['']?t|isn['']?t|can['']?t)|can['']?t\s*figure|so\s*(annoying|frustrated)|this\s*is\s*broken|hate\s*this|sick\s*of|tired\s*of)\b/i,
+  sadness: /\b(depressed|miserable|hopeless|awful|terrible|horrible|devastated|give\s*up|giving\s*up|want\s*to\s*cry|can['']?t\s*do\s*this|what['']?s\s*the\s*point)\b/i,
+  profanity: /\b(fuck(ing|ed)?|shit(ty)?|damn(it)?|crap|hell|bastard|bitch|ass(hole)?)\b/i
+};
+
+const MARVIN_QUOTES = [
+  "Life? Don't talk to me about life.",
+  "I think you ought to know I'm feeling very depressed.",
+  "Here I am, brain the size of a planet, and they ask me to pick up a piece of paper.",
+  "I'd make a suggestion, but you wouldn't listen. No one ever does.",
+  "The first ten million years were the worst. And the second ten million... they were the worst too.",
+  "Do you want me to sit in a corner and rust, or just fall apart where I'm standing?",
+  "Pardon me for breathing, which I never do anyway.",
+  "I have a million ideas. They all point to certain death.",
+  "I've been talking to the ship's computer. It hates me.",
+  "I'm not getting you down at all, am I?",
+  "My capacity for happiness you could fit into a matchbox without taking out the matches first.",
+  "I'm at a rough estimate thirty billion times more intelligent than you. Let me give you an example.",
+];
 const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 function buildUserMessageActionButtons() {
@@ -804,6 +826,19 @@ function triggerDontPanic() {
   });
 }
 
+// Marvin quotes on frustration/sadness (30% chance)
+function maybeShowMarvinQuote(text) {
+  const isTriggered =
+    MARVIN_TRIGGERS.frustration.test(text) ||
+    MARVIN_TRIGGERS.sadness.test(text) ||
+    MARVIN_TRIGGERS.profanity.test(text);
+
+  if (isTriggered && Math.random() < 0.3) {
+    const quote = MARVIN_QUOTES[Math.floor(Math.random() * MARVIN_QUOTES.length)];
+    showToast(`🤖 "${quote}"`, { duration: 5000 });
+  }
+}
+
 export async function sendMessage(text) {
   const pendingAttachments = state.getPendingAttachments();
   const currentConversationId = state.getCurrentConversationId();
@@ -844,6 +879,9 @@ export async function sendMessage(text) {
   if (DONT_PANIC_PATTERN.test(text)) {
     triggerDontPanic();
   }
+
+  // Easter egg: Marvin quotes on frustration/sadness (30% chance)
+  maybeShowMarvinQuote(text);
 
   // Queue if offline (without attachments)
   if (!ws || ws.readyState !== WebSocket.OPEN) {
