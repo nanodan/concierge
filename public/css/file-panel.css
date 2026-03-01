@@ -4380,6 +4380,11 @@
   background: var(--bg);
 }
 
+/* Fix scrollbar corner showing white in results area */
+.data-tab-results::-webkit-scrollbar-corner {
+  background: var(--bg);
+}
+
 .data-tab-results-header {
   display: flex;
   justify-content: space-between;

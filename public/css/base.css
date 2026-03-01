@@ -57,6 +57,13 @@ html, body {
   scrollbar-color: var(--scrollbar-thumb, var(--white-alpha-10)) transparent;
 }
 
+/* Wider scrollbars for desktop in Firefox */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: auto;
+  }
+}
+
 /* Smooth theme transitions */
 html.theme-transitioning,
 html.theme-transitioning *,
@@ -96,10 +103,10 @@ body::after {
   transform-origin: top center;
 }
 
-/* Scrollbar */
+/* Scrollbar - base size for mobile */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -108,18 +115,36 @@ body::after {
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb, var(--white-alpha-10));
-  border-radius: 5px;
+  border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover, var(--white-alpha-60));
+  background: var(--scrollbar-thumb-hover, var(--white-alpha-30));
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Wider, more clickable scrollbars for desktop (non-touch devices) */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 7px;
+    border: 3px solid transparent;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover, var(--white-alpha-40));
+    background-clip: padding-box;
+  }
 }
 
 /* Syntax highlighting - uses theme variables */
