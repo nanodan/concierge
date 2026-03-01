@@ -314,6 +314,20 @@ const bellQuotes = {
     "A writer is someone for whom writing is more difficult than it is for other people.",
     "Tomorrow may be hell, but today was a good writing day, and on the good writing days nothing else matters.",
   ],
+  h2g2: [
+    "Don't Panic.",
+    "The Answer to the Ultimate Question of Life, the Universe, and Everything is 42.",
+    "Time is an illusion. Lunchtime doubly so.",
+    "So long, and thanks for all the fish.",
+    "A towel is about the most massively useful thing an interstellar hitchhiker can have.",
+    "In the beginning the Universe was created. This has made a lot of people very angry.",
+    "I love deadlines. I love the whooshing noise they make as they go by.",
+    "Anyone who is capable of getting themselves made President should on no account be allowed to do the job.",
+    "The ships hung in the sky in much the same way that bricks don't.",
+    "For a moment, nothing happened. Then, after a second or so, nothing continued to happen.",
+    "Would it save you a lot of time if I just gave up and went mad now?",
+    "Space is big. Really big. You just won't believe how vastly, hugely, mind-bogglingly big it is.",
+  ],
 };
 
 // Bell ring handler
@@ -845,17 +859,293 @@ function triggerDontPanic() {
   });
 }
 
-// Marvin quotes on frustration/sadness (30% chance)
+// Marvin quotes on frustration/sadness (30% chance, 100% in h2g2 mode)
 function maybeShowMarvinQuote(text) {
   const isTriggered =
     MARVIN_TRIGGERS.frustration.test(text) ||
     MARVIN_TRIGGERS.sadness.test(text) ||
     MARVIN_TRIGGERS.profanity.test(text);
 
-  if (isTriggered && Math.random() < 0.3) {
+  // 100% chance in h2g2 mode, 30% otherwise
+  const chance = h2g2Mode ? 1.0 : 0.3;
+  if (isTriggered && Math.random() < chance) {
     const quote = MARVIN_QUOTES[Math.floor(Math.random() * MARVIN_QUOTES.length)];
     showToast(`🤖 "${quote}"`, { duration: 5000 });
   }
+}
+
+// --- Hitchhiker's Guide to the Galaxy Mode ---
+let h2g2Mode = false;
+let previousTheme = null;
+
+function activateH2G2Mode(showAnimation = true) {
+  if (h2g2Mode) return;
+  h2g2Mode = true;
+
+  // Save current theme and switch to h2g2
+  const themeLink = document.getElementById('color-theme-link');
+  if (themeLink) {
+    previousTheme = themeLink.href;
+    themeLink.href = '/css/themes/h2g2.css';
+  }
+
+  // Add subtle 42 to header
+  const brand = document.querySelector('.brand h1');
+  if (brand && !document.getElementById('h2g2-42')) {
+    const fortyTwo = document.createElement('span');
+    fortyTwo.id = 'h2g2-42';
+    fortyTwo.textContent = '42';
+    fortyTwo.style.cssText = `
+      font-size: 0.5em;
+      opacity: 0.4;
+      margin-left: 0.5em;
+      font-weight: normal;
+    `;
+    brand.appendChild(fortyTwo);
+  }
+
+  // Update empty state text
+  const emptyText = document.querySelector('.chat-empty-text');
+  if (emptyText) {
+    emptyText.dataset.originalText = emptyText.textContent;
+    emptyText.textContent = 'Mostly Harmless';
+  }
+
+  // Add "Don't Panic" to typing indicator
+  const typingIndicator = document.getElementById('typing-indicator');
+  if (typingIndicator && !document.getElementById('h2g2-dont-panic')) {
+    const dontPanic = document.createElement('span');
+    dontPanic.id = 'h2g2-dont-panic';
+    dontPanic.textContent = "DON'T PANIC";
+    dontPanic.style.cssText = `
+      margin-left: 0.5em;
+      font-weight: bold;
+      color: var(--accent);
+      font-size: 0.85em;
+      letter-spacing: 0.05em;
+    `;
+    typingIndicator.appendChild(dontPanic);
+  }
+
+  if (showAnimation) {
+    showToast("🚀 Hitchhiker's Mode Activated — DON'T PANIC", { duration: 3000 });
+  }
+}
+
+function deactivateH2G2Mode() {
+  if (!h2g2Mode) return;
+  h2g2Mode = false;
+
+  // Remove 42 from header
+  const fortyTwo = document.getElementById('h2g2-42');
+  if (fortyTwo) fortyTwo.remove();
+
+  // Restore empty state text
+  const emptyText = document.querySelector('.chat-empty-text');
+  if (emptyText && emptyText.dataset.originalText) {
+    emptyText.textContent = emptyText.dataset.originalText;
+  }
+
+  // Remove "Don't Panic" from typing indicator
+  const dontPanic = document.getElementById('h2g2-dont-panic');
+  if (dontPanic) dontPanic.remove();
+
+  previousTheme = null;
+}
+
+// Whale and petunias falling animation - position-based for all screen sizes
+function triggerImprobabilityDrive() {
+  haptic(50);
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(to bottom, #0D1B2A 0%, #1B263B 100%);
+    z-index: 9999;
+    overflow: hidden;
+  `;
+  document.body.appendChild(overlay);
+
+  const whaleThoughts = [
+    "What's happening?",
+    "Who am I?",
+    "Why am I here?",
+    "What's my purpose?",
+    "What's that thing rushing towards me?",
+    "I wonder if it will be friends with me?",
+    "I shall call it... ground!",
+  ];
+
+  const screenHeight = window.innerHeight;
+  const fallSpeed = 70; // pixels per second - slow enough to read all thoughts
+  const startY = -100;
+  const endY = screenHeight + 150;
+
+  // Calculate trigger points for thoughts based on VISIBLE screen area only
+  // Whale is visible from Y=0 to Y=screenHeight-50 (accounting for emoji size)
+  // Distribute all 7 thoughts across 5% to 75% of visible screen height
+  const visibleStart = 0;
+  const visibleEnd = screenHeight * 0.75; // Last thought at 75% down screen
+  const visibleRange = visibleEnd - visibleStart;
+
+  const thoughtTriggers = whaleThoughts.map((_, i) =>
+    visibleStart + (visibleRange * i / (whaleThoughts.length - 1))
+  );
+  const petuniasThoughtTrigger = screenHeight * 0.4; // Show at 40% of screen
+
+  // Create whale
+  const whale = document.createElement('div');
+  whale.innerHTML = '🐋';
+  whale.style.cssText = `
+    position: absolute;
+    font-size: clamp(3rem, 8vw, 5rem);
+    left: 25%;
+    top: ${startY}px;
+  `;
+  overlay.appendChild(whale);
+
+  // Create thought bubble for whale
+  const thought = document.createElement('div');
+  thought.style.cssText = `
+    position: absolute;
+    left: calc(25% + clamp(60px, 12vw, 100px));
+    top: ${startY}px;
+    background: white;
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+    max-width: min(200px, 45vw);
+    opacity: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    transition: opacity 0.2s;
+  `;
+  overlay.appendChild(thought);
+
+  // Create petunias
+  const petunias = document.createElement('div');
+  petunias.innerHTML = '🌸';
+  petunias.style.cssText = `
+    position: absolute;
+    font-size: clamp(2rem, 5vw, 3rem);
+    left: 65%;
+    top: ${startY - 50}px;
+  `;
+  overlay.appendChild(petunias);
+
+  // Petunias thought
+  const petuniasThought = document.createElement('div');
+  petuniasThought.textContent = 'Oh no, not again.';
+  petuniasThought.style.cssText = `
+    position: absolute;
+    left: calc(65% + clamp(40px, 8vw, 60px));
+    top: ${startY - 50}px;
+    background: white;
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    opacity: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    font-style: italic;
+    transition: opacity 0.2s;
+  `;
+  overlay.appendChild(petuniasThought);
+
+  // Animation state
+  let whaleY = startY;
+  let petuniasY = startY - 50;
+  let currentThoughtIndex = -1;
+  let petuniasThoughtShown = false;
+  let lastTime = performance.now();
+  let animationDone = false;
+
+  function animate(currentTime) {
+    if (animationDone) return;
+
+    const deltaTime = (currentTime - lastTime) / 1000; // seconds
+    lastTime = currentTime;
+
+    // Update positions
+    whaleY += fallSpeed * deltaTime;
+    petuniasY += fallSpeed * 1.1 * deltaTime; // Petunias fall slightly faster
+
+    whale.style.top = `${whaleY}px`;
+    thought.style.top = `${whaleY}px`;
+    petunias.style.top = `${petuniasY}px`;
+    petuniasThought.style.top = `${petuniasY}px`;
+
+    // Check for thought triggers
+    for (let i = currentThoughtIndex + 1; i < whaleThoughts.length; i++) {
+      if (whaleY >= thoughtTriggers[i]) {
+        currentThoughtIndex = i;
+        thought.textContent = whaleThoughts[i];
+        thought.style.opacity = '1';
+        // Fade slightly after showing
+        setTimeout(() => {
+          if (thought.textContent === whaleThoughts[i]) {
+            thought.style.opacity = '0.85';
+          }
+        }, 400);
+        break;
+      }
+    }
+
+    // Check for petunias thought trigger
+    if (!petuniasThoughtShown && petuniasY >= petuniasThoughtTrigger) {
+      petuniasThoughtShown = true;
+      petuniasThought.style.opacity = '1';
+    }
+
+    // Check if whale has fallen off screen
+    if (whaleY >= endY) {
+      animationDone = true;
+      showFinalScreen();
+      return;
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function showFinalScreen() {
+    // Flash and activate h2g2 mode
+    overlay.style.transition = 'background 0.3s';
+    overlay.style.background = '#fff';
+    setTimeout(() => {
+      overlay.style.background = '#0D1B2A';
+      overlay.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          color: #FF9F1C;
+          font-family: Georgia, serif;
+          text-align: center;
+          padding: 1rem;
+        ">
+          <div style="font-size: clamp(1.2rem, 4vw, 2rem); margin-bottom: 1rem;">INFINITE IMPROBABILITY DRIVE</div>
+          <div style="font-size: clamp(0.9rem, 2.5vw, 1.2rem); opacity: 0.7;">Hitchhiker's Mode Activated</div>
+          <div style="font-size: clamp(3rem, 10vw, 5rem); margin-top: 1rem;">42</div>
+        </div>
+      `;
+      setTimeout(() => {
+        overlay.style.transition = 'opacity 0.5s';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 500);
+        activateH2G2Mode(false);
+        showToast("🐋 The whale and the bowl of petunias send their regards", { duration: 4000 });
+      }, 1500);
+    }, 200);
+  }
+
+  // Start animation
+  requestAnimationFrame(animate);
 }
 
 export async function sendMessage(text) {
@@ -887,6 +1177,41 @@ export async function sendMessage(text) {
     messageInput.value = '';
     autoResizeInput();
     return; // Don't send as a message
+  }
+
+  // Easter egg: Hitchhiker's Mode triggers
+  const h2g2Commands = ['/hitchhikers', '/h2g2', '/42'];
+  if (h2g2Commands.includes(text.trim().toLowerCase())) {
+    activateH2G2Mode();
+    messageInput.value = '';
+    autoResizeInput();
+    return;
+  }
+
+  // Easter egg: /improbability - whale and petunias
+  if (text.trim().toLowerCase() === '/improbability') {
+    triggerImprobabilityDrive();
+    messageInput.value = '';
+    autoResizeInput();
+    return;
+  }
+
+  // Easter egg: /normalcy - exit h2g2 mode
+  if (text.trim().toLowerCase() === '/normalcy') {
+    if (h2g2Mode) {
+      deactivateH2G2Mode();
+      // Restore previous theme if we have one
+      const themeLink = document.getElementById('color-theme-link');
+      if (themeLink && previousTheme) {
+        themeLink.href = previousTheme;
+      }
+      showToast('🌍 Returning to normalcy...', { duration: 2000 });
+    } else {
+      showToast('You were already normal. Relatively speaking.', { duration: 2000 });
+    }
+    messageInput.value = '';
+    autoResizeInput();
+    return;
   }
 
   // Easter egg: exactly 42 characters - Hitchhiker's Guide
@@ -1414,6 +1739,13 @@ function closeChatMoreMenu() {
 
 // --- Setup all event listeners ---
 export function setupEventListeners(createConversation) {
+  // Deactivate h2g2 mode when theme changes
+  window.addEventListener('color-theme-changed', (e) => {
+    if (h2g2Mode && e.detail?.theme !== 'h2g2') {
+      deactivateH2G2Mode();
+    }
+  });
+
   // Bell easter egg - header icon
   const brandIcon = document.querySelector('.brand-icon');
   if (brandIcon) {
