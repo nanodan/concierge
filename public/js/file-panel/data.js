@@ -2,6 +2,7 @@
 import { escapeHtml } from '../markdown.js';
 import { haptic, showToast, apiFetch, showDialog } from '../utils.js';
 import * as state from '../state.js';
+import { showSaveLocationPicker } from '../ui/save-location-picker.js';
 
 const DATA_SOURCE_DUCKDB = 'duckdb';
 const DATA_SOURCE_BIGQUERY = 'bigquery';
@@ -31,7 +32,6 @@ let queryHistory = [];
 let maxHistory = 20;
 let loadedTables = [];
 let currentHistoryConvId = null;
-let lastQueryResults = null;
 let lastQuerySQL = null;
 let lastQuerySource = DATA_SOURCE_DUCKDB;
 let lastBigQueryJob = null;
@@ -960,42 +960,34 @@ function buildBigQueryPaginationControls() {
   `;
 }
 
-function buildResultsActions(source, columns) {
-  if (source === DATA_SOURCE_BIGQUERY) {
-    const formatOptions = buildBigQueryFormatOptions(columns);
-    return `
-      <div class="results-export-modes">
-        <div class="results-export-mode">
-          <span class="results-export-mode-label">Browser</span>
-          <select class="results-export-select" data-target="browser">${formatOptions}</select>
-          <button class="results-export-btn results-export-run-btn" data-target="browser" title="Download full query result to this browser">
-            Download
-          </button>
-        </div>
-        <div class="results-export-mode">
-          <span class="results-export-mode-label">Project</span>
-          <select class="results-export-select" data-target="cwd">${formatOptions}</select>
-          <button class="results-export-btn results-export-run-btn" data-target="cwd" title="Save full query result into conversation cwd">
-            Save
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
+function buildDuckDbFormatOptions() {
   return `
-    <button class="results-export-btn" data-format="csv" title="Export as CSV">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      CSV
-    </button>
-    <button class="results-export-btn" data-format="json" title="Export as JSON">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      JSON
-    </button>
-    <button class="results-export-btn" data-format="parquet" title="Export as Parquet">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Parquet
-    </button>
+    <option value="csv">CSV</option>
+    <option value="json">JSON</option>
+    <option value="parquet">Parquet</option>
+  `;
+}
+
+function buildResultsActions(source, columns) {
+  const formatOptions = source === DATA_SOURCE_BIGQUERY
+    ? buildBigQueryFormatOptions(columns)
+    : buildDuckDbFormatOptions();
+
+  // Segmented button design - same for both sources
+  return `
+    <div class="results-export-controls">
+      <select class="results-export-select">${formatOptions}</select>
+      <div class="results-export-segmented">
+        <button class="results-export-btn" data-target="browser" title="Download to browser">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="btn-label">Download</span>
+        </button>
+        <button class="results-export-btn" data-target="cwd" title="Save to project folder">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span class="btn-label">Save...</span>
+        </button>
+      </div>
+    </div>
   `;
 }
 
@@ -1065,12 +1057,17 @@ async function loadBigQueryPreviewPage(direction) {
   }
 }
 
-async function promptForFilename(defaultName, confirmLabel) {
+async function promptForFilename(defaultName, confirmLabel, { allowPath = false } = {}) {
+  const title = allowPath ? 'Save location' : 'Filename';
+  const placeholder = allowPath ? 'path/to/filename' : 'query-results';
+  const message = allowPath ? 'Enter filename or path (e.g., output/results)' : '';
+
   const value = await showDialog({
-    title: 'Filename',
+    title,
+    message,
     input: true,
     defaultValue: defaultName,
-    placeholder: 'query-results',
+    placeholder,
     confirmLabel,
     cancelLabel: 'Cancel',
   });
@@ -1120,12 +1117,9 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   const { columns, rows } = data;
 
   if (!columns || columns.length === 0) {
-    lastQueryResults = null;
     resultsContainer.innerHTML = '<div class="data-tab-empty">No results</div>';
     return;
   }
-
-  lastQueryResults = { columns, rows };
 
   const headerCells = columns.map((col) => `
     <th title="${escapeHtml(col.type)}">${escapeHtml(col.name)}<span class="col-type">${escapeHtml(col.type)}</span></th>
@@ -1185,110 +1179,26 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   resultsContainer.querySelectorAll('.results-export-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       haptic();
-      if (btn.classList.contains('results-export-run-btn')) {
-        const target = btn.dataset.target;
-        const mode = btn.closest('.results-export-mode');
-        const format = mode?.querySelector('.results-export-select')?.value || 'csv';
+      const target = btn.dataset.target;
+      const controls = btn.closest('.results-export-controls');
+      const format = controls?.querySelector('.results-export-select')?.value || 'csv';
+
+      if (lastQuerySource === DATA_SOURCE_BIGQUERY) {
         if (target === 'browser') {
           void downloadBigQueryResults(format);
         } else if (target === 'cwd') {
           void saveBigQueryResultsToFile(format);
         }
-        return;
+      } else {
+        // DuckDB
+        if (target === 'browser') {
+          void downloadDuckDbResults(format);
+        } else if (target === 'cwd') {
+          void saveDuckDbResultsToFile(format);
+        }
       }
-      void exportResults(btn.dataset.format);
     });
   });
-}
-
-/**
- * Export query results
- * @param {string} format - export target format
- */
-async function exportResults(format) {
-  if (!lastQueryResults) {
-    showToast('No results to export');
-    return;
-  }
-
-  const defaultName = 'query-results';
-  const filename = await promptForFilename(defaultName, 'Download');
-  if (!filename) return;
-
-  const { columns, rows } = lastQueryResults;
-
-  if (format === 'parquet') {
-    if (lastQuerySource !== DATA_SOURCE_DUCKDB || !lastQuerySQL) {
-      showToast('Parquet export is only available for DuckDB queries');
-      return;
-    }
-
-    showToast('Exporting...', { duration: 1000 });
-
-    try {
-      const res = await fetch('/api/duckdb/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sql: lastQuerySQL,
-          format: 'parquet',
-          filename,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(err.error || 'Export failed');
-        return;
-      }
-
-      const blob = await res.blob();
-      const rowCount = res.headers.get('X-Row-Count') || rows.length;
-      triggerBlobDownload(blob, `${filename}.parquet`);
-
-      showToast(`Exported ${rowCount} rows as Parquet`);
-    } catch {
-      showToast('Export failed');
-    }
-    return;
-  }
-
-  let content;
-  let mimeType;
-  let extension;
-
-  if (format === 'json') {
-    const data = rows.map((row) => {
-      const obj = {};
-      columns.forEach((col, i) => {
-        obj[col.name] = row[i];
-      });
-      return obj;
-    });
-    content = JSON.stringify(data, null, 2);
-    mimeType = 'application/json';
-    extension = 'json';
-  } else {
-    const escapeCSV = (val) => {
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return '"' + str.replace(/"/g, '""') + '"';
-      }
-      return str;
-    };
-
-    const header = columns.map((col) => escapeCSV(col.name)).join(',');
-    const dataRows = rows.map((row) => row.map(escapeCSV).join(','));
-    content = [header, ...dataRows].join('\n');
-    mimeType = 'text/csv';
-    extension = 'csv';
-  }
-
-  const blob = new Blob([content], { type: mimeType });
-  triggerBlobDownload(blob, `${filename}.${extension}`);
-
-  showToast(`Exported ${rows.length} rows as ${extension.toUpperCase()}`);
 }
 
 async function downloadBigQueryResults(format) {
@@ -1379,9 +1289,20 @@ async function saveBigQueryResultsToFile(format) {
     return;
   }
 
-  const defaultName = `bigquery-results-${Date.now()}`;
-  const filename = await promptForFilename(defaultName, 'Save');
-  if (!filename) return;
+  // Show folder picker
+  const location = await showSaveLocationPicker({
+    defaultFilename: 'query-results',
+    format,
+  });
+  if (!location) return;
+
+  // Compute relative path from cwd
+  const conv = state.conversations.find(c => c.id === convId);
+  const cwd = conv?.cwd || '';
+  const relativePath = location.path.startsWith(cwd)
+    ? location.path.slice(cwd.length).replace(/^\//, '')
+    : '';
+  const filename = relativePath ? `${relativePath}/${location.filename}` : location.filename;
 
   const res = await apiFetch('/api/bigquery/query/save', {
     method: 'POST',
@@ -1391,6 +1312,103 @@ async function saveBigQueryResultsToFile(format) {
       projectId,
       jobId: lastBigQueryJob.jobId,
       location: lastBigQueryJob.location || null,
+      format,
+      filename,
+    }),
+  });
+
+  if (!res) return;
+
+  const data = await res.json();
+  const rowCount = Number(data.rowCount || 0).toLocaleString();
+  showToast(`Saved ${rowCount} rows to ${data.relativePath}`, {
+    action: 'Files',
+    onAction: () => {
+      switchToFilesTabFn?.();
+    },
+  });
+}
+
+async function downloadDuckDbResults(format) {
+  if (lastQuerySource !== DATA_SOURCE_DUCKDB || !lastQuerySQL) {
+    showToast('No DuckDB result to download');
+    return;
+  }
+
+  const defaultName = `duckdb-results-${Date.now()}`;
+  const filename = await promptForFilename(defaultName, 'Download');
+  if (!filename) return;
+
+  showToast('Exporting...', { duration: 1000 });
+
+  try {
+    const res = await fetch('/api/duckdb/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sql: lastQuerySQL,
+        format,
+        filename,
+      }),
+    });
+
+    if (!res.ok) {
+      let message = 'Download failed';
+      try {
+        const err = await res.json();
+        message = err.error || message;
+      } catch {
+        // ignore non-json error payload
+      }
+      showToast(message, { variant: 'error' });
+      return;
+    }
+
+    const blob = await res.blob();
+    const rowCount = Number(res.headers.get('X-Row-Count') || 0);
+    const downloadName = parseDownloadFilename(res.headers.get('Content-Disposition')) || `${filename}.${format}`;
+    triggerBlobDownload(blob, downloadName);
+
+    const rowCountLabel = rowCount > 0 ? rowCount.toLocaleString() : 'all';
+    showToast(`Downloaded ${rowCountLabel} rows as ${format.toUpperCase()}`);
+  } catch {
+    showToast('Download failed', { variant: 'error' });
+  }
+}
+
+async function saveDuckDbResultsToFile(format) {
+  if (lastQuerySource !== DATA_SOURCE_DUCKDB || !lastQuerySQL) {
+    showToast('No DuckDB result to save');
+    return;
+  }
+
+  const convId = state.getCurrentConversationId();
+  if (!convId) {
+    showToast('No conversation selected');
+    return;
+  }
+
+  // Show folder picker
+  const location = await showSaveLocationPicker({
+    defaultFilename: 'query-results',
+    format,
+  });
+  if (!location) return;
+
+  // Compute relative path from cwd
+  const conv = state.conversations.find(c => c.id === convId);
+  const cwd = conv?.cwd || '';
+  const relativePath = location.path.startsWith(cwd)
+    ? location.path.slice(cwd.length).replace(/^\//, '')
+    : '';
+  const filename = relativePath ? `${relativePath}/${location.filename}` : location.filename;
+
+  const res = await apiFetch('/api/duckdb/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      conversationId: convId,
+      sql: lastQuerySQL,
       format,
       filename,
     }),
