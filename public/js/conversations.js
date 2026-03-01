@@ -121,6 +121,27 @@ function updateChatCwdIndicator(conv) {
   chatCwdIndicator.classList.toggle('worktree', isWorktree);
 }
 
+/**
+ * Update the "Jump to Parent" menu item visibility and data based on conversation's fork status.
+ * Shows the menu item only for forked conversations.
+ */
+function updateChatForkLink(conv) {
+  const chatMoreParent = document.getElementById('chat-more-parent');
+  if (!chatMoreParent) return;
+
+  if (!conv?.parentId) {
+    chatMoreParent.classList.add('hidden');
+    chatMoreParent.dataset.parentId = '';
+    chatMoreParent.dataset.forkIndex = '';
+    return;
+  }
+
+  // Store fork data on the menu item for the click handler
+  chatMoreParent.dataset.parentId = conv.parentId;
+  chatMoreParent.dataset.forkIndex = conv.forkIndex ?? 0;
+  chatMoreParent.classList.remove('hidden');
+}
+
 export async function loadConversations() {
   const conversations = state.conversations;
   // Show skeletons on first load when list is empty
@@ -1004,6 +1025,7 @@ export async function openConversation(id) {
 
   chatName.textContent = conv.name;
   updateChatCwdIndicator(conv);
+  updateChatForkLink(conv);
   state.updateStatusDot(conv.status);
 
   state.setCurrentProvider(conv.provider || 'claude');
@@ -1042,6 +1064,21 @@ export async function openConversation(id) {
   }
 
   state.setThinking(conv.status === 'thinking', conv.thinkingStartTime);
+}
+
+/**
+ * Open a conversation and scroll to a specific message.
+ * Used for jumping to fork points in parent conversations.
+ * @param {string} id - Conversation ID
+ * @param {number} messageIndex - Message index to scroll to
+ */
+export async function openConversationAtMessage(id, messageIndex) {
+  await openConversation(id);
+  // Wait for render to complete, then scroll to the message
+  setTimeout(async () => {
+    const { scrollToMessage } = await import('./render.js');
+    scrollToMessage(messageIndex);
+  }, 150);
 }
 
 export function showChatView() {

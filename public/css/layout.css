@@ -191,6 +191,23 @@
   color: var(--accent);
 }
 
+/* Message highlight animation for jump-to-fork */
+.message-highlight,
+.message-wrapper.message-highlight {
+  animation: message-highlight-pulse 2s ease-out;
+}
+
+@keyframes message-highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 3px var(--accent);
+    background: var(--accent-alpha-15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background: transparent;
+  }
+}
+
 .status-dot {
   width: 10px;
   height: 10px;
