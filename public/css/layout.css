@@ -191,55 +191,6 @@
   color: var(--accent);
 }
 
-/* Fork link - shows parent conversation link for forked conversations */
-/* Hidden on mobile by default - shown only on desktop */
-.chat-fork-link {
-  display: none;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 3px 8px;
-  border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: min(40vw, 240px);
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-}
-
-.chat-fork-link:not(.hidden) {
-  display: flex;
-  align-items: center;
-}
-
-.chat-fork-link:hover {
-  background: var(--surface);
-  color: var(--accent);
-  border-color: var(--accent-alpha-50);
-}
-
-.chat-fork-link:active {
-  background: var(--bg-tertiary);
-}
-
-.chat-fork-link .fork-icon {
-  color: var(--accent);
-  margin-right: 3px;
-}
-
-.chat-fork-link.hidden {
-  display: none !important;
-}
-
-/* Hide fork link on mobile - too cramped */
-@media (max-width: 600px) {
-  .chat-fork-link {
-    display: none !important;
-  }
-}
-
 /* Message highlight animation for jump-to-fork */
 .message-highlight,
 .message-wrapper.message-highlight {

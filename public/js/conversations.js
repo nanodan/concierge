@@ -19,7 +19,6 @@ let listView = null;
 let chatView = null;
 let conversationList = null;
 let chatName = null;
-let chatForkLink = null;
 let chatCwdIndicator = null;
 let loadMoreBtn = null;
 let contextBar = null;
@@ -37,7 +36,6 @@ export function initConversations(elements) {
   chatView = elements.chatView;
   conversationList = elements.conversationList;
   chatName = elements.chatName;
-  chatForkLink = elements.chatForkLink;
   chatCwdIndicator = elements.chatCwdIndicator;
   loadMoreBtn = elements.loadMoreBtn;
   contextBar = elements.contextBar;
@@ -123,47 +121,25 @@ function updateChatCwdIndicator(conv) {
   chatCwdIndicator.classList.toggle('worktree', isWorktree);
 }
 
+/**
+ * Update the "Jump to Parent" menu item visibility and data based on conversation's fork status.
+ * Shows the menu item only for forked conversations.
+ */
 function updateChatForkLink(conv) {
-  // Also update the "Jump to Parent" menu item visibility
   const chatMoreParent = document.getElementById('chat-more-parent');
+  if (!chatMoreParent) return;
 
   if (!conv?.parentId) {
-    if (chatForkLink) {
-      chatForkLink.classList.add('hidden');
-      chatForkLink.innerHTML = '';
-    }
-    if (chatMoreParent) chatMoreParent.classList.add('hidden');
+    chatMoreParent.classList.add('hidden');
+    chatMoreParent.dataset.parentId = '';
+    chatMoreParent.dataset.forkIndex = '';
     return;
   }
 
-  const parent = state.conversations.find(c => c.id === conv.parentId);
-  const parentName = parent?.name || 'parent';
-  const msgNum = (conv.forkIndex ?? 0) + 1;
-  const truncatedName = parentName.length > 24 ? parentName.slice(0, 24) + '...' : parentName;
-
-  if (chatForkLink) {
-    chatForkLink.innerHTML = `<span class="fork-icon">&#8627;</span> from "${escapeHtml(truncatedName)}" @ msg ${msgNum}`;
-    chatForkLink.dataset.parentId = conv.parentId;
-    chatForkLink.dataset.forkIndex = conv.forkIndex ?? 0;
-    chatForkLink.title = `Jump to "${parentName}" at message ${msgNum}`;
-    chatForkLink.classList.remove('hidden');
-
-    // Set up click handler if not already done
-    if (!chatForkLink.dataset.handlerAttached) {
-      chatForkLink.dataset.handlerAttached = 'true';
-      chatForkLink.addEventListener('click', async () => {
-        haptic();
-        const parentId = chatForkLink.dataset.parentId;
-        const forkIndex = parseInt(chatForkLink.dataset.forkIndex, 10);
-        if (parentId) {
-          await openConversationAtMessage(parentId, forkIndex);
-        }
-      });
-    }
-  }
-
-  // Show the menu item for mobile access
-  if (chatMoreParent) chatMoreParent.classList.remove('hidden');
+  // Store fork data on the menu item for the click handler
+  chatMoreParent.dataset.parentId = conv.parentId;
+  chatMoreParent.dataset.forkIndex = conv.forkIndex ?? 0;
+  chatMoreParent.classList.remove('hidden');
 }
 
 export async function loadConversations() {

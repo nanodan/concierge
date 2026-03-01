@@ -2264,11 +2264,10 @@ export function setupEventListeners(createConversation) {
     chatMoreParent.addEventListener('click', async () => {
       closeChatMoreMenu();
       haptic();
-      const forkLink = document.getElementById('chat-fork-link');
-      if (forkLink && forkLink.dataset.parentId) {
+      const parentId = chatMoreParent.dataset.parentId;
+      if (parentId) {
         const { openConversationAtMessage } = await import('./conversations.js');
-        const parentId = forkLink.dataset.parentId;
-        const forkIndex = parseInt(forkLink.dataset.forkIndex || '0', 10);
+        const forkIndex = parseInt(chatMoreParent.dataset.forkIndex || '0', 10);
         openConversationAtMessage(parentId, forkIndex);
       }
     });

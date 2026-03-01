@@ -49,7 +49,6 @@ const messageInput = document.getElementById('message-input');
 const inputForm = document.getElementById('input-form');
 const sendBtn = document.getElementById('send-btn');
 const chatName = document.getElementById('chat-name');
-const chatForkLink = document.getElementById('chat-fork-link');
 const chatCwdIndicator = document.getElementById('chat-cwd-indicator');
 const chatStatus = document.getElementById('chat-status');
 const typingIndicator = document.getElementById('typing-indicator');
@@ -280,7 +279,6 @@ initConversations({
   chatView,
   conversationList,
   chatName,
-  chatForkLink,
   chatCwdIndicator,
   loadMoreBtn,
   contextBar,
