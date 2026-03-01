@@ -124,11 +124,15 @@ function updateChatCwdIndicator(conv) {
 }
 
 function updateChatForkLink(conv) {
-  if (!chatForkLink) return;
+  // Also update the "Jump to Parent" menu item visibility
+  const chatMoreParent = document.getElementById('chat-more-parent');
 
   if (!conv?.parentId) {
-    chatForkLink.classList.add('hidden');
-    chatForkLink.innerHTML = '';
+    if (chatForkLink) {
+      chatForkLink.classList.add('hidden');
+      chatForkLink.innerHTML = '';
+    }
+    if (chatMoreParent) chatMoreParent.classList.add('hidden');
     return;
   }
 
@@ -137,24 +141,29 @@ function updateChatForkLink(conv) {
   const msgNum = (conv.forkIndex ?? 0) + 1;
   const truncatedName = parentName.length > 24 ? parentName.slice(0, 24) + '...' : parentName;
 
-  chatForkLink.innerHTML = `<span class="fork-icon">&#8627;</span> from "${escapeHtml(truncatedName)}" @ msg ${msgNum}`;
-  chatForkLink.dataset.parentId = conv.parentId;
-  chatForkLink.dataset.forkIndex = conv.forkIndex ?? 0;
-  chatForkLink.title = `Jump to "${parentName}" at message ${msgNum}`;
-  chatForkLink.classList.remove('hidden');
+  if (chatForkLink) {
+    chatForkLink.innerHTML = `<span class="fork-icon">&#8627;</span> from "${escapeHtml(truncatedName)}" @ msg ${msgNum}`;
+    chatForkLink.dataset.parentId = conv.parentId;
+    chatForkLink.dataset.forkIndex = conv.forkIndex ?? 0;
+    chatForkLink.title = `Jump to "${parentName}" at message ${msgNum}`;
+    chatForkLink.classList.remove('hidden');
 
-  // Set up click handler if not already done
-  if (!chatForkLink.dataset.handlerAttached) {
-    chatForkLink.dataset.handlerAttached = 'true';
-    chatForkLink.addEventListener('click', async () => {
-      haptic();
-      const parentId = chatForkLink.dataset.parentId;
-      const forkIndex = parseInt(chatForkLink.dataset.forkIndex, 10);
-      if (parentId) {
-        await openConversationAtMessage(parentId, forkIndex);
-      }
-    });
+    // Set up click handler if not already done
+    if (!chatForkLink.dataset.handlerAttached) {
+      chatForkLink.dataset.handlerAttached = 'true';
+      chatForkLink.addEventListener('click', async () => {
+        haptic();
+        const parentId = chatForkLink.dataset.parentId;
+        const forkIndex = parseInt(chatForkLink.dataset.forkIndex, 10);
+        if (parentId) {
+          await openConversationAtMessage(parentId, forkIndex);
+        }
+      });
+    }
   }
+
+  // Show the menu item for mobile access
+  if (chatMoreParent) chatMoreParent.classList.remove('hidden');
 }
 
 export async function loadConversations() {

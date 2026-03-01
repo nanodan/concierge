@@ -2259,6 +2259,21 @@ export function setupEventListeners(createConversation) {
     });
   }
 
+  const chatMoreParent = document.getElementById('chat-more-parent');
+  if (chatMoreParent) {
+    chatMoreParent.addEventListener('click', async () => {
+      closeChatMoreMenu();
+      haptic();
+      const forkLink = document.getElementById('chat-fork-link');
+      if (forkLink && forkLink.dataset.parentId) {
+        const { openConversationAtMessage } = await import('./conversations.js');
+        const parentId = forkLink.dataset.parentId;
+        const forkIndex = parseInt(forkLink.dataset.forkIndex || '0', 10);
+        openConversationAtMessage(parentId, forkIndex);
+      }
+    });
+  }
+
   if (chatMoreCapabilities) {
     chatMoreCapabilities.addEventListener('click', () => {
       closeChatMoreMenu();
