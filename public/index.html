@@ -124,6 +124,7 @@
       <button id="back-btn" class="back-btn" aria-label="Back">&larr;</button>
       <div class="chat-title">
         <span id="chat-name"></span>
+        <div id="chat-fork-link" class="chat-fork-link hidden"></div>
         <span id="chat-cwd-indicator" class="chat-cwd-indicator hidden"></span>
         <span id="chat-status" class="status-dot"></span>
         <span id="mode-badge" class="mode-badge">AP</span>
@@ -416,8 +417,19 @@
     <header class="top-bar chat-header">
       <button id="branches-back-btn" class="back-btn" aria-label="Back">&larr;</button>
       <div class="chat-title"><span>Conversation Branches</span></div>
+      <button id="branches-compare-btn" class="header-icon-btn" aria-label="Compare branches" title="Compare">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M21 3l-9 9"/><path d="M3 3l9 9"/><path d="M21 21H3"/></svg>
+      </button>
     </header>
     <div id="branches-content" class="branches-content"></div>
+    <!-- Compare overlay -->
+    <div id="branches-compare" class="branches-compare hidden">
+      <div class="compare-header">
+        <span>Select two branches to compare</span>
+        <button id="compare-close-btn" class="compare-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div id="compare-body" class="compare-body"></div>
+    </div>
   </div>
 
   <!-- Standalone Files View -->

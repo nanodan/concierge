@@ -762,3 +762,61 @@ export function attachMessageActions() {
     attachMessageActionsCallback();
   }
 }
+
+/**
+ * Scroll to a specific message by index and highlight it.
+ * @param {number} index - Message index to scroll to
+ */
+export function scrollToMessage(index) {
+  const messagesContainer = state.getMessagesContainer();
+  if (!messagesContainer) return;
+
+  // Find message by data-index attribute
+  const target = messagesContainer.querySelector(`.message[data-index="${index}"]`);
+  if (!target) {
+    // If message not found, it might not be loaded yet (virtual scrolling)
+    // Load more messages until we find it
+    const allMessages = state.getAllMessages();
+    if (index < state.getMessagesOffset() && index >= 0 && index < allMessages.length) {
+      // Need to load earlier messages
+      // Set offset to include the target message
+      const newOffset = Math.max(0, index - 10); // Load some context
+      state.setMessagesOffset(newOffset);
+      const visible = allMessages.slice(newOffset);
+      messagesContainer.innerHTML = renderMessageSlice(visible, newOffset);
+      enhanceCodeBlocks(messagesContainer);
+      attachTTSHandlers();
+      attachTimestampHandlers();
+      attachImageHandlers();
+      attachRegenHandlers();
+      attachCopyMsgHandlers();
+      attachMessageActions();
+      attachCompressedSectionToggle();
+      renderAllReactions();
+      // Hide load more button if at start
+      const loadMoreBtn = state.getLoadMoreBtn();
+      if (loadMoreBtn) {
+        loadMoreBtn.classList.toggle('hidden', newOffset <= 0);
+      }
+      // Try again after re-render
+      setTimeout(() => scrollToMessage(index), 50);
+      return;
+    }
+    return;
+  }
+
+  // Scroll to the message
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Add highlight animation
+  target.classList.add('message-highlight');
+
+  // Also highlight the wrapper if it exists
+  const wrapper = target.closest('.message-wrapper');
+  if (wrapper) {
+    wrapper.classList.add('message-highlight');
+    setTimeout(() => wrapper.classList.remove('message-highlight'), 2000);
+  }
+
+  setTimeout(() => target.classList.remove('message-highlight'), 2000);
+}

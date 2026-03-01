@@ -1,20 +1,30 @@
 // --- Conversation branches visualization ---
-import { escapeHtml } from './markdown.js';
-import { haptic, apiFetch } from './utils.js';
+import { escapeHtml, renderMarkdown } from './markdown.js';
+import { haptic, apiFetch, truncate } from './utils.js';
 import * as state from './state.js';
 
 // DOM elements (set by init)
 let branchesView = null;
 let branchesBackBtn = null;
 let branchesContent = null;
+let branchesCompareBtn = null;
+let branchesCompare = null;
+let compareCloseBtn = null;
+let compareBody = null;
 
 // State
 let _currentTreeData = null;
+let _compareMode = false;
+let _selectedForCompare = [];
 
 export function initBranches(elements) {
   branchesView = elements.branchesView;
   branchesBackBtn = elements.branchesBackBtn;
   branchesContent = elements.branchesContent;
+  branchesCompareBtn = elements.branchesCompareBtn;
+  branchesCompare = elements.branchesCompare;
+  compareCloseBtn = elements.compareCloseBtn;
+  compareBody = elements.compareBody;
 
   if (branchesBackBtn) {
     branchesBackBtn.addEventListener('click', () => {
@@ -22,6 +32,28 @@ export function initBranches(elements) {
       closeBranchesView();
     });
   }
+
+  if (branchesCompareBtn) {
+    branchesCompareBtn.addEventListener('click', () => {
+      haptic();
+      toggleCompareMode();
+    });
+  }
+
+  if (compareCloseBtn) {
+    compareCloseBtn.addEventListener('click', () => {
+      haptic();
+      closeCompareView();
+    });
+  }
+
+  // ESC to close compare view
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && branchesCompare && !branchesCompare.classList.contains('hidden')) {
+      e.stopPropagation();
+      closeCompareView();
+    }
+  });
 }
 
 export async function loadBranchesTree(conversationId) {
@@ -182,6 +214,15 @@ function renderTree(data) {
       if (e.target.closest('.branch-collapse-btn')) return;
 
       const id = item.dataset.id;
+
+      // Handle compare mode selection
+      if (_compareMode) {
+        haptic();
+        selectBranchForCompare(id);
+        return;
+      }
+
+      // Normal navigation
       if (id && id !== data.currentId) {
         haptic();
         navigateToConversation(id);
@@ -248,4 +289,192 @@ export function openBranchesFromChat() {
   if (!currentId) return;
   showBranchesView();
   loadBranchesTree(currentId);
+}
+
+// --- Compare Mode ---
+
+function toggleCompareMode() {
+  _compareMode = !_compareMode;
+  _selectedForCompare = [];
+
+  if (_compareMode) {
+    branchesCompareBtn?.classList.add('active');
+    branchesContent?.classList.add('compare-mode');
+    updateCompareHeader('Select two branches to compare');
+  } else {
+    branchesCompareBtn?.classList.remove('active');
+    branchesContent?.classList.remove('compare-mode');
+    closeCompareView();
+  }
+
+  // Re-render tree with selection checkboxes
+  if (_currentTreeData) {
+    renderTree(_currentTreeData);
+  }
+}
+
+function updateCompareHeader(text) {
+  const header = branchesCompare?.querySelector('.compare-header span');
+  if (header) header.textContent = text;
+}
+
+function selectBranchForCompare(id) {
+  if (_selectedForCompare.includes(id)) {
+    _selectedForCompare = _selectedForCompare.filter(x => x !== id);
+  } else if (_selectedForCompare.length < 2) {
+    _selectedForCompare.push(id);
+  }
+
+  // Update selection UI
+  branchesContent?.querySelectorAll('.branch-item').forEach(item => {
+    const itemId = item.dataset.id;
+    item.classList.toggle('compare-selected', _selectedForCompare.includes(itemId));
+  });
+
+  // Update header text
+  if (_selectedForCompare.length === 0) {
+    updateCompareHeader('Select two branches to compare');
+  } else if (_selectedForCompare.length === 1) {
+    updateCompareHeader('Select one more branch');
+  }
+
+  // Load comparison when two selected
+  if (_selectedForCompare.length === 2) {
+    loadCompareView(_selectedForCompare[0], _selectedForCompare[1]);
+  }
+}
+
+async function loadCompareView(idA, idB) {
+  if (!branchesCompare || !compareBody) return;
+
+  branchesCompare.classList.remove('hidden');
+  compareBody.innerHTML = '<div class="compare-loading">Loading conversations...</div>';
+
+  try {
+    const [convA, convB] = await Promise.all([
+      apiFetch(`/api/conversations/${idA}`).then(r => r?.json()),
+      apiFetch(`/api/conversations/${idB}`).then(r => r?.json())
+    ]);
+
+    if (!convA || !convB) {
+      compareBody.innerHTML = '<div class="compare-error">Failed to load conversations</div>';
+      return;
+    }
+
+    // Determine fork relationship and which is parent
+    let parent = convA;
+    let fork = convB;
+    let forkIndex = 0;
+
+    if (convB.parentId === idA) {
+      parent = convA;
+      fork = convB;
+      forkIndex = fork.forkIndex || 0;
+    } else if (convA.parentId === idB) {
+      parent = convB;
+      fork = convA;
+      forkIndex = fork.forkIndex || 0;
+    } else {
+      // Find common ancestor - for now just compare from start
+      forkIndex = 0;
+    }
+
+    updateCompareHeader(`Comparing from message ${forkIndex + 1}`);
+
+    // Render based on viewport
+    if (window.innerWidth >= 768) {
+      renderSideBySide(parent, fork, forkIndex);
+    } else {
+      renderUnifiedDiff(parent, fork, forkIndex);
+    }
+  } catch (err) {
+    compareBody.innerHTML = `<div class="compare-error">Error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderCompareMessage(msg) {
+  if (!msg) return '';
+  const cls = msg.role === 'user' ? 'compare-msg user' : 'compare-msg assistant';
+  const content = msg.role === 'assistant' ? renderMarkdown(msg.text) : escapeHtml(msg.text);
+  const preview = truncate(msg.text || '', 300);
+  return `<div class="${cls}" title="${escapeHtml(preview)}">${content}</div>`;
+}
+
+function renderSideBySide(parent, fork, forkIndex) {
+  const parentMsgs = (parent.messages || []).slice(forkIndex);
+  const forkMsgs = (fork.messages || []).slice(forkIndex);
+  const maxLen = Math.max(parentMsgs.length, forkMsgs.length);
+
+  let parentHtml = '';
+  let forkHtml = '';
+
+  for (let i = 0; i < maxLen; i++) {
+    parentHtml += renderCompareMessage(parentMsgs[i]) || '<div class="compare-msg empty"></div>';
+    forkHtml += renderCompareMessage(forkMsgs[i]) || '<div class="compare-msg empty"></div>';
+  }
+
+  compareBody.innerHTML = `
+    <div class="compare-split">
+      <div class="compare-column">
+        <div class="compare-column-header">${escapeHtml(parent.name)}</div>
+        <div class="compare-messages">${parentHtml}</div>
+      </div>
+      <div class="compare-column">
+        <div class="compare-column-header">${escapeHtml(fork.name)}</div>
+        <div class="compare-messages">${forkHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderUnifiedDiff(parent, fork, forkIndex) {
+  const parentMsgs = (parent.messages || []).slice(forkIndex);
+  const forkMsgs = (fork.messages || []).slice(forkIndex);
+  const maxLen = Math.max(parentMsgs.length, forkMsgs.length);
+
+  let html = `
+    <div class="compare-unified-header">
+      <span class="unified-legend parent">Parent: ${escapeHtml(parent.name)}</span>
+      <span class="unified-legend fork">Fork: ${escapeHtml(fork.name)}</span>
+    </div>
+    <div class="compare-unified">
+  `;
+
+  for (let i = 0; i < maxLen; i++) {
+    const pMsg = parentMsgs[i];
+    const fMsg = forkMsgs[i];
+
+    if (pMsg) {
+      const content = pMsg.role === 'assistant' ? renderMarkdown(pMsg.text) : escapeHtml(pMsg.text);
+      html += `<div class="unified-row">
+        <div class="unified-source parent">${pMsg.role === 'user' ? 'You' : 'AI'}</div>
+        <div class="unified-content">${content}</div>
+      </div>`;
+    }
+    if (fMsg) {
+      const content = fMsg.role === 'assistant' ? renderMarkdown(fMsg.text) : escapeHtml(fMsg.text);
+      html += `<div class="unified-row fork">
+        <div class="unified-source fork">${fMsg.role === 'user' ? 'You' : 'AI'}</div>
+        <div class="unified-content">${content}</div>
+      </div>`;
+    }
+  }
+
+  html += '</div>';
+  compareBody.innerHTML = html;
+}
+
+function closeCompareView() {
+  if (branchesCompare) {
+    branchesCompare.classList.add('hidden');
+  }
+  _selectedForCompare = [];
+  _compareMode = false;
+  branchesCompareBtn?.classList.remove('active');
+  branchesContent?.classList.remove('compare-mode');
+
+  // Clear selection UI
+  branchesContent?.querySelectorAll('.branch-item.compare-selected').forEach(item => {
+    item.classList.remove('compare-selected');
+  });
 }

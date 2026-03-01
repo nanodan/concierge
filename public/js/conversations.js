@@ -19,6 +19,7 @@ let listView = null;
 let chatView = null;
 let conversationList = null;
 let chatName = null;
+let chatForkLink = null;
 let chatCwdIndicator = null;
 let loadMoreBtn = null;
 let contextBar = null;
@@ -36,6 +37,7 @@ export function initConversations(elements) {
   chatView = elements.chatView;
   conversationList = elements.conversationList;
   chatName = elements.chatName;
+  chatForkLink = elements.chatForkLink;
   chatCwdIndicator = elements.chatCwdIndicator;
   loadMoreBtn = elements.loadMoreBtn;
   contextBar = elements.contextBar;
@@ -119,6 +121,40 @@ function updateChatCwdIndicator(conv) {
   chatCwdIndicator.title = conv.cwd;
   chatCwdIndicator.classList.remove('hidden');
   chatCwdIndicator.classList.toggle('worktree', isWorktree);
+}
+
+function updateChatForkLink(conv) {
+  if (!chatForkLink) return;
+
+  if (!conv?.parentId) {
+    chatForkLink.classList.add('hidden');
+    chatForkLink.innerHTML = '';
+    return;
+  }
+
+  const parent = state.conversations.find(c => c.id === conv.parentId);
+  const parentName = parent?.name || 'parent';
+  const msgNum = (conv.forkIndex ?? 0) + 1;
+  const truncatedName = parentName.length > 24 ? parentName.slice(0, 24) + '...' : parentName;
+
+  chatForkLink.innerHTML = `<span class="fork-icon">&#8627;</span> from "${escapeHtml(truncatedName)}" @ msg ${msgNum}`;
+  chatForkLink.dataset.parentId = conv.parentId;
+  chatForkLink.dataset.forkIndex = conv.forkIndex ?? 0;
+  chatForkLink.title = `Jump to "${parentName}" at message ${msgNum}`;
+  chatForkLink.classList.remove('hidden');
+
+  // Set up click handler if not already done
+  if (!chatForkLink.dataset.handlerAttached) {
+    chatForkLink.dataset.handlerAttached = 'true';
+    chatForkLink.addEventListener('click', async () => {
+      haptic();
+      const parentId = chatForkLink.dataset.parentId;
+      const forkIndex = parseInt(chatForkLink.dataset.forkIndex, 10);
+      if (parentId) {
+        await openConversationAtMessage(parentId, forkIndex);
+      }
+    });
+  }
 }
 
 export async function loadConversations() {
@@ -1004,6 +1040,7 @@ export async function openConversation(id) {
 
   chatName.textContent = conv.name;
   updateChatCwdIndicator(conv);
+  updateChatForkLink(conv);
   state.updateStatusDot(conv.status);
 
   state.setCurrentProvider(conv.provider || 'claude');
@@ -1042,6 +1079,21 @@ export async function openConversation(id) {
   }
 
   state.setThinking(conv.status === 'thinking', conv.thinkingStartTime);
+}
+
+/**
+ * Open a conversation and scroll to a specific message.
+ * Used for jumping to fork points in parent conversations.
+ * @param {string} id - Conversation ID
+ * @param {number} messageIndex - Message index to scroll to
+ */
+export async function openConversationAtMessage(id, messageIndex) {
+  await openConversation(id);
+  // Wait for render to complete, then scroll to the message
+  setTimeout(async () => {
+    const { scrollToMessage } = await import('./render.js');
+    scrollToMessage(messageIndex);
+  }, 150);
 }
 
 export function showChatView() {

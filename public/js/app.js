@@ -49,6 +49,7 @@ const messageInput = document.getElementById('message-input');
 const inputForm = document.getElementById('input-form');
 const sendBtn = document.getElementById('send-btn');
 const chatName = document.getElementById('chat-name');
+const chatForkLink = document.getElementById('chat-fork-link');
 const chatCwdIndicator = document.getElementById('chat-cwd-indicator');
 const chatStatus = document.getElementById('chat-status');
 const typingIndicator = document.getElementById('typing-indicator');
@@ -213,6 +214,10 @@ const branchesBtn = document.getElementById('branches-btn');
 const branchesView = document.getElementById('branches-view');
 const branchesBackBtn = document.getElementById('branches-back-btn');
 const branchesContent = document.getElementById('branches-content');
+const branchesCompareBtn = document.getElementById('branches-compare-btn');
+const branchesCompare = document.getElementById('branches-compare');
+const compareCloseBtn = document.getElementById('compare-close-btn');
+const compareBody = document.getElementById('compare-body');
 const filesStandaloneView = document.getElementById('files-standalone-view');
 const filesStandaloneBackBtn = document.getElementById('files-standalone-back-btn');
 const filesStandaloneTitle = document.getElementById('files-standalone-title');
@@ -275,6 +280,7 @@ initConversations({
   chatView,
   conversationList,
   chatName,
+  chatForkLink,
   chatCwdIndicator,
   loadMoreBtn,
   contextBar,
@@ -457,6 +463,10 @@ initBranches({
   branchesView,
   branchesBackBtn,
   branchesContent,
+  branchesCompareBtn,
+  branchesCompare,
+  compareCloseBtn,
+  compareBody,
   listView,
   chatView
 });
