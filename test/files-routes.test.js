@@ -89,6 +89,9 @@ function createFileRouteFixture() {
     [require.resolve('../lib/data')]: {
       UPLOAD_DIR: '/tmp/uploads',
     },
+    [require.resolve('../lib/constants')]: {
+      MAX_UPLOAD_SIZE: 16 * 1024,
+    },
     [require.resolve('../lib/routes/helpers')]: helpers,
   }, __filename);
 
@@ -106,6 +109,10 @@ function createFileRouteFixture() {
       },
       getDownloads() {
         return [...downloads];
+      },
+      setConversationCwd(cwd) {
+        const conv = conversations.get('conv-1');
+        if (conv) conv.cwd = cwd;
       },
     },
   };
@@ -133,6 +140,7 @@ describe('file routes', () => {
     if (tmpRoot) {
       await fs.rm(tmpRoot, { recursive: true, force: true });
     }
+    await fs.rm('/tmp/uploads/conv-1', { recursive: true, force: true });
     server = null;
     baseUrl = null;
     state = null;
@@ -219,6 +227,65 @@ describe('file routes', () => {
     assert.equal(response.status, 200);
     assert.ok(response.body.filename.includes('_'));
     assert.ok(response.body.url.startsWith('/uploads/conv-1/'));
+  });
+
+  it('attaches existing conversation cwd files into uploads', async () => {
+    state.setConversationCwd(tmpRoot);
+    await fs.mkdir(path.join(tmpRoot, 'images'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'images', 'plot.png'), 'image-bytes');
+
+    const response = await requestJson(baseUrl, 'POST', '/api/conversations/conv-1/attachments/from-files', {
+      paths: ['images/plot.png'],
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.attachments.length, 1);
+    assert.equal(response.body.failed.length, 0);
+    assert.equal(response.body.attachments[0].filename, 'plot.png');
+    assert.ok(response.body.attachments[0].url.startsWith('/uploads/conv-1/'));
+    const copied = await fs.stat(response.body.attachments[0].path);
+    assert.equal(copied.isFile(), true);
+  });
+
+  it('returns partial success for attachment copy failures', async () => {
+    state.setConversationCwd(tmpRoot);
+    await fs.writeFile(path.join(tmpRoot, 'ok.txt'), 'ok');
+
+    const response = await requestJson(baseUrl, 'POST', '/api/conversations/conv-1/attachments/from-files', {
+      paths: ['ok.txt', 'missing.txt'],
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.attachments.length, 1);
+    assert.equal(response.body.failed.length, 1);
+    assert.equal(response.body.failed[0].path, 'missing.txt');
+  });
+
+  it('blocks traversal for attach-existing endpoint', async () => {
+    state.setConversationCwd(tmpRoot);
+    const response = await requestJson(baseUrl, 'POST', '/api/conversations/conv-1/attachments/from-files', {
+      paths: ['../outside.txt'],
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.attachments.length, 0);
+    assert.equal(response.body.failed[0].error, 'Access denied');
+  });
+
+  it('rejects non-file and oversized entries for attach-existing endpoint', async () => {
+    state.setConversationCwd(tmpRoot);
+    await fs.mkdir(path.join(tmpRoot, 'folder'), { recursive: true });
+    await fs.writeFile(path.join(tmpRoot, 'large.bin'), Buffer.alloc(20 * 1024));
+
+    const response = await requestJson(baseUrl, 'POST', '/api/conversations/conv-1/attachments/from-files', {
+      paths: ['folder', 'large.bin'],
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.attachments.length, 0);
+    assert.equal(response.body.failed.length, 2);
+    assert.equal(response.body.failed[0].error, 'Path is not a file');
+    assert.match(response.body.failed[1].error, /File too large/);
   });
 
   it('returns browse error for invalid directory path', async () => {

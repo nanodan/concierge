@@ -126,7 +126,7 @@ public/css/
   role: 'user',
   text: string,
   timestamp: number,
-  attachments: [{ filename, url }]  // optional
+  attachments: [{ path, filename, url }]  // optional
 }
 ```
 
@@ -139,8 +139,13 @@ public/css/
   cost: number,           // USD
   duration: number,       // ms
   sessionId: string,
-  inputTokens: number,
-  outputTokens: number
+  inputTokens: number,    // Provider-reported input token count (raw when available)
+  outputTokens: number,
+  netInputTokens?: number,    // rawInputTokens - cachedInputTokens
+  typedInputTokens?: number,  // rough estimate of user-typed prompt tokens
+  rawInputTokens?: number,    // full provider-reported prompt/context tokens
+  cachedInputTokens?: number, // provider cache hit tokens (if available)
+  reasoningTokens?: number    // provider-reported reasoning/thinking tokens
 }
 ```
 
@@ -235,7 +240,7 @@ public/css/
 | `loadConversations()` | conversations.js | Fetch + render list |
 | `openConversation(id)` | conversations.js | Load + display conversation |
 | `forkConversation(idx)` | conversations.js | Fork from message |
-| `sendMessage(text)` | ui.js | Send with attachments |
+| `sendMessage(text)` | ui.js | Send with local uploads or pre-attached server files |
 | `renderMarkdown(text)` | markdown.js | Markdown → HTML |
 
 ---

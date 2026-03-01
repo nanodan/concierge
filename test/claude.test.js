@@ -174,6 +174,18 @@ describe('buildInlineHistoryContext', () => {
     assert.ok(context.includes('/Users/djlewis/Git/geoarch-xrd-ad4d4321/fix_data.py'));
     assert.ok(!context.includes('/Users/djlewis/Git/geoarch/fix_data.py'));
   });
+
+  it('skips summarized messages from inline history', () => {
+    const history = [
+      { role: 'user', text: 'old message', summarized: true },
+      { role: 'assistant', text: 'kept message' },
+    ];
+
+    const context = buildInlineHistoryContext(history, '');
+
+    assert.ok(context.includes('kept message'));
+    assert.ok(!context.includes('old message'));
+  });
 });
 
 describe('processStreamEvent - thinking', () => {

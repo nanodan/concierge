@@ -95,7 +95,7 @@ export function renderFileTreeView({
         const index = parseInt(item.dataset.index, 10);
         const entry = entries[index];
         if (!entry) return;
-        await onExtra(entry);
+        await onExtra(entry, btn);
       });
     });
   }

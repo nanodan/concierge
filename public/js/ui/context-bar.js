@@ -45,16 +45,40 @@ export function setupContextBarEventListeners() {
  * active context window for the current session.
  */
 export function calculateCumulativeTokens(messages) {
-  const lastAssistant = [...(messages || [])]
+  const allMessages = messages || [];
+  const lastAssistant = [...allMessages]
     .reverse()
     .find(msg => msg.role === 'assistant' && msg.inputTokens != null);
+  const latestCompressionAt = allMessages.reduce((latest, msg) => {
+    const ts = msg?.compressionMeta?.compressedAt;
+    return typeof ts === 'number' && ts > latest ? ts : latest;
+  }, 0);
 
   if (!lastAssistant) {
+    if (latestCompressionAt > 0) {
+      // No post-compression token metrics yet; estimate from remaining visible context.
+      const estimated = allMessages.reduce((sum, msg) => {
+        if (msg?.summarized) return sum;
+        return sum + Math.ceil((msg?.text || '').length / 4);
+      }, 0);
+      return { inputTokens: estimated, outputTokens: 0 };
+    }
     return { inputTokens: 0, outputTokens: 0 };
   }
 
+  // After compression, historical assistant token usage is stale until a new response arrives.
+  if (latestCompressionAt > 0 && (lastAssistant.timestamp || 0) < latestCompressionAt) {
+    const estimated = allMessages.reduce((sum, msg) => {
+      if (msg?.summarized) return sum;
+      return sum + Math.ceil((msg?.text || '').length / 4);
+    }, 0);
+    return { inputTokens: estimated, outputTokens: 0 };
+  }
+
   return {
-    inputTokens: lastAssistant.inputTokens || 0,
+    inputTokens: lastAssistant.rawInputTokens != null
+      ? (lastAssistant.rawInputTokens || 0)
+      : (lastAssistant.inputTokens || 0),
     outputTokens: lastAssistant.outputTokens || 0,
   };
 }
@@ -120,11 +144,8 @@ function showContextBreakdown() {
   }, 0);
   const systemTokens = 12000 + memoryTokens;
 
-  // Get last response's input tokens (actual context used)
-  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.inputTokens);
-  const currentContext = lastAssistant
-    ? (lastAssistant.inputTokens || 0) + (lastAssistant.outputTokens || 0)
-    : 0;
+  const { inputTokens, outputTokens } = calculateCumulativeTokens(messages);
+  const currentContext = (inputTokens || 0) + (outputTokens || 0);
 
   // Message count and oldest message
   const msgCount = messages.length;
@@ -214,7 +235,7 @@ async function compressConversation() {
 
     if (!res || !res.ok) {
       const data = res ? await res.json() : { error: 'Network error' };
-      showToast(data.error || 'Compression failed', 'error');
+      showToast(data.error || 'Compression failed', { variant: 'error' });
       if (compressBtn) {
         compressBtn.disabled = false;
         compressBtn.textContent = 'Compress conversation';
@@ -227,10 +248,11 @@ async function compressConversation() {
     hideContextBreakdown();
 
     // Reload conversation to show updated messages
-    const { openConversation } = await import('../conversations.js');
-    openConversation(convId);
+    const { openConversation, loadConversations } = await import('../conversations.js');
+    await openConversation(convId);
+    await loadConversations();
   } catch (err) {
-    showToast('Compression failed: ' + err.message, 'error');
+    showToast('Compression failed: ' + err.message, { variant: 'error' });
     if (compressBtn) {
       compressBtn.disabled = false;
       compressBtn.textContent = 'Compress conversation';

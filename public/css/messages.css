@@ -962,9 +962,10 @@ html[data-theme="light"] .code-block::before {
 /* Compressed messages section */
 .compressed-section {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   padding: 10px 16px;
   margin: 0 auto 12px;
   background: var(--surface);
@@ -987,6 +988,12 @@ html[data-theme="light"] .code-block::before {
   transition: transform 0.2s ease;
 }
 
+.compressed-section-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .compressed-section[aria-expanded="true"] svg {
   transform: rotate(180deg);
 }
@@ -995,6 +1002,12 @@ html[data-theme="light"] .code-block::before {
   font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
+}
+
+.compressed-section-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 /* Summarized/compressed messages (collapsed by default) */
@@ -1028,6 +1041,74 @@ html[data-theme="light"] .code-block::before {
 
 .message.summarized.show-compressed:not(.message-wrapper .message) {
   display: block;
+}
+
+.message.summarized.show-compressed {
+  opacity: 0.96;
+  max-height: none;
+  overflow: visible;
+}
+
+.message.summarized.show-compressed::after {
+  display: none;
+}
+
+.message.assistant.summarized.show-compressed {
+  border-left: 3px dashed var(--accent-alpha-50);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--assistant-bubble) 90%, var(--accent) 10%),
+      color-mix(in srgb, var(--assistant-bubble) 90%, var(--accent) 10%) 10px,
+      var(--assistant-bubble) 10px,
+      var(--assistant-bubble) 20px
+    );
+}
+
+.message.user.summarized.show-compressed {
+  border-right: 3px dashed var(--accent-alpha-50);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.08) 10px,
+      rgba(0, 0, 0, 0.04) 10px,
+      rgba(0, 0, 0, 0.04) 20px
+    ),
+    linear-gradient(145deg, var(--user-bubble) 0%, var(--user-bubble-end) 100%);
+}
+
+.compressed-context-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 3px 8px;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--accent-alpha-12);
+  border: 1px solid var(--accent-alpha-30);
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.compressed-context-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-light);
+}
+
+.message.user.summarized.show-compressed .compressed-context-badge {
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.message.user.summarized.show-compressed .compressed-context-badge-dot {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* Compression summary message */

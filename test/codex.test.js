@@ -1,6 +1,13 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { processCodexEvent, MODELS, handleNoOutputClose } = require('../lib/providers/codex');
+const {
+  processCodexEvent,
+  MODELS,
+  handleNoOutputClose,
+  partitionAttachments,
+  buildFileAttachmentPrompt,
+} = require('../lib/providers/codex');
+const { buildInlineHistoryContext } = require('../lib/providers/codex')._private;
 
 describe('Codex MODELS', () => {
   it('contains expected models', () => {
@@ -19,6 +26,51 @@ describe('Codex MODELS', () => {
       assert.ok(typeof model.context === 'number', 'model should have numeric context');
       assert.ok(model.context > 0, 'context should be positive');
     }
+  });
+});
+
+describe('Codex attachment helpers', () => {
+  it('partitions image and non-image attachments with valid paths', () => {
+    const result = partitionAttachments([
+      { path: '/tmp/a.png' },
+      { path: '/tmp/b.jpeg' },
+      { path: '/tmp/c.pdf' },
+      { path: '/tmp/d.txt' },
+      { path: null },
+      {},
+    ]);
+
+    assert.deepEqual(result.imageAttachments.map((item) => item.path), ['/tmp/a.png', '/tmp/b.jpeg']);
+    assert.deepEqual(result.fileAttachments.map((item) => item.path), ['/tmp/c.pdf', '/tmp/d.txt']);
+  });
+
+  it('builds non-image attachment prompt block', () => {
+    const text = buildFileAttachmentPrompt([
+      { path: '/tmp/report.pdf' },
+      { path: '/tmp/data.csv' },
+    ]);
+
+    assert.ok(text.includes('[Attached files'));
+    assert.ok(text.includes('/tmp/report.pdf'));
+    assert.ok(text.includes('/tmp/data.csv'));
+  });
+
+  it('returns empty prompt block when no files are provided', () => {
+    assert.equal(buildFileAttachmentPrompt([]), '');
+  });
+});
+
+describe('buildInlineHistoryContext', () => {
+  it('skips summarized messages from inline history', () => {
+    const history = [
+      { role: 'user', text: 'old message', summarized: true },
+      { role: 'assistant', text: 'kept message' },
+    ];
+
+    const context = buildInlineHistoryContext(history, '');
+
+    assert.ok(context.includes('kept message'));
+    assert.ok(!context.includes('old message'));
   });
 });
 
@@ -491,7 +543,9 @@ describe('processCodexEvent - turn.completed', () => {
     assert.equal(conv.messages[0].rawInputTokens, 12000);
     assert.equal(conv.messages[0].cachedInputTokens, 11000);
     assert.equal(conv.messages[0].inputTokens, 1000);
+    assert.equal(conv.messages[0].netInputTokens, 1000);
     assert.equal(conv.messages[0].displayInputTokens, 1);
+    assert.equal(conv.messages[0].typedInputTokens, 1);
   });
 
   it('renders tool calls from batched turn.completed items', () => {

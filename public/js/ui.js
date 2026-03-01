@@ -657,6 +657,8 @@ export async function sendMessage(text) {
   const pendingAttachments = state.getPendingAttachments();
   const currentConversationId = state.getCurrentConversationId();
   const ws = getWS();
+  const currentConversation = state.conversations.find((c) => c.id === currentConversationId);
+  const currentProvider = currentConversation?.provider || 'claude';
 
   if ((!text.trim() && pendingAttachments.length === 0) || !currentConversationId) return;
   haptic(5);
@@ -689,12 +691,26 @@ export async function sendMessage(text) {
     return;
   }
 
+  if (pendingAttachments.length > 0 && currentProvider === 'ollama') {
+    showToast('Attachments are not supported with Ollama. Switch to Claude or Codex.', { variant: 'error' });
+    return;
+  }
+
   // Upload attachments first
   let attachments = [];
   for (const att of pendingAttachments) {
+    if (att?.kind === 'server' && att.attachment?.path) {
+      attachments.push(att.attachment);
+      continue;
+    }
+
+    const file = att?.file;
+    const name = att?.name || file?.name;
+    if (!file || !name) continue;
+
     const resp = await apiFetch(
-      `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(att.name)}`,
-      { method: 'POST', body: att.file }
+      `/api/conversations/${currentConversationId}/upload?filename=${encodeURIComponent(name)}`,
+      { method: 'POST', body: file }
     );
     if (!resp) continue;
     const result = await resp.json();
@@ -773,12 +789,13 @@ export function renderAttachmentPreview() {
   }
   attachmentPreview.classList.remove('hidden');
   attachmentPreview.innerHTML = pendingAttachments.map((att, i) => {
+    const name = att.name || att.attachment?.filename || 'attachment';
     const thumb = att.previewUrl
       ? `<img src="${att.previewUrl}" class="attachment-thumb">`
       : '<span class="attachment-file-icon">&#x1F4CE;</span>';
     return `<div class="attachment-item">
       ${thumb}
-      <span class="attachment-name">${escapeHtml(att.name)}</span>
+      <span class="attachment-name">${escapeHtml(name)}</span>
       <button class="attachment-remove" data-index="${i}">&times;</button>
     </div>`;
   }).join('');
@@ -1308,16 +1325,19 @@ export function setupEventListeners(createConversation) {
   // Attachments
   attachBtn.addEventListener('click', () => fileInput.click());
 
+  window.addEventListener(state.getPendingAttachmentsEventName(), () => {
+    renderAttachmentPreview();
+  });
+
   fileInput.addEventListener('change', () => {
     for (const file of fileInput.files) {
-      const att = { file, name: file.name };
+      const att = { kind: 'local', file, name: file.name };
       if (file.type.startsWith('image/')) {
         att.previewUrl = URL.createObjectURL(file);
       }
       state.addPendingAttachment(att);
     }
     fileInput.value = '';
-    renderAttachmentPreview();
   });
 
   // Drag-and-drop file upload (entire chat view)
@@ -1346,13 +1366,12 @@ export function setupEventListeners(createConversation) {
     if (e.dataTransfer.files.length === 0) return;
 
     for (const file of e.dataTransfer.files) {
-      const att = { file, name: file.name };
+      const att = { kind: 'local', file, name: file.name };
       if (file.type.startsWith('image/')) {
         att.previewUrl = URL.createObjectURL(file);
       }
       state.addPendingAttachment(att);
     }
-    renderAttachmentPreview();
   });
 
   // Export

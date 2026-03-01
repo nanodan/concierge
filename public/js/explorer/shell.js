@@ -55,6 +55,7 @@ export function createExplorerShell({
   onViewerWillOpen = noop,
   onViewerWillClose = noop,
   onViewerDidClose = noop,
+  onAttachFromViewer = null,
   onNavigateHaptic = noop,
   isNavigationBlocked = () => false,
   resolveUploadTargetPath = (path) => path,
@@ -212,6 +213,7 @@ export function createExplorerShell({
       imageExts,
       enableCopyCells: true,
       onRefresh: () => viewFile(filePath),
+      onAttach: onAttachFromViewer ? () => onAttachFromViewer(filePath) : null,
     });
 
     return true;

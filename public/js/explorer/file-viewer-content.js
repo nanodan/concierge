@@ -17,6 +17,7 @@ const GEO_PREVIEW_EXTS = new Set(['geojson', 'json', 'topojson', 'jsonl', 'ndjso
 const JSON_PREVIEW_EXTS = new Set(['json', 'geojson', 'topojson']);
 
 const DEFAULT_OPEN_EXTERNAL_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+const DEFAULT_ATTACH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.65l-9.2 9.2a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
 
 function toSafeString(value) {
   return value === null || value === undefined ? '' : String(value);
@@ -36,6 +37,16 @@ function attachOpenButton(container, selector, url) {
   const openBtn = container.querySelector(selector);
   if (openBtn) {
     openBtn.addEventListener('click', () => window.open(url, '_blank'));
+  }
+}
+
+function attachActionButton(container, selector, onAction) {
+  if (typeof onAction !== 'function') return;
+  const button = container.querySelector(selector);
+  if (button) {
+    button.addEventListener('click', () => {
+      void onAction();
+    });
   }
 }
 
@@ -191,12 +202,15 @@ function renderGeoPreview(container, {
   geoResult,
   fileUrl,
   openExternalIcon,
+  attachIcon,
+  canAttach = false,
   escapeHtml,
   rawContent,
   rawDisabled = false,
   rawPreviewSize = null,
   formatFileSize,
   onRefresh = null,
+  onAttach = null,
 }) {
   const summary = escapeHtml(geoResult.summary || 'GeoJSON map preview');
   const rawText = escapeHtml(toSafeString(rawContent));
@@ -288,10 +302,12 @@ function renderGeoPreview(container, {
         ${rawPanelHtml}
       </div>
     </div>
+    ${canAttach ? `<button class="file-viewer-attach-tab-btn" title="Attach to chat">${attachIcon}</button>` : ''}
     <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
   `;
 
   attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
+  attachActionButton(container, '.file-viewer-attach-tab-btn', onAttach);
   if (rawDisabled) {
     attachOpenButton(container, '.geo-preview-open-raw-btn', fileUrl);
   }
@@ -504,6 +520,7 @@ export function renderFileViewerContent({
   previewableExts = DEFAULT_PREVIEWABLE_EXTS,
   enableCopyCells = true,
   onRefresh = null,
+  onAttach = null,
 }) {
   if (!container || !data || !context) return false;
 
@@ -514,6 +531,8 @@ export function renderFileViewerContent({
   const downloadUrl = context.getFileDownloadUrl(filePath);
   const fileLikeIcon = icons.document || icons.file || '';
   const openExternalIcon = icons.openExternal || DEFAULT_OPEN_EXTERNAL_ICON;
+  const attachIcon = icons.attach || DEFAULT_ATTACH_ICON;
+  const canAttach = context.kind === 'conversation' && typeof onAttach === 'function';
 
   if (data.csv || data.parquet) {
     container.innerHTML = renderDataPreview(data, { escapeHtml, enableCopyCells });
@@ -534,6 +553,7 @@ export function renderFileViewerContent({
       container.innerHTML = `
         <div class="file-viewer-preview">
           <img src="${fileUrl}" alt="${escapeHtml(toSafeString(data.name))}" class="file-viewer-image" title="Click to open full size">
+          ${canAttach ? `<button class="file-viewer-attach-float-btn" title="Attach to chat">${attachIcon}</button>` : ''}
           <button class="file-viewer-fullsize-btn" title="Open full size">${openExternalIcon}</button>
         </div>
       `;
@@ -542,6 +562,7 @@ export function renderFileViewerContent({
       const btn = container.querySelector('.file-viewer-fullsize-btn');
       if (img) img.addEventListener('click', openFullSize);
       if (btn) btn.addEventListener('click', openFullSize);
+      attachActionButton(container, '.file-viewer-attach-float-btn', onAttach);
       return true;
     }
 
@@ -551,9 +572,13 @@ export function renderFileViewerContent({
           ${fileLikeIcon}
           <p>${escapeHtml(toSafeString(data.name))}</p>
           <p style="font-size: 12px; opacity: 0.7; margin-bottom: 12px;">${formatFileSize(data.size)}</p>
-          <button class="file-viewer-open-btn">${openExternalIcon} Open in new tab</button>
+          <div class="file-viewer-error-actions">
+            ${canAttach ? `<button class="file-viewer-open-btn file-viewer-attach-inline-btn">${attachIcon} Attach to chat</button>` : ''}
+            <button class="file-viewer-open-btn">${openExternalIcon} Open in new tab</button>
+          </div>
         </div>
       `;
+      attachActionButton(container, '.file-viewer-attach-inline-btn', onAttach);
       attachOpenButton(container, '.file-viewer-open-btn', fileUrl);
       return true;
     }
@@ -563,9 +588,13 @@ export function renderFileViewerContent({
         ${icons.file || fileLikeIcon}
         <p>Binary file cannot be previewed</p>
         <p style="font-size: 12px; opacity: 0.7; margin-bottom: 12px;">${formatFileSize(data.size)}</p>
-        <button class="file-viewer-open-btn">${openExternalIcon} Download</button>
+        <div class="file-viewer-error-actions">
+          ${canAttach ? `<button class="file-viewer-open-btn file-viewer-attach-inline-btn">${attachIcon} Attach to chat</button>` : ''}
+          <button class="file-viewer-open-btn">${openExternalIcon} Download</button>
+        </div>
       </div>
     `;
+    attachActionButton(container, '.file-viewer-attach-inline-btn', onAttach);
     attachOpenButton(container, '.file-viewer-open-btn', downloadUrl);
     return true;
   }
@@ -582,8 +611,10 @@ export function renderFileViewerContent({
         ${fileLikeIcon}
         <p>${sizeErrorTitle}</p>
         <p style="font-size: 12px; opacity: 0.7;">${formatFileSize(data.size)} (max ${maxPreview})</p>
+        ${canAttach ? `<button class="file-viewer-open-btn file-viewer-attach-inline-btn">${attachIcon} Attach to chat</button>` : ''}
       </div>
     `;
+    attachActionButton(container, '.file-viewer-attach-inline-btn', onAttach);
     return true;
   }
 
@@ -596,12 +627,15 @@ export function renderFileViewerContent({
         geoResult,
         fileUrl,
         openExternalIcon,
+        attachIcon,
+        canAttach,
         escapeHtml,
         rawContent: data.rawTruncated ? '' : content,
         rawDisabled: !!data.rawTruncated,
         rawPreviewSize: data.rawPreviewSize,
         formatFileSize,
         onRefresh,
+        onAttach,
       });
       return true;
     }
@@ -613,8 +647,10 @@ export function renderFileViewerContent({
       <div class="markdown-preview">
         <div class="markdown-body">${rendered}</div>
       </div>
+      ${canAttach ? `<button class="file-viewer-attach-tab-btn" title="Attach to chat">${attachIcon}</button>` : ''}
       <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
     `;
+    attachActionButton(container, '.file-viewer-attach-tab-btn', onAttach);
     attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
     return true;
   }
@@ -624,9 +660,11 @@ export function renderFileViewerContent({
     if (jsonHtml) {
       container.innerHTML = `
         ${jsonHtml}
+        ${canAttach ? `<button class="file-viewer-attach-tab-btn" title="Attach to chat">${attachIcon}</button>` : ''}
         <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
       `;
       attachJsonHandlers(container);
+      attachActionButton(container, '.file-viewer-attach-tab-btn', onAttach);
       attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
       return true;
     }
@@ -635,9 +673,11 @@ export function renderFileViewerContent({
   const langClass = data.language ? `language-${data.language}` : '';
   container.innerHTML = `
     <code class="${langClass}">${escapeHtml(content)}</code>
+    ${canAttach ? `<button class="file-viewer-attach-tab-btn" title="Attach to chat">${attachIcon}</button>` : ''}
     <button class="file-viewer-open-tab-btn" title="Open in new tab">${openExternalIcon}</button>
   `;
   highlightCodeBlocks(container);
+  attachActionButton(container, '.file-viewer-attach-tab-btn', onAttach);
   attachOpenButton(container, '.file-viewer-open-tab-btn', fileUrl);
   return true;
 }

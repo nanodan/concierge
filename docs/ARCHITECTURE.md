@@ -116,6 +116,7 @@ codex exec --json -m {model} -C {cwd} --skip-git-repo-check \
 codex exec resume {sessionId} --json -m {model} --skip-git-repo-check "{prompt}"
 ```
 (`exec resume` does not use `-C` or `-s`.)
+Image attachments are passed via `-i /path/to/image`; non-image attachments are appended to the prompt as readable file paths.
 
 **Ollama Provider:** Stateless HTTP requests to Ollama API:
 - POST to `/api/chat` with full message history
@@ -241,6 +242,8 @@ Conversations default to sandboxed mode for safety. Sandbox configuration:
 | `GET` | `/api/files/content` | Get structured file content (standalone cwd) |
 | `GET` | `/api/files/download` | Download file |
 | `POST` | `/api/files/upload` | Upload file |
+| `POST` | `/api/conversations/:id/upload` | Upload local file as conversation attachment |
+| `POST` | `/api/conversations/:id/attachments/from-files` | Copy existing cwd file(s) into conversation attachments |
 | `GET` | `/api/conversations/:id/files` | List files in cwd |
 | `GET` | `/api/conversations/:id/files/content` | Get file content |
 | `GET` | `/api/conversations/:id/files/search` | Git grep search |
@@ -371,7 +374,7 @@ public/js/
 Five mutually exclusive views with CSS transform transitions:
 
 1. **List View** — Conversation browser grouped by cwd, search (keyword + semantic), archive toggle
-2. **Chat View** — Messages, input bar, file panel with preview
+2. **Chat View** — Messages, input bar, file panel with preview, and direct file-to-chat attachment from file tree/viewer actions
 3. **Stats View** — Analytics dashboard with cost tracking, activity charts
 4. **Branches View** — Fork tree visualization with parent/child navigation
 5. **Memory View** — Memory management (global + project-scoped)
