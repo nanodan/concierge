@@ -1,24 +1,34 @@
 #!/usr/bin/env bash
+# Example: Configure Concierge to use a bundled Node.js runtime and CLIs.
+#
+# This script demonstrates how to set CONCIERGE_* environment variables
+# for running Claude Code and Codex from a self-contained runtime directory
+# (e.g., installed by an enterprise deployment tool).
+#
+# Adapt the paths and credential file locations to your environment.
 set -euo pipefail
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'EOF'
-Usage: source scripts/gia-env.sh
-       eval "$(scripts/gia-env.sh)"
-       scripts/gia-env.sh
+Usage: source scripts/example-bundled-env.sh
+       eval "$(scripts/example-bundled-env.sh)"
 
-Prints export statements to configure Concierge to use GIA's bundled CLIs
-and skills directories. When sourced, it will export variables directly.
+Example script showing how to configure Concierge to use a bundled CLI runtime
+and skills directories. Adapt paths and credential locations to your setup.
 
-Examples:
-  source scripts/gia-env.sh
-  eval "$(scripts/gia-env.sh)"
+When sourced or eval'd, exports CONCIERGE_* variables for:
+  - Custom CLI command/args (CONCIERGE_CLAUDE_CMD, CONCIERGE_CLAUDE_ARGS, etc.)
+  - Environment injection from JSON (CONCIERGE_CLI_ENV_FILE)
+  - Skill directories (CONCIERGE_CLI_SKILLS_DIRS)
+  - Sandbox permissions (CONCIERGE_CLAUDE_SANDBOX_ALLOW, etc.)
 EOF
   exit 0
 fi
 
+# --- CUSTOMIZE: Set runtime_base to your bundled runtime location ---
+# This example looks for a runtime directory containing a .runtime-ready marker.
 cache_root="${XDG_CACHE_HOME:-$HOME/.cache}"
-runtime_base="${cache_root}/gia/runtime"
+runtime_base="${cache_root}/gia/runtime"  # Change this path for your setup
 runtime_dir=""
 
 if [[ -d "${runtime_base}" ]]; then
@@ -29,7 +39,7 @@ if [[ -d "${runtime_base}" ]]; then
 fi
 
 if [[ -z "${runtime_dir}" ]]; then
-  echo "No GIA runtime found under ${runtime_base} (missing .runtime-ready)." >&2
+  echo "No bundled runtime found under ${runtime_base} (missing .runtime-ready marker)." >&2
   exit 1
 fi
 
@@ -37,7 +47,7 @@ node_bin="${runtime_dir}/node/bin/node"
 cli_root="${runtime_dir}/clis"
 
 if [[ ! -x "${node_bin}" ]]; then
-  echo "GIA node runtime not found at ${node_bin}." >&2
+  echo "Node.js runtime not found at ${node_bin}." >&2
   exit 1
 fi
 
@@ -108,7 +118,10 @@ fi
 
 exports+=("CONCIERGE_CLI_RUNTIME_DIR=${runtime_dir}")
 
-env_json_path="/tmp/concierge-gia-env.json"
+# --- CUSTOMIZE: Credential file locations ---
+# This example reads API tokens from JSON/text files and injects them as env vars.
+# Adapt the file paths and env var names to your credential storage.
+env_json_path="/tmp/concierge-bundled-env.json"
 python - "$env_json_path" <<'PY'
 import json
 import os
@@ -179,7 +192,10 @@ exports+=("CONCIERGE_CLI_PREPEND_SKILL_BINS=1")
 exports+=("CONCIERGE_CLAUDE_DISABLE_EXPERIMENTAL_BETAS=1")
 exports+=("CONCIERGE_CLAUDE_DISABLE_AUTO_UPDATE=1")
 exports+=("CONCIERGE_CLAUDE_DISABLE_UPDATE_NAG=1")
-exports+=("CONCIERGE_CLAUDE_SANDBOX_ALLOW=Read(${HOME}/.config/gcloud/**),Read(${HOME}/gw.json),Read(${HOME}/genai.json),Read(${HOME}/jira.json),Read(${HOME}/gitlab-pat.txt),Read(${HOME}/myg-cli.json)")
+
+# --- CUSTOMIZE: Extra sandbox file read permissions ---
+# Allow Claude to read credential files needed by your skills.
+exports+=("CONCIERGE_CLAUDE_SANDBOX_ALLOW=Read(${HOME}/.config/gcloud/**)")
 
 # Skills directories (MySkills as global, AI-specific as per-provider).
 global_skill_dirs=()
@@ -197,35 +213,38 @@ if [[ ${#global_skill_dirs[@]} -gt 0 ]]; then
   (IFS=':'; exports+=("CONCIERGE_CLI_SKILLS_DIRS=${global_skill_dirs[*]}"))
 fi
 
-# Dynamic sandbox domain allowlist (based on installed skill dirs).
+# --- CUSTOMIZE: Dynamic sandbox domain allowlist ---
+# Add domains your skills need network access to. This example detects installed
+# skills and adds their required domains conditionally.
 domains=()
 skill_base="${HOME}/.claude/skills"
 if [[ -d "${skill_base}" ]]; then
-  [[ -d "${skill_base}/cli-jira" ]] && domains+=("geotab.atlassian.net" "id.atlassian.com")
-  [[ -d "${skill_base}/cli-gitlab" ]] && domains+=("git.geotab.com")
-  [[ -d "${skill_base}/cli-superset" ]] && domains+=("superset.geotab.com")
+  # Example: Jira skill needs Atlassian domains
+  [[ -d "${skill_base}/cli-jira" ]] && domains+=("your-org.atlassian.net" "id.atlassian.com")
+  # Example: GitLab skill
+  [[ -d "${skill_base}/cli-gitlab" ]] && domains+=("gitlab.your-org.com")
+  # Example: Google APIs for BigQuery/Workspace
   [[ -d "${skill_base}/cli-bigquery" ]] && domains+=("accounts.google.com" "oauth2.googleapis.com" "www.googleapis.com" "bigquery.googleapis.com")
   [[ -d "${skill_base}/cli-workspace" ]] && domains+=("accounts.google.com" "oauth2.googleapis.com" "www.googleapis.com" "docs.google.com" "drive.google.com")
   [[ -d "${skill_base}/util-auth" ]] && domains+=("accounts.google.com" "oauth2.googleapis.com" "www.googleapis.com")
-  [[ -d "${skill_base}/cli-mygeotab" ]] && domains+=("my.geotab.com" "my.geotab.com/")
+  # Example: Figma API
   [[ -d "${skill_base}/cli-figma" ]] && domains+=("api.figma.com")
 fi
 
-domains+=("genai-us.geotab.com")
+# Add any always-required domains (e.g., your API proxy)
+# domains+=("api-proxy.your-org.com")
 
-if [[ ${#domains[@]} -gt 0 ]]; then
-  # uniq
-  uniq_domains=()
-  for d in "${domains[@]}"; do
-    skip=0
-    for u in "${uniq_domains[@]}"; do
-      if [[ "$u" == "$d" ]]; then
-        skip=1
-        break
-      fi
-    done
-    [[ "$skip" -eq 0 ]] && uniq_domains+=("$d")
-  done
+# Deduplicate domains using associative array
+declare -A seen_domains
+uniq_domains=()
+for d in ${domains[@]+"${domains[@]}"}; do
+  if [[ -z "${seen_domains[$d]:-}" ]]; then
+    seen_domains[$d]=1
+    uniq_domains+=("$d")
+  fi
+done
+
+if [[ ${#uniq_domains[@]} -gt 0 ]]; then
   (IFS=','; exports+=("CONCIERGE_CLAUDE_SANDBOX_ALLOWED_DOMAINS=${uniq_domains[*]}"))
 fi
 
