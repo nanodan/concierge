@@ -1,5 +1,5 @@
 // --- WebSocket connection management ---
-import { showToast } from './utils.js';
+import { showToast, basePath } from './utils.js';
 import { appendDelta, finalizeMessage, renderMessages } from './render.js';
 import { loadConversations } from './conversations.js';
 import * as state from './state.js';
@@ -34,7 +34,7 @@ export function connectWS() {
   }
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}`);
+  ws = new WebSocket(`${proto}//${location.host}${basePath('/')}`);
 
   ws.onopen = () => {
     clearTimeout(reconnectTimer);

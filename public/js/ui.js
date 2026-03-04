@@ -1,6 +1,6 @@
 // --- UI interactions (core message/input handling) ---
 import { escapeHtml } from './markdown.js';
-import { formatTime, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler } from './utils.js';
+import { formatTime, haptic, showToast, showDialog, getDialogOverlay, getDialogCancel, apiFetch, setupLongPressHandler, basePath } from './utils.js';
 import { HEADER_COMPACT_ENTER, HEADER_COMPACT_EXIT, MESSAGE_INPUT_MAX_HEIGHT } from './constants.js';
 import { getWS } from './websocket.js';
 import { loadConversations, deleteConversation, forkConversation, showListView, triggerSearch, hideActionPopup, renameConversation } from './conversations.js';
@@ -152,7 +152,7 @@ function _getCurrentConversationCwd() {
 
 async function postWorkflowLock(endpoint, payload) {
   try {
-    const res = await fetch(`/api/workflow/lock/${endpoint}`, {
+    const res = await fetch(basePath(`/api/workflow/lock/${endpoint}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload || {}),

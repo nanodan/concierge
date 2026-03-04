@@ -1,4 +1,5 @@
 import { buildDeleteFileUrl } from './context.js';
+import { basePath } from '../utils.js';
 
 export function sortEntries(entries) {
   return [...entries].sort((a, b) => {
@@ -13,7 +14,7 @@ export function getViewableFiles(entries) {
 }
 
 export function getInlineDownloadUrl(context, filePath) {
-  return context.getFileDownloadUrl(filePath, { inline: true });
+  return basePath(context.getFileDownloadUrl(filePath, { inline: true }));
 }
 
 export async function fetchDirectoryData(context, targetPath, apiFetch, options = {}) {

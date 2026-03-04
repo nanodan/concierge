@@ -1,5 +1,5 @@
 // --- Theme management (light/dark/auto and color themes) ---
-import { haptic, showToast } from '../utils.js';
+import { haptic, showToast, basePath } from '../utils.js';
 import * as state from '../state.js';
 import { THEME_TRANSITION_DURATION } from '../constants.js';
 
@@ -204,7 +204,7 @@ export function applyColorTheme(animate = false) {
     setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), THEME_TRANSITION_DURATION);
   }
 
-  colorThemeLink.href = `/css/themes/${theme}.css`;
+  colorThemeLink.href = basePath(`/css/themes/${theme}.css`);
 
   // Update status bar color after CSS loads
   const meta = document.querySelector('meta[name="theme-color"]');

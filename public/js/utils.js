@@ -1,6 +1,18 @@
 // --- Utility functions ---
 import { HAPTIC_LIGHT, HAPTIC_MEDIUM, TOAST_DURATION_DEFAULT, LONG_PRESS_DURATION } from './constants.js';
 
+// Derive base path for reverse-proxy setups (e.g. VSCode port forwarding, JupyterHub proxy).
+const _bp = (() => {
+  const p = window.location.pathname;
+  return p.endsWith('/') ? p : p.substring(0, p.lastIndexOf('/') + 1);
+})();
+
+/** Resolve an absolute path (e.g. '/api/foo') relative to the proxy base path. */
+export function basePath(url) {
+  if (!url.startsWith('/')) return url;
+  return _bp + url.substring(1);
+}
+
 export function haptic(ms = HAPTIC_LIGHT) {
   navigator.vibrate?.(ms);
 }
@@ -279,7 +291,7 @@ export function setupLongPressHandler(element, handlers) {
 export async function apiFetch(url, options = {}) {
   const { silent = false, ...fetchOptions } = options;
   try {
-    const res = await fetch(url, fetchOptions);
+    const res = await fetch(basePath(url), fetchOptions);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       const msg = data.error || `Request failed (${res.status})`;

@@ -1,6 +1,6 @@
 // --- Data Tab (DuckDB + BigQuery SQL Analysis) ---
 import { escapeHtml } from '../markdown.js';
-import { haptic, showToast, apiFetch, showDialog } from '../utils.js';
+import { haptic, showToast, apiFetch, showDialog, basePath } from '../utils.js';
 import * as state from '../state.js';
 import { showSaveLocationPicker } from '../ui/save-location-picker.js';
 
@@ -1201,6 +1201,96 @@ function renderResults(data, { source = DATA_SOURCE_DUCKDB } = {}) {
   });
 }
 
+/**
+ * Export query results
+ * @param {string} format - export target format
+ */
+async function exportResults(format) {
+  if (!lastQueryResults) {
+    showToast('No results to export');
+    return;
+  }
+
+  const defaultName = 'query-results';
+  const filename = await promptForFilename(defaultName, 'Download');
+  if (!filename) return;
+
+  const { columns, rows } = lastQueryResults;
+
+  if (format === 'parquet') {
+    if (lastQuerySource !== DATA_SOURCE_DUCKDB || !lastQuerySQL) {
+      showToast('Parquet export is only available for DuckDB queries');
+      return;
+    }
+
+    showToast('Exporting...', { duration: 1000 });
+
+    try {
+      const res = await fetch(basePath('/api/duckdb/export'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sql: lastQuerySQL,
+          format: 'parquet',
+          filename,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.error || 'Export failed');
+        return;
+      }
+
+      const blob = await res.blob();
+      const rowCount = res.headers.get('X-Row-Count') || rows.length;
+      triggerBlobDownload(blob, `${filename}.parquet`);
+
+      showToast(`Exported ${rowCount} rows as Parquet`);
+    } catch {
+      showToast('Export failed');
+    }
+    return;
+  }
+
+  let content;
+  let mimeType;
+  let extension;
+
+  if (format === 'json') {
+    const data = rows.map((row) => {
+      const obj = {};
+      columns.forEach((col, i) => {
+        obj[col.name] = row[i];
+      });
+      return obj;
+    });
+    content = JSON.stringify(data, null, 2);
+    mimeType = 'application/json';
+    extension = 'json';
+  } else {
+    const escapeCSV = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+
+    const header = columns.map((col) => escapeCSV(col.name)).join(',');
+    const dataRows = rows.map((row) => row.map(escapeCSV).join(','));
+    content = [header, ...dataRows].join('\n');
+    mimeType = 'text/csv';
+    extension = 'csv';
+  }
+
+  const blob = new Blob([content], { type: mimeType });
+  triggerBlobDownload(blob, `${filename}.${extension}`);
+
+  showToast(`Exported ${rows.length} rows as ${extension.toUpperCase()}`);
+}
+
 async function downloadBigQueryResults(format) {
   if (lastQuerySource !== DATA_SOURCE_BIGQUERY) {
     showToast('No BigQuery result to download');
@@ -1229,7 +1319,7 @@ async function downloadBigQueryResults(format) {
   if (!filename) return;
 
   try {
-    const res = await fetch('/api/bigquery/query/download', {
+    const res = await fetch(basePath('/api/bigquery/query/download'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
