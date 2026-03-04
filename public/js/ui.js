@@ -1898,11 +1898,25 @@ export function setupEventListeners(createConversation) {
 
   // Close open swipe when tapping elsewhere on the list
   conversationList.addEventListener('click', (e) => {
+    const emptyStateCreateBtn = e.target.closest('.empty-state-icon[data-action="new-chat"]');
+    if (emptyStateCreateBtn) {
+      newChatBtn?.click();
+      return;
+    }
+
     const activeSwipeCard = state.getActiveSwipeCard();
     if (activeSwipeCard && !e.target.closest('.conv-card-wrapper')) {
       activeSwipeCard.style.transform = 'translateX(0)';
       state.setActiveSwipeCard(null);
     }
+  });
+
+  conversationList.addEventListener('keydown', (e) => {
+    const emptyStateCreateBtn = e.target.closest('.empty-state-icon[data-action="new-chat"]');
+    if (!emptyStateCreateBtn) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    newChatBtn?.click();
   });
 
   // Attachments

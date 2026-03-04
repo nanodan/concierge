@@ -409,7 +409,7 @@ export function renderConversationList(items) {
   const collapsedScopes = state.getCollapsedScopes();
 
   if (list.length === 0) {
-    let icon, heading, sub;
+    let icon, heading, sub, iconAttrs = '';
     if (isSearch) {
       icon = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`;
       heading = 'No matches found';
@@ -419,13 +419,14 @@ export function renderConversationList(items) {
       heading = 'Archive is empty';
       sub = '';
     } else {
-      icon = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
+      icon = `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="18" rx="10" ry="3"/><path d="M12 6V4M12 6C7.5 6 4 10 4 15h16c0-5-3.5-9-8-9z"/><circle cx="12" cy="4" r="1.5" fill="currentColor" stroke="none"/></svg>`;
       heading = 'Welcome to Concierge';
-      sub = `<span class="empty-state-sub">Tap <strong>+</strong> to ring the bell</span>`;
+      sub = `<span class="empty-state-sub">Tap the bell or <strong>+</strong> to start a chat</span>`;
+      iconAttrs = ' data-action="new-chat" role="button" tabindex="0" aria-label="Create new conversation" title="Create new conversation"';
     }
     conversationList.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">${icon}</div>
+        <div class="empty-state-icon"${iconAttrs}>${icon}</div>
         <p class="empty-state-heading">${heading}</p>
         ${sub}
         <div class="empty-state-flourish">— ✦ —</div>
