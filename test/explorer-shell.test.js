@@ -69,9 +69,13 @@ function makeViewer() {
 }
 
 describe('explorer shell refresh behavior', async () => {
-  const { createExplorerShell } = await import(moduleUrl);
   const previousWindow = globalThis.window;
-  globalThis.window = {};
+  globalThis.window = {
+    location: { pathname: '/' },
+    dispatchEvent() {},
+  };
+
+  const { createExplorerShell } = await import(moduleUrl);
 
   after(() => {
     if (previousWindow === undefined) {

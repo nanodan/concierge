@@ -21,6 +21,7 @@ describe('context bar token calculation', async () => {
   };
   globalThis.window = {
     dispatchEvent() {},
+    location: { pathname: '/' },
   };
 
   after(() => {

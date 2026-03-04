@@ -1,6 +1,6 @@
 // --- Data Tab (DuckDB + BigQuery SQL Analysis) ---
 import { escapeHtml } from '../markdown.js';
-import { haptic, showToast, apiFetch, showDialog } from '../utils.js';
+import { haptic, showToast, apiFetch, showDialog, basePath } from '../utils.js';
 import * as state from '../state.js';
 import { showSaveLocationPicker } from '../ui/save-location-picker.js';
 
@@ -1229,7 +1229,7 @@ async function downloadBigQueryResults(format) {
   if (!filename) return;
 
   try {
-    const res = await fetch('/api/bigquery/query/download', {
+    const res = await fetch(basePath('/api/bigquery/query/download'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1342,7 +1342,7 @@ async function downloadDuckDbResults(format) {
   showToast('Exporting...', { duration: 1000 });
 
   try {
-    const res = await fetch('/api/duckdb/export', {
+    const res = await fetch(basePath('/api/duckdb/export'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

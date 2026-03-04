@@ -1,4 +1,4 @@
-const { describe, it } = require('node:test');
+const { describe, it, after } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -6,6 +6,17 @@ const { pathToFileURL } = require('node:url');
 const moduleUrl = pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'explorer', 'files-core.js')).href;
 
 describe('explorer files core', async () => {
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    location: { pathname: '/' },
+    dispatchEvent() {},
+  };
+
+  after(() => {
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  });
+
   const {
     sortEntries,
     getViewableFiles,

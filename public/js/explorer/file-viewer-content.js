@@ -11,6 +11,7 @@ import {
   selectGeoFeature,
   fitGeoPreviewToBounds,
 } from './geo-preview.js';
+import { basePath } from '../utils.js';
 
 const DEFAULT_PREVIEWABLE_EXTS = new Set(['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp']);
 const GEO_PREVIEW_EXTS = new Set(['geojson', 'json', 'topojson', 'jsonl', 'ndjson']);
@@ -527,8 +528,8 @@ export function renderFileViewerContent({
   unmountGeoPreview(container);
 
   const ext = toSafeString(data.ext).toLowerCase();
-  const fileUrl = context.getFileDownloadUrl(filePath, { inline: true });
-  const downloadUrl = context.getFileDownloadUrl(filePath);
+  const fileUrl = basePath(context.getFileDownloadUrl(filePath, { inline: true }));
+  const downloadUrl = basePath(context.getFileDownloadUrl(filePath));
   const fileLikeIcon = icons.document || icons.file || '';
   const openExternalIcon = icons.openExternal || DEFAULT_OPEN_EXTERNAL_ICON;
   const attachIcon = icons.attach || DEFAULT_ATTACH_ICON;

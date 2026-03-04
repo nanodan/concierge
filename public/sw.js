@@ -1,45 +1,49 @@
-const CACHE_NAME = 'concierge-v127';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/css/themes/darjeeling.css',
-  '/css/themes/budapest.css',
-  '/css/themes/moonrise.css',
-  '/css/themes/aquatic.css',
-  '/css/themes/solarized.css',
-  '/css/themes/catppuccin.css',
-  '/css/themes/fjord.css',
-  '/css/themes/monokai.css',
-  '/css/themes/paper.css',
-  '/css/base.css',
-  '/css/layout.css',
-  '/css/components.css',
-  '/css/messages.css',
-  '/css/list.css',
-  '/css/file-panel.css',
-  '/css/branches.css',
-  '/js/app.js',
-  '/js/utils.js',
-  '/js/state.js',
-  '/js/websocket.js',
-  '/js/render.js',
-  '/js/markdown.js',
-  '/js/conversations.js',
-  '/js/ui.js',
-  '/js/file-panel.js',
-  '/js/branches.js',
-  '/manifest.json',
-  '/lib/highlight.min.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-512.png',
-  '/icons/screenshot-narrow.png',
-  '/icons/screenshot-wide.png',
+const CACHE_NAME = 'concierge-v128';
+const STATIC_ASSET_PATHS = [
+  '',
+  'index.html',
+  'style.css',
+  'css/themes/darjeeling.css',
+  'css/themes/budapest.css',
+  'css/themes/moonrise.css',
+  'css/themes/aquatic.css',
+  'css/themes/solarized.css',
+  'css/themes/catppuccin.css',
+  'css/themes/fjord.css',
+  'css/themes/monokai.css',
+  'css/themes/paper.css',
+  'css/base.css',
+  'css/layout.css',
+  'css/components.css',
+  'css/messages.css',
+  'css/list.css',
+  'css/file-panel.css',
+  'css/branches.css',
+  'js/app.js',
+  'js/utils.js',
+  'js/state.js',
+  'js/websocket.js',
+  'js/render.js',
+  'js/markdown.js',
+  'js/conversations.js',
+  'js/ui.js',
+  'js/file-panel.js',
+  'js/branches.js',
+  'manifest.json',
+  'lib/highlight.min.js',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
+  'icons/screenshot-narrow.png',
+  'icons/screenshot-wide.png',
 ];
 
+// Resolve asset paths relative to SW scope (handles proxy prefixes).
+const SCOPE = self.registration?.scope || self.location.href.replace(/sw\.js.*$/, '');
+const STATIC_ASSETS = STATIC_ASSET_PATHS.map((p) => new URL(p, SCOPE).href);
+
 // API routes to cache for offline use
-const CACHED_API_ROUTES = ['/api/conversations'];
+const CACHED_API_ROUTES = ['api/conversations'];
 
 // Install: cache static assets
 self.addEventListener('install', (event) => {
@@ -67,7 +71,11 @@ self.addEventListener('fetch', (event) => {
   if (event.request.headers.get('upgrade') === 'websocket') return;
 
   // Cacheable API routes: network-first, fall back to cache
-  if (CACHED_API_ROUTES.some(route => url.pathname === route || url.pathname.startsWith(route + '?'))) {
+  const scopePath = new URL(SCOPE).pathname;
+  if (CACHED_API_ROUTES.some(route => {
+    const full = scopePath + route;
+    return url.pathname === full || url.pathname.startsWith(full + '?');
+  })) {
     event.respondWith(
       fetch(event.request).then((response) => {
         if (response.ok) {
@@ -81,7 +89,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip other API requests
-  if (url.pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith(scopePath + 'api/')) return;
 
   // Static assets: cache-first
   event.respondWith(

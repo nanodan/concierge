@@ -111,6 +111,16 @@ No port forwarding, no exposing to the internet, and you get valid HTTPS certs.
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `GOOGLE_APPLICATION_CREDENTIALS` | _(unset)_ | Optional path to a service-account JSON for BigQuery ADC |
 | `BIGQUERY_EXPORT_MAX_ROWS` | `250000` | Max rows allowed for full BigQuery save/download exports (0 disables limit) |
+| `CONCIERGE_CLAUDE_CMD` | _(unset)_ | Override Claude CLI command (default: `claude` on PATH) |
+| `CONCIERGE_CLAUDE_ARGS` | _(unset)_ | Extra args prepended to Claude CLI command (JSON array or quoted string) |
+| `CONCIERGE_CODEX_CMD` | _(unset)_ | Override Codex CLI command (default: `codex` on PATH) |
+| `CONCIERGE_CODEX_ARGS` | _(unset)_ | Extra args prepended to Codex CLI command (JSON array or quoted string) |
+| `CONCIERGE_CLI_SKILLS_DIRS` | _(unset)_ | Colon/semicolon-delimited skill dirs added via `--add-dir` for all CLI providers |
+| `CONCIERGE_CLAUDE_SKILLS_DIRS` | _(unset)_ | Additional skill dirs for Claude only |
+| `CONCIERGE_CODEX_SKILLS_DIRS` | _(unset)_ | Additional skill dirs for Codex only |
+| `CONCIERGE_CLI_ENV_FILE` | _(unset)_ | JSON file of env vars to merge into CLI process environment |
+| `CONCIERGE_CLAUDE_ENV_FILE` | _(unset)_ | JSON env overrides for Claude only |
+| `CONCIERGE_CODEX_ENV_FILE` | _(unset)_ | JSON env overrides for Codex only |
 
 BigQuery uses Google Application Default Credentials (ADC). Typical local setup:
 

@@ -25,6 +25,7 @@ describe('render compressed message UI', async () => {
   globalThis.window = {
     dispatchEvent() {},
     speechSynthesis: null,
+    location: { pathname: '/' },
   };
   globalThis.navigator = {};
 
