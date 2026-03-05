@@ -3835,7 +3835,8 @@
 .data-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -4487,19 +4488,26 @@
 /* Export controls - segmented button design */
 .results-export-controls {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+  max-width: 100%;
 }
 
 .results-export-select {
   min-width: 80px;
+  height: 34px;
   padding: 6px 24px 6px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
   font-size: 12px;
+  line-height: 1.2;
+  box-sizing: border-box;
   cursor: pointer;
+  -webkit-appearance: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239FB3C8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -4512,6 +4520,7 @@
 
 .results-export-segmented {
   display: inline-flex;
+  flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -4545,6 +4554,13 @@
 @media (min-width: 768px) {
   .results-export-btn .btn-label {
     display: inline;
+  }
+}
+
+@media (max-width: 980px) {
+  .results-export-select {
+    min-width: 0;
+    flex: 1 1 120px;
   }
 }
 
